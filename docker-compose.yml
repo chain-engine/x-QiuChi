@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  qiuchi-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qiuchi-mcp
+    ports:
+      - "8000:8000"
+    environment:
+      # 服务器配置
+      - MCP_SERVER_NAME=${MCP_SERVER_NAME:-QiuChi}
+      - MCP_VERSION=${MCP_VERSION:-1.0.0}
+      - MCP_TRANSPORT=${MCP_TRANSPORT:-streamable-http}
+      - MCP_HOST=${MCP_HOST:-0.0.0.0}
+      - MCP_PORT=${MCP_PORT:-8000}
+
+      # 日志配置
+      - MCP_LOG_LEVEL=${MCP_LOG_LEVEL:-INFO}
+      - MCP_LOG_OUTPUT=${MCP_LOG_OUTPUT:-both}
+      - MCP_LOG_FILE=${MCP_LOG_FILE:-1}
+
+      # 天气 API 密钥（可选）
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY:-}
+
+      # Python 路径
+      - PYTHONPATH=/app/src
+    volumes:
+      # 挂载日志目录（可选）
+      - qiuchi-logs:/app/logs
+      # 挂载配置文件（可选，如需自定义配置）
+      # - ./config.yaml:/app/config.yaml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/mcp', headers={'Accept': 'text/event-stream'}, timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  qiuchi-logs:

@@ -1,0 +1,46 @@
+# 忽略版本控制系统
+.git/
+.gitee/
+
+# 忽略虚拟环境
+.venv/
+env/
+venv/
+
+# 忽略日志目录
+logs/
+
+# 忽略 IDE 配置文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 忽略 Python 缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略测试和示例
+tests/
+examples/
+
+# 忽略文档
+docs/
+*.md
+!README.md
+!README.en.md
+!LICENSE
+
+# 忽略配置文件（可选，默认使用内置配置）
+config.yaml
+
+# 忽略构建产物
+dist/
+build/
+*.egg-info/
+
+# 忽略临时文件
+*.log
+*.tmp
+.DS_Store

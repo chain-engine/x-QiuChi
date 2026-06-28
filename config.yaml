@@ -1,0 +1,72 @@
+# QiuChi 配置文件示例
+# 复制为 config.yaml 并根据需要修改
+
+# MCP 服务器配置
+mcp:
+  server_name: "QiuChi"
+  version: "1.0.0"
+  transport: "streamable-http"  # stdio, sse, streamable-http
+  host: "0.0.0.0"
+  port: 8000
+  json_response: true
+
+# 日志配置
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  output: "both"  # stderr, file, both
+  file_path: "logs/qiuchi.log"
+  rotation: "1 day"
+  retention: "7 days"
+  format: "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{file.name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+
+# 功能开关
+features:
+  tools: true
+  resources: true
+  prompts: true
+  middleware: true
+  cache: false
+
+# 插件配置
+plugins:
+  auto_discovery: true
+  discovery_paths:
+    - "src.plugins"
+    - "src.examples"
+  enabled_plugins: []  # 空列表表示启用所有
+  disabled_plugins: []  # 禁用的插件列表
+
+# 中间件配置（示例）
+middleware:
+  error_handler:
+    include_traceback: false  # 生产环境应设为 false
+  logging:
+    log_request: true
+    log_response: true
+  auth:
+    enabled: false
+    required: true
+    exempt_methods: []
+  cache:
+    enabled: false
+    default_ttl: 300
+    cacheable_methods: []
+
+# 传输层高级配置（示例）
+transport:
+  sse:
+    ping_interval: 30
+    max_connections: 100
+  http:
+    max_body_size: 10485760  # 10MB
+    request_timeout: 30
+    keepalive_timeout: 5
+    cors_enabled: true
+    cors_origins: ["*"]
+    compression_enabled: true
+  tls:
+    enabled: false
+    # cert_file: "/path/to/cert.pem"
+    # key_file: "/path/to/key.pem"
+    # ca_file: "/path/to/ca.pem"
+    verify_client: false
