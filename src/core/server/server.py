@@ -88,8 +88,11 @@ class MCPServer:
             self.middleware_chain.add(LoggingMiddleware())
 
         # 认证中间件（如果配置了认证）
-        if hasattr(settings, "auth") and settings.auth.enabled:
-            self.middleware_chain.add(AuthMiddleware())
+        if settings.middleware.auth.enabled:
+            self.middleware_chain.add(AuthMiddleware(
+                required=settings.middleware.auth.required,
+                exempt_methods=settings.middleware.auth.exempt_methods,
+            ))
 
         # 缓存中间件
         if settings.features.cache:

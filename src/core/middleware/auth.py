@@ -70,7 +70,7 @@ class AuthMiddleware(Middleware):
     def __init__(
         self,
         auth_provider: Optional[AuthProvider] = None,
-        required: bool = True,
+        required: bool = False,
         exempt_methods: Optional[List[str]] = None,
     ):
         """
@@ -78,12 +78,15 @@ class AuthMiddleware(Middleware):
 
         Args:
             auth_provider: 认证提供者（默认使用简单令牌认证）
-            required: 是否必须认证
+            required: 是否必须认证（默认 False，避免默认配置陷阱）
             exempt_methods: 免认证的方法列表
         """
         self.auth_provider = auth_provider or SimpleTokenAuthProvider(set())
         self.required = required
         self.exempt_methods = set(exempt_methods or [])
+
+        if required and isinstance(self.auth_provider, SimpleTokenAuthProvider) and not self.auth_provider.valid_tokens:
+            logger.warning("AuthMiddleware configured with required=True but no valid tokens provided. All requests will be rejected.")
 
         logger.debug(f"AuthMiddleware initialized (required={required})")
 
@@ -183,24 +186,28 @@ class RoleBasedAuthMiddleware(AuthMiddleware):
         next_handler: Handler,
     ) -> ResponseContext:
         """处理基于角色的认证"""
-        # 先执行基础认证
-        response = await super().handle(request, next_handler)
-
-        # 如果认证成功，检查角色权限
-        if "auth" in request.metadata:
-            method = request.request.get("method", "")
-            user_roles = request.metadata["auth"].get("roles", [self.default_role])
-            required_roles = self.role_mappings.get(method, [])
-
-            # 检查用户是否有足够权限
-            if required_roles and not any(role in user_roles for role in required_roles):
-                logger.warning(
-                    f"User with roles {user_roles} attempted to access "
-                    f"method {method} requiring roles {required_roles}"
-                )
-                return self._create_permission_error_response()
-
-        return response
+        method = request.request.get("method", "")
+        
+        # 先执行基础认证（不调用业务处理器）
+        auth_result = await self.auth_provider.authenticate(request.request)
+        
+        if auth_result:
+            request.metadata["auth"] = auth_result
+            user_roles = auth_result.get("roles", [self.default_role])
+        else:
+            user_roles = [self.default_role]
+        
+        # 检查角色权限
+        required_roles = self.role_mappings.get(method, [])
+        if required_roles and not any(role in user_roles for role in required_roles):
+            logger.warning(
+                f"User with roles {user_roles} attempted to access "
+                f"method {method} requiring roles {required_roles}"
+            )
+            return self._create_permission_error_response()
+        
+        # 权限通过，执行业务处理器
+        return await next_handler(request)
 
     def _create_permission_error_response(self) -> ResponseContext:
         """创建权限错误响应"""

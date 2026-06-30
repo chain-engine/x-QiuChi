@@ -46,6 +46,48 @@ class PluginManager:
 
         logger.debug("PluginManager initialized")
 
+    def _detect_circular_dependency(self) -> Optional[List[str]]:
+        """
+        检测插件依赖图中的循环依赖
+
+        Returns:
+            循环依赖路径，如果没有循环则返回 None
+        """
+        visited = set()
+        recursion_stack = set()
+        path = []
+
+        def dfs(node: str) -> Optional[List[str]]:
+            if node not in visited:
+                visited.add(node)
+                recursion_stack.add(node)
+                path.append(node)
+
+                if node in self._dependencies:
+                    for neighbor in self._dependencies[node]:
+                        if neighbor not in visited:
+                            result = dfs(neighbor)
+                            if result:
+                                return result
+                        elif neighbor in recursion_stack:
+                            # 找到循环
+                            cycle_start = path.index(neighbor)
+                            return path[cycle_start:] + [neighbor]
+
+            if node in recursion_stack:
+                recursion_stack.remove(node)
+                if path and path[-1] == node:
+                    path.pop()
+
+            return None
+
+        for plugin_name in self._dependencies:
+            result = dfs(plugin_name)
+            if result:
+                return result
+
+        return None
+
     async def initialize(self) -> None:
         """初始化插件管理器"""
         if self._initialized:
@@ -56,6 +98,12 @@ class PluginManager:
         # 自动发现插件
         if settings.plugins.auto_discovery:
             await self.discover_plugins()
+
+        # 检测循环依赖
+        cycle = self._detect_circular_dependency()
+        if cycle:
+            logger.error(f"Circular dependency detected: {' -> '.join(cycle)}")
+            raise RuntimeError(f"Circular dependency detected: {' -> '.join(cycle)}")
 
         # 加载启用的插件
         await self.load_enabled_plugins()
@@ -262,82 +310,26 @@ class PluginManager:
         """注册插件提供的所有项目"""
         from .base import ToolPlugin, ResourcePlugin, PromptPlugin, CompositePlugin
 
-        if isinstance(plugin, ToolPlugin):
-            tools = plugin.get_tools()
-            for tool_name, tool_func in tools.items():
+        def _register_items(items: Dict[str, Any], item_type: RegistryItemType):
+            for name, func in items.items():
                 self.registry.register(
-                    name=tool_name,
-                    item=tool_func,
-                    item_type=RegistryItemType.TOOL,
+                    name=name,
+                    item=func,
+                    item_type=item_type,
                     metadata=plugin.metadata,
                     category=plugin.metadata.category,
                     subcategory=plugin.metadata.subcategory,
                     tags=list(plugin.metadata.tags),
                 )
 
-        elif isinstance(plugin, ResourcePlugin):
-            resources = plugin.get_resources()
-            for resource_name, resource_func in resources.items():
-                self.registry.register(
-                    name=resource_name,
-                    item=resource_func,
-                    item_type=RegistryItemType.RESOURCE,
-                    metadata=plugin.metadata,
-                    category=plugin.metadata.category,
-                    subcategory=plugin.metadata.subcategory,
-                    tags=list(plugin.metadata.tags),
-                )
+        if isinstance(plugin, (ToolPlugin, CompositePlugin)):
+            _register_items(plugin.get_tools(), RegistryItemType.TOOL)
 
-        elif isinstance(plugin, PromptPlugin):
-            prompts = plugin.get_prompts()
-            for prompt_name, prompt_func in prompts.items():
-                self.registry.register(
-                    name=prompt_name,
-                    item=prompt_func,
-                    item_type=RegistryItemType.PROMPT,
-                    metadata=plugin.metadata,
-                    category=plugin.metadata.category,
-                    subcategory=plugin.metadata.subcategory,
-                    tags=list(plugin.metadata.tags),
-                )
+        if isinstance(plugin, (ResourcePlugin, CompositePlugin)):
+            _register_items(plugin.get_resources(), RegistryItemType.RESOURCE)
 
-        elif isinstance(plugin, CompositePlugin):
-            # 注册所有类型的项目
-            tools = plugin.get_tools()
-            for tool_name, tool_func in tools.items():
-                self.registry.register(
-                    name=tool_name,
-                    item=tool_func,
-                    item_type=RegistryItemType.TOOL,
-                    metadata=plugin.metadata,
-                    category=plugin.metadata.category,
-                    subcategory=plugin.metadata.subcategory,
-                    tags=list(plugin.metadata.tags),
-                )
-
-            resources = plugin.get_resources()
-            for resource_name, resource_func in resources.items():
-                self.registry.register(
-                    name=resource_name,
-                    item=resource_func,
-                    item_type=RegistryItemType.RESOURCE,
-                    metadata=plugin.metadata,
-                    category=plugin.metadata.category,
-                    subcategory=plugin.metadata.subcategory,
-                    tags=list(plugin.metadata.tags),
-                )
-
-            prompts = plugin.get_prompts()
-            for prompt_name, prompt_func in prompts.items():
-                self.registry.register(
-                    name=prompt_name,
-                    item=prompt_func,
-                    item_type=RegistryItemType.PROMPT,
-                    metadata=plugin.metadata,
-                    category=plugin.metadata.category,
-                    subcategory=plugin.metadata.subcategory,
-                    tags=list(plugin.metadata.tags),
-                )
+        if isinstance(plugin, (PromptPlugin, CompositePlugin)):
+            _register_items(plugin.get_prompts(), RegistryItemType.PROMPT)
 
     async def enable_plugin(self, plugin_name: str) -> bool:
         """

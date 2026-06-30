@@ -141,18 +141,22 @@ class PluginRegistry:
             item = self._items.get(name)
             return item.item if item and item.is_enabled else None
 
-    def get_item(self, name: str) -> Optional[RegistryItem]:
+    def get_item(self, name: str, enabled_only: bool = True) -> Optional[RegistryItem]:
         """
         获取注册表项（包含元数据）
 
         Args:
             name: 项目名称
+            enabled_only: 是否只返回启用的项目（默认 True，与 get() 行为一致）
 
         Returns:
-            注册表项，不存在返回 None
+            注册表项，不存在或未启用（当 enabled_only=True 时）返回 None
         """
         with self._lock:
-            return self._items.get(name)
+            item = self._items.get(name)
+            if enabled_only and item and not item.is_enabled:
+                return None
+            return item
 
     def get_all(
         self,

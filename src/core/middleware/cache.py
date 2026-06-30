@@ -39,6 +39,10 @@ class CacheBackend(ABC):
         """清空缓存"""
         pass
 
+    async def get_stats(self) -> Dict[str, Any]:
+        """获取缓存统计信息（默认实现）"""
+        return {"backend": type(self).__name__}
+
 
 class MemoryCacheBackend(CacheBackend):
     """内存缓存后端"""
@@ -78,7 +82,7 @@ class MemoryCacheBackend(CacheBackend):
         self._cache.clear()
         return True
 
-    def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> Dict[str, Any]:
         """获取缓存统计信息"""
         total = len(self._cache)
         expired = sum(
@@ -276,8 +280,6 @@ class CacheMiddleware(Middleware):
         logger.warning(f"Memory cache does not support pattern invalidation for method: {method}")
         return 0
 
-    def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> Dict[str, Any]:
         """获取缓存统计信息"""
-        if isinstance(self.cache_backend, MemoryCacheBackend):
-            return self.cache_backend.get_stats()
-        return {"backend": type(self.cache_backend).__name__}
+        return await self.cache_backend.get_stats()

@@ -182,29 +182,7 @@ def main_async():
         file_path=settings.logging.file_path,
     )
 
-    # 导入示例插件（必须在创建服务器之前）
-    try:
-        from src.examples.tools.math import (
-            add, subtract, multiply, divide, power, sqrt,
-            celsius_to_fahrenheit, fahrenheit_to_celsius
-        )
-        from src.examples.resources.config import (
-            get_server_config, get_version_info, get_api_documentation
-        )
-        from src.examples.prompts.templates import (
-            greeting, code_review, weather_outfit_advice,
-            explain_concept, summarize_document
-        )
-
-        from src.core.logging.logger import get_logger
-        logger = get_logger("main")
-        logger.info("Example plugins loaded successfully")
-    except ImportError as e:
-        from src.core.logging.logger import get_logger
-        logger = get_logger("main")
-        logger.warning(f"Failed to load example plugins: {e}")
-
-    # 创建服务器
+    # 创建服务器（插件将通过自动发现机制加载）
     server = create_server(
         name=settings.mcp.server_name,
         version=settings.mcp.version,

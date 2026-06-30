@@ -105,6 +105,30 @@ class PluginConfig(BaseSettings):
     )
 
 
+class AuthConfig(BaseSettings):
+    """认证配置"""
+
+    enabled: bool = Field(default=False, description="是否启用认证")
+    required: bool = Field(default=True, description="是否必须认证")
+    exempt_methods: List[str] = Field(default_factory=list, description="免认证的方法列表")
+
+    model_config = SettingsConfigDict(
+        env_prefix="MCP_AUTH_",
+        case_sensitive=False,
+    )
+
+
+class MiddlewareConfig(BaseSettings):
+    """中间件配置"""
+
+    auth: AuthConfig = Field(default_factory=AuthConfig)
+
+    model_config = SettingsConfigDict(
+        env_prefix="MCP_MIDDLEWARE_",
+        case_sensitive=False,
+    )
+
+
 class Settings(BaseSettings):
     """
     全局配置类（单例模式）
@@ -120,6 +144,7 @@ class Settings(BaseSettings):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
     plugins: PluginConfig = Field(default_factory=PluginConfig)
+    middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
 
     # 配置文件路径
     config_file: Optional[str] = Field(default="config.yaml", description="配置文件路径")

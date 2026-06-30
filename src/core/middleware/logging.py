@@ -51,6 +51,7 @@ class LoggingMiddleware(Middleware):
         # 记录请求开始
         start_time = time.time()
         request_id = request.request.get("id", "unknown")
+        method = request.request.get("method", "unknown")
 
         if self.log_request:
             self._log_request(request, request_id)
@@ -181,10 +182,10 @@ class LoggingMiddleware(Middleware):
             try:
                 from ..plugins.registry import RegistryItemType
                 # 查找工具
-                item = server.registry.get_item(method_name, RegistryItemType.TOOL)
-                if item:
+                item = server.registry.get_item(method_name)
+                if item and item.type == RegistryItemType.TOOL:
                     # 获取包装函数的源位置
-                    func = item.tool
+                    func = item.item
                     return self._get_function_source(func)
             except Exception:
                 pass
