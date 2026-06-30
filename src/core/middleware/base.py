@@ -23,6 +23,16 @@ class RequestContext:
         if self.metadata is None:
             self.metadata = {}
 
+    @property
+    def method(self) -> str:
+        """获取请求方法名"""
+        return self.request.get("method", "")
+
+    @property
+    def request_id(self) -> str:
+        """获取请求ID"""
+        return self.request.get("id", "")
+
 
 @dataclass
 class ResponseContext:

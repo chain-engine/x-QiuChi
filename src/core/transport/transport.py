@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 # 从共享类型模块导入
 from ..types import TransportType
+from ..config.config import settings
 
 
 class SSEConfig(BaseModel):
