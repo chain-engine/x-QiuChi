@@ -41,7 +41,6 @@
 
 ```
 x-QiuChi/
-├── main.py                          # 主入口，CLI 参数解析与服务器启动
 ├── config.yaml                      # 运行时配置文件
 ├── config.yaml.example              # 配置示例（含全部字段说明）
 ├── .env.example                     # 环境变量示例
@@ -52,6 +51,7 @@ x-QiuChi/
 │
 ├── src/                             # 源码目录
 │   ├── __init__.py                  # 统一 API 入口（create_server, tool, resource, prompt）
+│   ├── main.py                      # 主入口，CLI 参数解析与服务器启动
 │   │
 │   ├── core/                        # [核心层] 框架核心功能
 │   │   ├── config/
@@ -170,7 +170,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["main.py"] --> B["src/__init__.py<br/>(统一 API 入口)"]
+    A["src/main.py"] --> B["src/__init__.py<br/>(统一 API 入口)"]
     A --> K["src/core/logging/logger.py"]
     K --> K1["loguru (外部依赖)"]
 
@@ -277,22 +277,22 @@ cp .env.example .env
 
 ```bash
 # HTTP 模式（默认，端口 8000）
-uv run main.py
+uv run -m src.main
 # 或使用项目名称
 uv run x-QiuChi
 
 # Stdio 模式（兼容 Claude Desktop）
-uv run main.py --transport stdio
+uv run -m src.main --transport stdio
 # 或
 uv run x-QiuChi --transport stdio
 
 # 自定义参数
-uv run main.py --host 127.0.0.1 --port 8080 --log-level DEBUG
+uv run -m src.main --host 127.0.0.1 --port 8080 --log-level DEBUG
 # 或
 uv run x-QiuChi --host 127.0.0.1 --port 8080 --log-level DEBUG
 
 # 查看全部参数
-uv run main.py --help
+uv run -m src.main --help
 # 或
 uv run x-QiuChi --help
 ```

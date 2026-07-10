@@ -37,7 +37,7 @@ COPY --from=builder /app/config.yaml /app/config.yaml
 
 # 设置环境变量
 ENV PATH="/app/venv/bin:$PATH"
-ENV PYTHONPATH="/app/src"
+ENV PYTHONPATH="/app"
 ENV MCP_TRANSPORT="streamable-http"
 ENV MCP_HOST="0.0.0.0"
 ENV MCP_PORT="8000"

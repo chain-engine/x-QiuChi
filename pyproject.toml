@@ -29,8 +29,8 @@ dev = [
 ]
 
 [project.scripts]
-qiuchi = "main:main"
-x-QiuChi = "main:main"
+qiuchi = "src.main:main"
+x-QiuChi = "src.main:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -42,7 +42,6 @@ packages = ["src"]
 [tool.hatch.build.targets.sdist]
 include = [
     "src/",
-    "main.py",
     "config.yaml.example",
     "README.md",
     "LICENSE",

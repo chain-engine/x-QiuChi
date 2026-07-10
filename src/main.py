@@ -7,24 +7,23 @@ QiuChi 服务器主入口
 
 Usage:
     # 启动 HTTP 服务器（默认）
-    python main.py
+    python -m src.main
 
     # 启动 Stdio 服务器（Claude Desktop 兼容）
-    python main.py --transport stdio
+    python -m src.main --transport stdio
 
     # 自定义端口
-    python main.py --port 8080 --host 127.0.0.1
+    python -m src.main --port 8080 --host 127.0.0.1
 
     # 使用配置文件
-    python main.py --config custom_config.yaml
+    python -m src.main --config custom_config.yaml
 """
 
 import argparse
 import sys
 from pathlib import Path
 
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
