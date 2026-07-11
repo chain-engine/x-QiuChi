@@ -29,8 +29,8 @@ dev = [
 ]
 
 [project.scripts]
-qiuchi = "src.main:main"
-x-QiuChi = "src.main:main"
+qiuchi = "main:main"
+x-QiuChi = "main:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -78,6 +78,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+pythonpath = ["src"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"

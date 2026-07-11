@@ -13,8 +13,8 @@ from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel, Field
 
 # 从共享类型模块导入
-from ..types import TransportType
-from ..config.config import settings
+from core.types import TransportType
+from core.config.config import settings
 
 
 class SSEConfig(BaseModel):

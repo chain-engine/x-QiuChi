@@ -15,7 +15,7 @@ from threading import RLock
 import inspect
 
 from .base import PluginType, PluginMetadata
-from ..logging.logger import get_logger
+from core.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

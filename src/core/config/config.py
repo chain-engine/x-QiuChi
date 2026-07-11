@@ -21,7 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 
 # 从共享类型模块导入
-from ..types import TransportType, LogLevel, LogOutput
+from core.types import TransportType, LogLevel, LogOutput
 
 
 class MCPConfig(BaseSettings):

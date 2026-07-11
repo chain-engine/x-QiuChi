@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
 from .base import Plugin, PluginMetadata, PluginType
-from ..logging.logger import get_logger
+from core.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

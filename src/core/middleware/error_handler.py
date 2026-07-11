@@ -8,7 +8,7 @@ import traceback
 from typing import Any, Dict
 
 from .base import Middleware, RequestContext, ResponseContext, Handler
-from ..logging.logger import get_logger
+from core.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

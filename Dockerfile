@@ -37,7 +37,7 @@ COPY --from=builder /app/config.yaml /app/config.yaml
 
 # 设置环境变量
 ENV PATH="/app/venv/bin:$PATH"
-ENV PYTHONPATH="/app"
+ENV PYTHONPATH="/app/src"
 ENV MCP_TRANSPORT="streamable-http"
 ENV MCP_HOST="0.0.0.0"
 ENV MCP_PORT="8000"
@@ -58,4 +58,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/mcp', headers={'Accept': 'text/event-stream'}, timeout=5)" || exit 1
 
 # 启动命令
-CMD ["python", "-m", "src.main"]
+CMD ["python", "src/main.py"]

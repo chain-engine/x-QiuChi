@@ -8,7 +8,7 @@ import asyncio
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from ..logging.logger import get_logger
+from core.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

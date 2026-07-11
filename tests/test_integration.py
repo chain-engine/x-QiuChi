@@ -8,15 +8,15 @@ QiuChi 项目完整性测试脚本
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+# 添加 src 目录到路径（作为导包根目录）
+src_path = Path(__file__).parent.parent / "src"
+sys.path.insert(0, str(src_path))
 
 
 def test_configuration():
     """测试配置系统"""
     print("[1/7] Testing configuration...")
-    from src.core.config import settings
+    from core.config import settings
 
     assert settings.mcp.server_name == 'QiuChi'
     assert settings.mcp.transport.value in ['stdio', 'sse', 'streamable-http']
@@ -29,7 +29,7 @@ def test_configuration():
 def test_server_creation():
     """测试服务器创建"""
     print("[2/7] Testing server creation...")
-    from src import create_server
+    from main import create_server
 
     server = create_server('TestServer', '1.0.0')
     assert server.name == 'TestServer'
@@ -45,7 +45,7 @@ def test_server_creation():
 def test_decorators():
     """测试装饰器"""
     print("[3/7] Testing decorators...")
-    from src import tool, resource, prompt
+    from main import tool, resource, prompt
 
     @tool(category='test')
     def test_tool(x: int) -> int:
@@ -74,8 +74,8 @@ def test_decorators():
 def test_plugin_system():
     """测试插件系统"""
     print("[4/7] Testing plugin system...")
-    from src import create_server
-    from src.core.plugins import PluginManager
+    from main import create_server
+    from core.plugins import PluginManager
 
     server = create_server('PluginTest')
     manager = PluginManager(server)
@@ -90,8 +90,8 @@ def test_plugin_system():
 def test_middleware():
     """测试中间件"""
     print("[5/7] Testing middleware...")
-    from src import create_server
-    from src.core.middleware import (
+    from main import create_server
+    from core.middleware import (
         ErrorHandlerMiddleware,
         LoggingMiddleware,
         CacheMiddleware
@@ -117,7 +117,7 @@ def test_examples():
 
     try:
         # Test math tools
-        from src.examples.tools.math import add, subtract, multiply, divide
+        from examples.tools.math import add, subtract, multiply, divide
 
         assert add(10, 5) == 15.0
         assert subtract(10, 5) == 5.0
@@ -127,7 +127,7 @@ def test_examples():
         print("    [OK] Math tools working")
 
         # Test config resources
-        from src.examples.resources.config import get_server_config
+        from examples.resources.config import get_server_config
 
         config = get_server_config()
         assert isinstance(config, str)
@@ -136,7 +136,7 @@ def test_examples():
         print("    [OK] Config resources working")
 
         # Test prompt templates
-        from src.examples.prompts.templates import greeting
+        from examples.prompts.templates import greeting
 
         greeting_text = greeting('Test')
         assert 'Test' in greeting_text
@@ -152,7 +152,7 @@ def test_examples():
 def test_server_stats():
     """测试服务器统计"""
     print("[7/7] Testing server statistics...")
-    from src import create_server
+    from main import create_server
 
     server = create_server('StatsTest')
     stats = server.get_stats()

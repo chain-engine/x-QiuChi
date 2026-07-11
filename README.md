@@ -277,22 +277,22 @@ cp .env.example .env
 
 ```bash
 # HTTP 模式（默认，端口 8000）
-uv run -m src.main
+uv run python src/main.py
 # 或使用项目名称
 uv run x-QiuChi
 
 # Stdio 模式（兼容 Claude Desktop）
-uv run -m src.main --transport stdio
+uv run python src/main.py --transport stdio
 # 或
 uv run x-QiuChi --transport stdio
 
 # 自定义参数
-uv run -m src.main --host 127.0.0.1 --port 8080 --log-level DEBUG
+uv run python src/main.py --host 127.0.0.1 --port 8080 --log-level DEBUG
 # 或
 uv run x-QiuChi --host 127.0.0.1 --port 8080 --log-level DEBUG
 
 # 查看全部参数
-uv run -m src.main --help
+uv run python src/main.py --help
 # 或
 uv run x-QiuChi --help
 ```

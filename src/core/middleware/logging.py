@@ -10,7 +10,7 @@ from typing import Any, Dict
 from dataclasses import asdict
 
 from .base import Middleware, RequestContext, ResponseContext, Handler
-from ..logging.logger import get_logger
+from core.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -180,7 +180,7 @@ class LoggingMiddleware(Middleware):
 
         if server and hasattr(server, "registry"):
             try:
-                from ..plugins.registry import RegistryItemType
+                from core.plugins.registry import RegistryItemType
                 # 查找工具
                 item = server.registry.get_item(method_name)
                 if item and item.type == RegistryItemType.TOOL:

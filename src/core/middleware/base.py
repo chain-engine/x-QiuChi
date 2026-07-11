@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from ..server.server import MCPServer
+    from core.server.server import MCPServer
 
 
 @dataclass

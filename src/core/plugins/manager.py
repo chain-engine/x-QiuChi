@@ -15,11 +15,11 @@ import sys
 
 from .base import Plugin, PluginType, PluginMetadata, PluginStatus
 from .registry import PluginRegistry, UnifiedRegistry, RegistryItemType
-from ..config.config import settings
-from ..logging.logger import get_logger
+from core.config.config import settings
+from core.logging.logger import get_logger
 
 if TYPE_CHECKING:
-    from ..server.server import MCPServer
+    from core.server.server import MCPServer
 
 logger = get_logger(__name__)
 

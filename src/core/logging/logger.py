@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, Union, Dict, Any
 from loguru import logger as loguru_logger
 
-from ..config.config import settings
+from core.config.config import settings
 
 
 class Logger:

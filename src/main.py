@@ -1,34 +1,81 @@
 #!/usr/bin/env python3
 """
-QiuChi 服务器主入口
+QiuChi (秋池) - 企业级 MCP 服务器框架
 
-企业级 MCP 服务器框架的启动入口。
-支持命令行参数和环境变量配置。
+一个基于 FastMCP 框架封装的企业级 MCP (Model Context Protocol) 服务器。
+提供插件化架构、中间件支持、统一配置等企业级特性。
 
-Usage:
-    # 启动 HTTP 服务器（默认）
-    python -m src.main
+主要特性:
+- 完全遵循 MCP 协议，实现 Tools、Resources、Prompts 三大核心原语
+- 插件化设计，支持自动发现和生命周期管理
+- 中间件管道，支持认证、缓存、日志、错误处理等
+- 统一配置系统，支持环境变量、YAML 文件和热重载
+- 多传输层支持 (Stdio/SSE/HTTP)
+- 完整的类型提示和文档
 
-    # 启动 Stdio 服务器（Claude Desktop 兼容）
-    python -m src.main --transport stdio
+快速开始:
+    >>> from main import create_server, tool, resource, prompt
+    >>> server = create_server("MyServer")
+    >>>
+    >>> @tool(category="math")
+    ... def add(a: float, b: float) -> float:
+    ...     '''Add two numbers.'''
+    ...     return a + b
+    >>>
+    >>> server.run()
 
-    # 自定义端口
-    python -m src.main --port 8080 --host 127.0.0.1
-
-    # 使用配置文件
-    python -m src.main --config custom_config.yaml
+版本: 0.1.0
+许可证: MIT
 """
 
 import argparse
 import sys
 from pathlib import Path
 
-project_root = Path(__file__).parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+src_path = Path(__file__).parent
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
-from src import create_server, settings
-from src.core.logging.logger import setup_logging
+from core.server import MCPServer, create_server
+from core.config import settings
+from core.plugins import Plugin, PluginMetadata, PluginType
+from core.middleware import (
+    Middleware, MiddlewareChain,
+    ErrorHandlerMiddleware, LoggingMiddleware,
+    AuthMiddleware, CacheMiddleware,
+)
+from core.transport import TransportType, TransportConfig
+from plugins.base import tool, resource, prompt
+from core.logging.logger import setup_logging
+
+__all__ = [
+    # 核心类
+    "MCPServer",
+    "create_server",
+    "settings",
+    # 插件系统
+    "Plugin",
+    "PluginMetadata",
+    "PluginType",
+    # 中间件
+    "Middleware",
+    "MiddlewareChain",
+    "ErrorHandlerMiddleware",
+    "LoggingMiddleware",
+    "AuthMiddleware",
+    "CacheMiddleware",
+    # 传输层
+    "TransportType",
+    "TransportConfig",
+    # 装饰器
+    "tool",
+    "resource",
+    "prompt",
+]
+
+__version__ = "0.1.0"
+__author__ = "John Young <john.young@foxmail.com>"
+__description__ = "QiuChi (秋池) - an enterprise-grade MCP server framework"
 
 
 def parse_arguments():
@@ -119,7 +166,7 @@ Examples:
 def update_settings_from_args(args):
     """根据命令行参数更新配置"""
     # 更新传输配置
-    from src.core.transport.transport import TransportType
+    from core.transport.transport import TransportType
     settings.mcp.transport = TransportType(args.transport)
     settings.mcp.host = args.host
     settings.mcp.port = args.port
@@ -127,7 +174,7 @@ def update_settings_from_args(args):
     settings.mcp.version = args.version
 
     # 更新日志配置
-    from src.core.config.config import LogLevel, LogOutput
+    from core.config.config import LogLevel, LogOutput
     settings.logging.level = LogLevel(args.log_level)
     settings.logging.file_path = args.log_file
 
@@ -145,7 +192,7 @@ def update_settings_from_args(args):
 
 def print_startup_info(server, args):
     """打印启动信息"""
-    from src.core.logging.logger import get_logger
+    from core.logging.logger import get_logger
 
     logger = get_logger("main")
 
@@ -203,12 +250,12 @@ def main():
     try:
         main_async()
     except KeyboardInterrupt:
-        from src.core.logging.logger import get_logger
+        from core.logging.logger import get_logger
         logger = get_logger("main")
         logger.info("Server stopped by user")
         sys.exit(0)
     except Exception as e:
-        from src.core.logging.logger import get_logger
+        from core.logging.logger import get_logger
         logger = get_logger("main")
         logger.error(f"Failed to start server: {e}")
         sys.exit(1)

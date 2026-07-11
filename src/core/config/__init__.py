@@ -9,7 +9,7 @@ QiuChi 配置管理模块
 - 多环境配置
 
 使用示例：
-    >>> from src.core.config import settings
+    >>> from core.config import settings
     >>> print(settings.server_name)
     >>> print(settings.transport)
     >>> settings.reload()  # 重新加载配置

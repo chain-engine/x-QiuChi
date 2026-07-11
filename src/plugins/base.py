@@ -9,7 +9,7 @@ from functools import wraps
 from enum import Enum
 import inspect
 
-from ..core.plugins.base import PluginType, PluginMetadata
+from core.plugins.base import PluginType, PluginMetadata
 
 T = TypeVar("T")
 FuncType = Callable[..., Any]

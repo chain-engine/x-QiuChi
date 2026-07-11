@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Type, TYPE_CHECKING
 from pathlib import Path
 
 if TYPE_CHECKING:
-    from ..config.config import Settings
+    from core.config.config import Settings
 
 
 class PluginType(str, Enum):

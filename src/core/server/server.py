@@ -11,20 +11,20 @@ import inspect
 
 from mcp.server.fastmcp import FastMCP
 
-from ..config.config import settings
-from ..transport.transport import TransportType
-from ..plugins.manager import PluginManager
-from ..plugins.registry import UnifiedRegistry, RegistryItemType
-from ...plugins.base import get_tool_decorator, get_resource_decorator, get_prompt_decorator, PluginMetadata
-from ..middleware.base import MiddlewareChain, RequestContext, ResponseContext
-from ..middleware.error_handler import ErrorHandlerMiddleware
-from ..middleware.logging import LoggingMiddleware
-from ..middleware.auth import AuthMiddleware
-from ..middleware.cache import CacheMiddleware
-from ..logging.logger import get_logger
+from core.config.config import settings
+from core.transport.transport import TransportType
+from core.plugins.manager import PluginManager
+from core.plugins.registry import UnifiedRegistry, RegistryItemType
+from plugins.base import get_tool_decorator, get_resource_decorator, get_prompt_decorator, PluginMetadata
+from core.middleware.base import MiddlewareChain, RequestContext, ResponseContext
+from core.middleware.error_handler import ErrorHandlerMiddleware
+from core.middleware.logging import LoggingMiddleware
+from core.middleware.auth import AuthMiddleware
+from core.middleware.cache import CacheMiddleware
+from core.logging.logger import get_logger
 
 if TYPE_CHECKING:
-    from ..transport.transport import TransportConfig
+    from core.transport.transport import TransportConfig
 
 logger = get_logger(__name__)
 
@@ -106,11 +106,11 @@ class MCPServer:
         """初始化插件系统"""
         logger.info("Initializing plugin system...")
 
-        # 先注册装饰器标记的函数
-        self._register_decorator_functions()
-
-        # 再初始化插件管理器
+        # 先初始化插件管理器（这会导入所有发现的模块，触发装饰器注册）
         await self.plugin_manager.initialize()
+
+        # 再注册装饰器标记的函数（此时装饰器实例中已经有了所有已导入的函数）
+        self._register_decorator_functions()
 
     def _register_decorator_functions(self) -> None:
         """注册装饰器标记的函数"""
@@ -199,7 +199,7 @@ class MCPServer:
         Returns:
             是否注册成功
         """
-        from ..plugins.base import Plugin
+        from core.plugins.base import Plugin
         if isinstance(plugin, Plugin):
             return self.plugin_manager.register_plugin(plugin)
         return False
@@ -216,7 +216,7 @@ class MCPServer:
         Returns:
             self (支持链式调用)
         """
-        from ..middleware.base import Middleware
+        from core.middleware.base import Middleware
         if isinstance(middleware, Middleware):
             if index is None:
                 self.middleware_chain.add(middleware)
@@ -236,7 +236,7 @@ class MCPServer:
         Returns:
             是否移除成功
         """
-        from ..middleware.base import Middleware
+        from core.middleware.base import Middleware
         if isinstance(middleware, Middleware):
             return self.middleware_chain.remove(middleware)
         return False
@@ -278,7 +278,7 @@ class MCPServer:
                 return response.response.get("result")
 
             # 注册到注册表
-            from ..plugins.base import PluginMetadata
+            from core.plugins.base import PluginMetadata
             plugin_metadata = PluginMetadata(
                 name=metadata.get("name", f.__name__),
                 description=metadata.get("description", f.__doc__ or ""),
@@ -340,7 +340,7 @@ class MCPServer:
                 return response.response.get("result")
 
             # 注册到注册表
-            from ..plugins.base import PluginMetadata
+            from core.plugins.base import PluginMetadata
             plugin_metadata = PluginMetadata(
                 name=uri,
                 description=metadata.get("description", func.__doc__ or ""),
@@ -399,7 +399,7 @@ class MCPServer:
                 return response.response.get("result")
 
             # 注册到注册表
-            from ..plugins.base import PluginMetadata
+            from core.plugins.base import PluginMetadata
             plugin_metadata = PluginMetadata(
                 name=name,
                 description=metadata.get("description", func.__doc__ or ""),
@@ -527,7 +527,7 @@ class MCPServer:
             await self.start()
 
             # 获取传输配置
-            from ..transport.transport import get_transport_config
+            from core.transport.transport import get_transport_config
             transport_config = get_transport_config(
                 transport or settings.mcp.transport.value,
                 host or settings.mcp.host,
