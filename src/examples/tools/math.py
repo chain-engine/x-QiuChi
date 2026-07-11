@@ -4,7 +4,7 @@
 展示如何使用 QiuChi 的装饰器 API 创建工具。
 """
 
-from src import tool
+from plugins import tool
 
 
 @tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])

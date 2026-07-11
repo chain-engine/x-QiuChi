@@ -1,18 +1,233 @@
 """
-QiuChi 插件装饰器基类
+QiuChi 插件基类
 
-提供统一的插件装饰器实现，支持自动发现和注册。
+定义插件的标准接口和生命周期，支持：
+- 工具（Tools）、资源（Resources）、提示词（Prompts）插件
+- 统一的生命周期管理
+- 依赖声明和解析
+- 配置注入
 """
 
-from typing import Any, Callable, Optional, Dict, TypeVar, Generic
-from functools import wraps
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from enum import Enum
-import inspect
-
-from core.plugins.base import PluginType, PluginMetadata
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, TYPE_CHECKING
+from pathlib import Path
 
 T = TypeVar("T")
 FuncType = Callable[..., Any]
+
+if TYPE_CHECKING:
+    from core.config.config import Settings
+
+
+class PluginType(str, Enum):
+    """插件类型枚举"""
+    TOOL = "tool"
+    RESOURCE = "resource"
+    PROMPT = "prompt"
+    COMPOSITE = "composite"  # 包含多种类型的插件
+
+
+class PluginStatus(str, Enum):
+    """插件状态枚举"""
+    UNLOADED = "unloaded"
+    LOADED = "loaded"
+    ENABLED = "enabled"
+    DISABLED = "disabled"
+    ERROR = "error"
+
+
+@dataclass
+class PluginMetadata:
+    """插件元数据"""
+    name: str
+    version: str = "1.0.0"
+    description: str = ""
+    author: str = ""
+    license: str = "MIT"
+    type: PluginType = PluginType.TOOL
+    category: str = "default"
+    subcategory: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
+    dependencies: List[str] = field(default_factory=list)  # 依赖的其他插件
+    config_schema: Optional[Dict[str, Any]] = None  # 配置模式
+
+
+class Plugin(ABC):
+    """
+    插件基类
+
+    所有 QiuChi 插件必须继承此类，实现标准接口。
+    """
+
+    def __init__(self, metadata: PluginMetadata):
+        self.metadata = metadata
+        self.status: PluginStatus = PluginStatus.UNLOADED
+        self.config: Dict[str, Any] = {}
+        self._initialized: bool = False
+
+    @property
+    def name(self) -> str:
+        """插件名称"""
+        return self.metadata.name
+
+    @property
+    def type(self) -> PluginType:
+        """插件类型"""
+        return self.metadata.type
+
+    # 生命周期方法
+    @abstractmethod
+    async def on_load(self, settings: "Settings") -> None:
+        """
+        插件加载时调用
+
+        Args:
+            settings: 全局配置
+        """
+        pass
+
+    @abstractmethod
+    async def on_enable(self) -> None:
+        """插件启用时调用"""
+        pass
+
+    @abstractmethod
+    async def on_disable(self) -> None:
+        """插件禁用时调用"""
+        pass
+
+    @abstractmethod
+    async def on_unload(self) -> None:
+        """插件卸载时调用"""
+        pass
+
+    # 配置管理
+    def configure(self, config: Dict[str, Any]) -> None:
+        """
+        配置插件
+
+        Args:
+            config: 插件配置
+        """
+        self.config.update(config)
+
+    def get_config(self) -> Dict[str, Any]:
+        """获取插件配置"""
+        return self.config.copy()
+
+    # 状态管理
+    def set_status(self, status: PluginStatus) -> None:
+        """设置插件状态"""
+        self.status = status
+
+    def is_enabled(self) -> bool:
+        """检查插件是否启用"""
+        return self.status == PluginStatus.ENABLED
+
+    def is_loaded(self) -> bool:
+        """检查插件是否已加载"""
+        return self.status != PluginStatus.UNLOADED
+
+    # 工具方法
+    def get_info(self) -> Dict[str, Any]:
+        """获取插件信息"""
+        return {
+            "name": self.name,
+            "version": self.metadata.version,
+            "type": self.type.value,
+            "status": self.status.value,
+            "description": self.metadata.description,
+            "category": self.metadata.category,
+            "subcategory": self.metadata.subcategory,
+            "tags": self.metadata.tags,
+            "dependencies": self.metadata.dependencies,
+        }
+
+
+class ToolPlugin(Plugin):
+    """工具插件基类"""
+
+    def __init__(self, metadata: PluginMetadata):
+        super().__init__(metadata)
+        self.metadata.type = PluginType.TOOL
+        self._tools: Dict[str, Any] = {}
+
+    @abstractmethod
+    def get_tools(self) -> Dict[str, Any]:
+        """
+        获取插件提供的工具
+
+        Returns:
+            工具字典：{工具名称: 工具函数}
+        """
+        pass
+
+
+class ResourcePlugin(Plugin):
+    """资源插件基类"""
+
+    def __init__(self, metadata: PluginMetadata):
+        super().__init__(metadata)
+        self.metadata.type = PluginType.RESOURCE
+        self._resources: Dict[str, Any] = {}
+
+    @abstractmethod
+    def get_resources(self) -> Dict[str, Any]:
+        """
+        获取插件提供的资源
+
+        Returns:
+            资源字典：{资源URI: 资源函数}
+        """
+        pass
+
+
+class PromptPlugin(Plugin):
+    """提示词插件基类"""
+
+    def __init__(self, metadata: PluginMetadata):
+        super().__init__(metadata)
+        self.metadata.type = PluginType.PROMPT
+        self._prompts: Dict[str, Any] = {}
+
+    @abstractmethod
+    def get_prompts(self) -> Dict[str, Any]:
+        """
+        获取插件提供的提示词
+
+        Returns:
+            提示词字典：{提示词名称: 提示词函数}
+        """
+        pass
+
+
+class CompositePlugin(Plugin):
+    """复合插件基类（同时提供多种类型）"""
+
+    def __init__(self, metadata: PluginMetadata):
+        super().__init__(metadata)
+        self.metadata.type = PluginType.COMPOSITE
+        self._tools: Dict[str, Any] = {}
+        self._resources: Dict[str, Any] = {}
+        self._prompts: Dict[str, Any] = {}
+
+    @abstractmethod
+    def get_tools(self) -> Dict[str, Any]:
+        """获取工具"""
+        pass
+
+    @abstractmethod
+    def get_resources(self) -> Dict[str, Any]:
+        """获取资源"""
+        pass
+
+    @abstractmethod
+    def get_prompts(self) -> Dict[str, Any]:
+        """获取提示词"""
+        pass
 
 
 class PluginDecorator:
@@ -48,16 +263,13 @@ class PluginDecorator:
             装饰器函数
         """
         def decorator(func: FuncType) -> FuncType:
-            # 获取函数信息
             func_name = name or func.__name__
             func_doc = func.__doc__ or ""
 
-            # 创建包装器
             @wraps(func)
             def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
 
-            # 标记为插件项
             wrapper._is_plugin_item = True
             wrapper._plugin_type = self.plugin_type.value
             wrapper._plugin_name = func_name
@@ -67,7 +279,6 @@ class PluginDecorator:
             wrapper._plugin_metadata = metadata
             wrapper._plugin_func = func
 
-            # 存储注册信息
             self._registered_items[func_name] = {
                 "name": func_name,
                 "func": wrapper,
@@ -92,7 +303,6 @@ class PluginDecorator:
         self._registered_items.clear()
 
 
-# 创建特定类型的装饰器工厂
 def create_plugin_decorator(plugin_type: str) -> PluginDecorator:
     """
     创建插件装饰器
@@ -115,7 +325,6 @@ def create_plugin_decorator(plugin_type: str) -> PluginDecorator:
     return PluginDecorator(type_map[plugin_type])
 
 
-# 全局装饰器实例（延迟创建）
 _tool_decorator: Optional[PluginDecorator] = None
 _resource_decorator: Optional[PluginDecorator] = None
 _prompt_decorator: Optional[PluginDecorator] = None
@@ -145,7 +354,6 @@ def get_prompt_decorator() -> PluginDecorator:
     return _prompt_decorator
 
 
-# 便捷函数
 def tool(
     name: Optional[str] = None,
     category: str = "default",
@@ -165,11 +373,6 @@ def tool(
 
     Returns:
         装饰器函数
-
-    Example:
-        >>> @tool(category="math")
-        ... def add(a: float, b: float) -> float:
-        ...     return a + b
     """
     return get_tool_decorator()(name, category, subcategory, tags, **metadata)
 
@@ -193,11 +396,6 @@ def resource(
 
     Returns:
         装饰器函数
-
-    Example:
-        >>> @resource(name="config://app", category="system")
-        ... def get_config() -> str:
-        ...     return "{}"
     """
     return get_resource_decorator()(name, category, subcategory, tags, **metadata)
 
@@ -221,10 +419,5 @@ def prompt(
 
     Returns:
         装饰器函数
-
-    Example:
-        >>> @prompt(category="general")
-        ... def greeting(name: str) -> str:
-        ...     return f"Hello, {name}!"
     """
     return get_prompt_decorator()(name, category, subcategory, tags, **metadata)

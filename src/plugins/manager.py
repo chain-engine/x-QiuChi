@@ -125,6 +125,11 @@ class PluginManager:
                 # 尝试导入发现路径
                 module = importlib.import_module(discovery_path)
                 module_path = Path(module.__file__).parent if module.__file__ else None
+                
+                print(111111111111111111)
+                print(module_path)
+                print(module.__name__)
+                print(module.__file__)
 
                 if module_path:
                     # 扫描模块中的插件
@@ -151,6 +156,10 @@ class PluginManager:
                 module_name = f"{module.__name__}.{'.'.join(module_name_parts)}.{py_file.stem}"
             else:
                 module_name = f"{module.__name__}.{py_file.stem}"
+
+            print("xxxxxxxxxxxx")
+            print(module_path)
+            print(module_name)
 
             try:
                 submodule = importlib.import_module(module_name)

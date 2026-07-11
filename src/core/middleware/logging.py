@@ -180,7 +180,7 @@ class LoggingMiddleware(Middleware):
 
         if server and hasattr(server, "registry"):
             try:
-                from core.plugins.registry import RegistryItemType
+                from plugins.registry import RegistryItemType
                 # 查找工具
                 item = server.registry.get_item(method_name)
                 if item and item.type == RegistryItemType.TOOL:

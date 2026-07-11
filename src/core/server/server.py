@@ -13,9 +13,9 @@ from mcp.server.fastmcp import FastMCP
 
 from core.config.config import settings
 from core.transport.transport import TransportType
-from core.plugins.manager import PluginManager
-from core.plugins.registry import UnifiedRegistry, RegistryItemType
-from plugins.base import get_tool_decorator, get_resource_decorator, get_prompt_decorator, PluginMetadata
+from plugins.manager import PluginManager
+from plugins.registry import UnifiedRegistry, RegistryItemType
+from plugins import get_tool_decorator, get_resource_decorator, get_prompt_decorator, PluginMetadata
 from core.middleware.base import MiddlewareChain, RequestContext, ResponseContext
 from core.middleware.error_handler import ErrorHandlerMiddleware
 from core.middleware.logging import LoggingMiddleware
@@ -199,7 +199,7 @@ class MCPServer:
         Returns:
             是否注册成功
         """
-        from core.plugins.base import Plugin
+        from plugins.base import Plugin
         if isinstance(plugin, Plugin):
             return self.plugin_manager.register_plugin(plugin)
         return False
@@ -278,7 +278,7 @@ class MCPServer:
                 return response.response.get("result")
 
             # 注册到注册表
-            from core.plugins.base import PluginMetadata
+            from plugins.base import PluginMetadata
             plugin_metadata = PluginMetadata(
                 name=metadata.get("name", f.__name__),
                 description=metadata.get("description", f.__doc__ or ""),
@@ -340,7 +340,7 @@ class MCPServer:
                 return response.response.get("result")
 
             # 注册到注册表
-            from core.plugins.base import PluginMetadata
+            from plugins.base import PluginMetadata
             plugin_metadata = PluginMetadata(
                 name=uri,
                 description=metadata.get("description", func.__doc__ or ""),
@@ -399,7 +399,7 @@ class MCPServer:
                 return response.response.get("result")
 
             # 注册到注册表
-            from core.plugins.base import PluginMetadata
+            from plugins.base import PluginMetadata
             plugin_metadata = PluginMetadata(
                 name=name,
                 description=metadata.get("description", func.__doc__ or ""),

@@ -38,14 +38,14 @@ if str(src_path) not in sys.path:
 
 from core.server import MCPServer, create_server
 from core.config import settings
-from core.plugins import Plugin, PluginMetadata, PluginType
+from plugins import Plugin, PluginMetadata, PluginType
 from core.middleware import (
     Middleware, MiddlewareChain,
     ErrorHandlerMiddleware, LoggingMiddleware,
     AuthMiddleware, CacheMiddleware,
 )
 from core.transport import TransportType, TransportConfig
-from plugins.base import tool, resource, prompt
+from plugins import tool, resource, prompt
 from core.logging.logger import setup_logging
 
 __all__ = [

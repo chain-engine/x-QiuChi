@@ -4,7 +4,7 @@
 展示如何使用 QiuChi 的提示词装饰器创建提示词模板。
 """
 
-from src import prompt
+from plugins import prompt
 
 
 @prompt(category="greeting", tags=["welcome", "social"])

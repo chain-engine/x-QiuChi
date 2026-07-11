@@ -4,7 +4,7 @@
 展示如何使用 QiuChi 的资源装饰器创建资源。
 """
 
-from src import resource
+from plugins import resource
 
 
 @resource(name="config://server", category="system", tags=["configuration"])

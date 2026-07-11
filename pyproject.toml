@@ -29,8 +29,8 @@ dev = [
 ]
 
 [project.scripts]
-qiuchi = "main:main"
-x-QiuChi = "main:main"
+qiuchi = "src.main:main"
+x-QiuChi = "src.main:main"
 
 [build-system]
 requires = ["hatchling"]
