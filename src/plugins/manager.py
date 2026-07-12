@@ -1,19 +1,27 @@
 """
 QiuChi 插件管理器
 
-管理插件的加载、启用、禁用和卸载，支持：
-- 插件依赖解析
-- 生命周期管理
-- 配置管理
-- 错误隔离
+管理插件的全生命周期：发现 → 加载 → 启用 → 禁用 → 卸载
+
+注册机制（两阶段）：
+    阶段1：发现与收集
+        - 扫描目录，导入模块
+        - 装饰器自动收集函数到 Collector
+
+    阶段2：统一注册
+        - 从 Collector 读取装饰器注册的函数
+        - 统一注册到注册表
+
+配置控制：
+    - enabled_plugins: 白名单，空列表表示启用所有
+    - disabled_plugins: 黑名单，优先级低于白名单
 """
 
 from typing import Dict, List, Optional, Set, Type, Any, TYPE_CHECKING
 from pathlib import Path
 import importlib
-import sys
 
-from .base import Plugin, PluginType, PluginMetadata, PluginStatus
+from .base import PluginType, PluginMetadata, PluginStatus
 from .registry import PluginRegistry, UnifiedRegistry, RegistryItemType
 from core.config.config import settings
 from core.logging.logger import get_logger
@@ -25,462 +33,100 @@ logger = get_logger(__name__)
 
 
 class PluginManager:
-    """
-    插件管理器
-
-    负责插件的全生命周期管理。
-    """
+    """插件管理器"""
 
     def __init__(self, server: Optional["MCPServer"] = None):
-        """
-        初始化插件管理器
-
-        Args:
-            server: MCP 服务器实例（可选）
-        """
         self.server = server
-        self.plugins: Dict[str, Plugin] = {}
         self.registry = PluginRegistry("PluginManager")
-        self._dependencies: Dict[str, Set[str]] = {}  # 插件依赖图
+        self._discovered_items: Dict[str, Dict[str, Any]] = {}
         self._initialized = False
 
-        logger.debug("PluginManager initialized")
-
-    def _detect_circular_dependency(self) -> Optional[List[str]]:
-        """
-        检测插件依赖图中的循环依赖
-
-        Returns:
-            循环依赖路径，如果没有循环则返回 None
-        """
-        visited = set()
-        recursion_stack = set()
-        path = []
-
-        def dfs(node: str) -> Optional[List[str]]:
-            if node not in visited:
-                visited.add(node)
-                recursion_stack.add(node)
-                path.append(node)
-
-                if node in self._dependencies:
-                    for neighbor in self._dependencies[node]:
-                        if neighbor not in visited:
-                            result = dfs(neighbor)
-                            if result:
-                                return result
-                        elif neighbor in recursion_stack:
-                            # 找到循环
-                            cycle_start = path.index(neighbor)
-                            return path[cycle_start:] + [neighbor]
-
-            if node in recursion_stack:
-                recursion_stack.remove(node)
-                if path and path[-1] == node:
-                    path.pop()
-
-            return None
-
-        for plugin_name in self._dependencies:
-            result = dfs(plugin_name)
-            if result:
-                return result
-
-        return None
-
     async def initialize(self) -> None:
-        """初始化插件管理器"""
+        """初始化插件系统（两阶段注册）"""
         if self._initialized:
             return
 
-        logger.info("Initializing PluginManager...")
+        logger.info("=== 开始初始化插件系统 ===")
 
-        # 自动发现插件
-        if settings.plugins.auto_discovery:
-            await self.discover_plugins()
+        # 阶段1：发现与收集
+        await self._phase1_discover_and_collect()
 
-        # 检测循环依赖
-        cycle = self._detect_circular_dependency()
-        if cycle:
-            logger.error(f"Circular dependency detected: {' -> '.join(cycle)}")
-            raise RuntimeError(f"Circular dependency detected: {' -> '.join(cycle)}")
-
-        # 加载启用的插件
-        await self.load_enabled_plugins()
+        # 阶段2：统一注册
+        await self._phase2_register_all_items()
 
         self._initialized = True
-        logger.info(f"PluginManager initialized with {len(self.plugins)} plugins")
+        logger.info("=== 插件系统初始化完成 ===")
+
+    async def _phase1_discover_and_collect(self) -> None:
+        """阶段1：发现插件并收集装饰器注册的函数"""
+        logger.info("[阶段1] 发现插件并收集装饰器注册的函数...")
+
+        if settings.plugins.auto_discovery:
+            discovered = await self.discover_plugins()
+            logger.info(f"[阶段1] 发现 {len(discovered)} 个插件项")
+
+    async def _phase2_register_all_items(self) -> None:
+        """阶段2：将收集到的所有项统一注册到注册表"""
+        logger.info("[阶段2] 统一注册所有插件项...")
+
+        if self.server:
+            self.server._register_decorator_functions()
+
+        logger.info("[阶段2] 注册完成")
 
     async def discover_plugins(self) -> List[str]:
-        """
-        自动发现插件
-
-        Returns:
-            发现的插件名称列表
-        """
+        """自动发现插件"""
         discovered = []
 
         for discovery_path in settings.plugins.discovery_paths:
             try:
-                # 尝试导入发现路径
                 module = importlib.import_module(discovery_path)
                 module_path = Path(module.__file__).parent if module.__file__ else None
-                
-                print(111111111111111111)
-                print(module_path)
-                print(module.__name__)
-                print(module.__file__)
 
                 if module_path:
-                    # 扫描模块中的插件
-                    discovered.extend(await self._scan_module_for_plugins(module, module_path))
+                    discovered.extend(self._scan_module_for_plugins(module, module_path))
             except ImportError as e:
-                logger.warning(f"Failed to import discovery path {discovery_path}: {e}")
+                logger.warning(f"无法导入发现路径 {discovery_path}: {e}")
 
-        logger.info(f"Discovered {len(discovered)} plugins: {discovered}")
+        logger.info(f"发现 {len(discovered)} 个插件项: {discovered}")
         return discovered
 
     async def _scan_module_for_plugins(self, module: Any, module_path: Path) -> List[str]:
         """扫描模块中的插件（递归扫描子目录）"""
         discovered = []
 
-        # 递归扫描所有 .py 文件
         for py_file in module_path.rglob("*.py"):
             if py_file.name.startswith("_"):
                 continue
 
-            # 计算相对路径，构建模块名
             relative_path = py_file.relative_to(module_path)
-            module_name_parts = list(relative_path.parts[:-1])  # 移除文件名
+            module_name_parts = list(relative_path.parts[:-1])
             if module_name_parts:
                 module_name = f"{module.__name__}.{'.'.join(module_name_parts)}.{py_file.stem}"
             else:
                 module_name = f"{module.__name__}.{py_file.stem}"
 
-            print("xxxxxxxxxxxx")
-            print(module_path)
-            print(module_name)
-
             try:
                 submodule = importlib.import_module(module_name)
 
-                # 查找插件类
                 for attr_name in dir(submodule):
                     attr = getattr(submodule, attr_name)
 
-                    # 检查是否是插件类
-                    if (
-                        isinstance(attr, type)
-                        and issubclass(attr, Plugin)
-                        and attr != Plugin
-                    ):
-                        plugin_name = getattr(attr, "__name__", attr_name)
-                        discovered.append(plugin_name)
-
-                        # 注册插件类
-                        self.register_plugin_class(plugin_name, attr)
-
-                    # 检查是否是装饰器注册的函数
-                    elif hasattr(attr, "_is_plugin_item") and attr._is_plugin_item:
+                    if hasattr(attr, "_is_plugin_item") and attr._is_plugin_item:
                         plugin_name = getattr(attr, "_plugin_name", attr.__name__)
                         discovered.append(plugin_name)
-
-                        # 注册装饰器函数
-                        # 注意：装饰器注册的函数在导入时已经自动注册到 MCPServer，
-                        # 这里只是记录发现，避免重复注册
-                        logger.debug(f"Found decorator-registered function: {plugin_name}")
+                        logger.debug(f"发现装饰器注册的函数: {plugin_name}")
 
             except ImportError as e:
-                logger.debug(f"Failed to import submodule {module_name}: {e}")
+                logger.debug(f"无法导入子模块 {module_name}: {e}")
 
         return discovered
 
-    def register_plugin_class(self, name: str, plugin_class: Type[Plugin]) -> bool:
-        """
-        注册插件类
-
-        Args:
-            name: 插件名称
-            plugin_class: 插件类
-
-        Returns:
-            是否注册成功
-        """
-        if name in self.plugins:
-            logger.warning(f"Plugin '{name}' already registered")
-            return False
-
-        # 创建插件实例
-        try:
-            # 从类获取元数据
-            metadata = getattr(plugin_class, "metadata", PluginMetadata(name=name))
-            plugin = plugin_class(metadata)
-
-            self.plugins[name] = plugin
-            logger.debug(f"Registered plugin class: {name}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to register plugin class {name}: {e}")
-            return False
-
-    async def register_plugin(self, plugin: Plugin) -> bool:
-        """
-        注册插件实例
-
-        Args:
-            plugin: 插件实例
-
-        Returns:
-            是否注册成功
-        """
-        if plugin.name in self.plugins:
-            logger.warning(f"Plugin '{plugin.name}' already registered")
-            return False
-
-        self.plugins[plugin.name] = plugin
-
-        # 记录依赖关系
-        if plugin.metadata.dependencies:
-            self._dependencies[plugin.name] = set(plugin.metadata.dependencies)
-
-        logger.debug(f"Registered plugin: {plugin.name}")
-        return True
-
-    async def load_enabled_plugins(self) -> List[str]:
-        """
-        加载所有启用的插件
-
-        Returns:
-            成功加载的插件列表
-        """
-        loaded = []
-
-        # 获取启用的插件列表
-        enabled_plugins = settings.plugins.enabled_plugins
-        disabled_plugins = set(settings.plugins.disabled_plugins)
-
-        for plugin_name, plugin in self.plugins.items():
-            # 检查是否启用
-            if enabled_plugins and plugin_name not in enabled_plugins:
-                continue
-            if plugin_name in disabled_plugins:
-                continue
-
-            # 加载插件
-            if await self.load_plugin(plugin_name):
-                loaded.append(plugin_name)
-
-        logger.info(f"Loaded {len(loaded)} plugins: {loaded}")
-        return loaded
-
-    async def load_plugin(self, plugin_name: str) -> bool:
-        """
-        加载插件
-
-        Args:
-            plugin_name: 插件名称
-
-        Returns:
-            是否加载成功
-        """
-        if plugin_name not in self.plugins:
-            logger.error(f"Plugin '{plugin_name}' not found")
-            return False
-
-        plugin = self.plugins[plugin_name]
-
-        # 检查依赖
-        missing_deps = []
-        if plugin_name in self._dependencies:
-            for dep in self._dependencies[plugin_name]:
-                if dep not in self.plugins or not self.plugins[dep].is_loaded():
-                    missing_deps.append(dep)
-
-        if missing_deps:
-            logger.error(f"Plugin '{plugin_name}' missing dependencies: {missing_deps}")
-            return False
-
-        try:
-            # 调用插件生命周期方法
-            await plugin.on_load(settings)
-            plugin.set_status(PluginStatus.LOADED)
-
-            # 注册插件提供的工具/资源/提示词
-            await self._register_plugin_items(plugin)
-
-            logger.info(f"Loaded plugin: {plugin_name}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to load plugin '{plugin_name}': {e}")
-            plugin.set_status(PluginStatus.ERROR)
-            return False
-
-    async def _register_plugin_items(self, plugin: Plugin) -> None:
-        """注册插件提供的所有项目"""
-        from .base import ToolPlugin, ResourcePlugin, PromptPlugin, CompositePlugin
-
-        def _register_items(items: Dict[str, Any], item_type: RegistryItemType):
-            for name, func in items.items():
-                self.registry.register(
-                    name=name,
-                    item=func,
-                    item_type=item_type,
-                    metadata=plugin.metadata,
-                    category=plugin.metadata.category,
-                    subcategory=plugin.metadata.subcategory,
-                    tags=list(plugin.metadata.tags),
-                )
-
-        if isinstance(plugin, (ToolPlugin, CompositePlugin)):
-            _register_items(plugin.get_tools(), RegistryItemType.TOOL)
-
-        if isinstance(plugin, (ResourcePlugin, CompositePlugin)):
-            _register_items(plugin.get_resources(), RegistryItemType.RESOURCE)
-
-        if isinstance(plugin, (PromptPlugin, CompositePlugin)):
-            _register_items(plugin.get_prompts(), RegistryItemType.PROMPT)
-
-    async def enable_plugin(self, plugin_name: str) -> bool:
-        """
-        启用插件
-
-        Args:
-            plugin_name: 插件名称
-
-        Returns:
-            是否启用成功
-        """
-        if plugin_name not in self.plugins:
-            return False
-
-        plugin = self.plugins[plugin_name]
-        if plugin.status != PluginStatus.LOADED:
-            logger.warning(f"Cannot enable plugin '{plugin_name}' (status: {plugin.status})")
-            return False
-
-        try:
-            await plugin.on_enable()
-            plugin.set_status(PluginStatus.ENABLED)
-
-            # 启用注册表中的项目
-            self.registry.enable(plugin_name)
-
-            logger.info(f"Enabled plugin: {plugin_name}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to enable plugin '{plugin_name}': {e}")
-            return False
-
-    async def disable_plugin(self, plugin_name: str) -> bool:
-        """
-        禁用插件
-
-        Args:
-            plugin_name: 插件名称
-
-        Returns:
-            是否禁用成功
-        """
-        if plugin_name not in self.plugins:
-            return False
-
-        plugin = self.plugins[plugin_name]
-        if plugin.status != PluginStatus.ENABLED:
-            return True  # 已经禁用
-
-        try:
-            await plugin.on_disable()
-            plugin.set_status(PluginStatus.DISABLED)
-
-            # 禁用注册表中的项目
-            self.registry.disable(plugin_name)
-
-            logger.info(f"Disabled plugin: {plugin_name}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to disable plugin '{plugin_name}': {e}")
-            return False
-
-    async def unload_plugin(self, plugin_name: str) -> bool:
-        """
-        卸载插件
-
-        Args:
-            plugin_name: 插件名称
-
-        Returns:
-            是否卸载成功
-        """
-        if plugin_name not in self.plugins:
-            return False
-
-        plugin = self.plugins[plugin_name]
-
-        try:
-            # 先禁用
-            if plugin.is_enabled():
-                await self.disable_plugin(plugin_name)
-
-            # 卸载
-            await plugin.on_unload()
-            plugin.set_status(PluginStatus.UNLOADED)
-
-            # 从注册表移除项目
-            self.registry.unregister(plugin_name)
-
-            logger.info(f"Unloaded plugin: {plugin_name}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to unload plugin '{plugin_name}': {e}")
-            return False
-
-    def get_plugin(self, plugin_name: str) -> Optional[Plugin]:
-        """获取插件"""
-        return self.plugins.get(plugin_name)
-
-    def get_plugins(
-        self,
-        plugin_type: Optional[PluginType] = None,
-        category: Optional[str] = None,
-        enabled_only: bool = True,
-    ) -> List[Plugin]:
-        """
-        获取插件列表
-
-        Args:
-            plugin_type: 按类型过滤
-            category: 按分类过滤
-            enabled_only: 是否只返回启用的插件
-
-        Returns:
-            插件列表
-        """
-        plugins = []
-        for plugin in self.plugins.values():
-            if enabled_only and not plugin.is_enabled():
-                continue
-            if plugin_type and plugin.type != plugin_type:
-                continue
-            if category and plugin.metadata.category != category:
-                continue
-            plugins.append(plugin)
-        return plugins
-
-    def get_plugin_info(self, plugin_name: str) -> Optional[Dict[str, Any]]:
-        """获取插件信息"""
-        plugin = self.get_plugin(plugin_name)
-        return plugin.get_info() if plugin else None
-
     async def shutdown(self) -> None:
         """关闭插件管理器"""
-        logger.info("Shutting down PluginManager...")
+        logger.info("关闭插件管理器...")
 
-        # 卸载所有插件
-        for plugin_name in list(self.plugins.keys()):
-            await self.unload_plugin(plugin_name)
-
-        self.plugins.clear()
-        self._dependencies.clear()
+        self._discovered_items.clear()
         self._initialized = False
 
-        logger.info("PluginManager shutdown complete")
+        logger.info("插件管理器关闭完成")

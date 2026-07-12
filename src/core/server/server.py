@@ -15,7 +15,7 @@ from core.config.config import settings
 from core.transport.transport import TransportType
 from plugins.manager import PluginManager
 from plugins.registry import UnifiedRegistry, RegistryItemType
-from plugins import get_tool_decorator, get_resource_decorator, get_prompt_decorator, PluginMetadata
+from plugins import get_tool_collector, get_resource_collector, get_prompt_collector, PluginMetadata
 from core.middleware.base import MiddlewareChain, RequestContext, ResponseContext
 from core.middleware.error_handler import ErrorHandlerMiddleware
 from core.middleware.logging import LoggingMiddleware
@@ -113,15 +113,13 @@ class MCPServer:
         self._register_decorator_functions()
 
     def _register_decorator_functions(self) -> None:
-        """注册装饰器标记的函数"""
+        """注册装饰器标记的函数（从收集器读取）"""
         # 注册工具
-        tool_decorator = get_tool_decorator()
-        registered_tools = tool_decorator.get_registered_items()
+        tool_collector = get_tool_collector()
+        registered_tools = tool_collector.get_items()
         for tool_name, tool_info in registered_tools.items():
             wrapper = tool_info["func"]
-            # 注册到 FastMCP
             self.mcp.tool()(wrapper)
-            # 注册到注册表
             metadata = PluginMetadata(
                 name=tool_name,
                 description=tool_info["doc"],
@@ -140,8 +138,8 @@ class MCPServer:
             logger.debug(f"Registered decorator tool: {tool_name}")
 
         # 注册资源
-        resource_decorator = get_resource_decorator()
-        registered_resources = resource_decorator.get_registered_items()
+        resource_collector = get_resource_collector()
+        registered_resources = resource_collector.get_items()
         for resource_name, resource_info in registered_resources.items():
             wrapper = resource_info["func"]
             # 注册到注册表
@@ -163,11 +161,10 @@ class MCPServer:
             logger.debug(f"Registered decorator resource: {resource_name}")
 
         # 注册提示词
-        prompt_decorator = get_prompt_decorator()
-        registered_prompts = prompt_decorator.get_registered_items()
+        prompt_collector = get_prompt_collector()
+        registered_prompts = prompt_collector.get_items()
         for prompt_name, prompt_info in registered_prompts.items():
             wrapper = prompt_info["func"]
-            # 注册到注册表
             metadata = PluginMetadata(
                 name=prompt_name,
                 description=prompt_info["doc"],
@@ -199,9 +196,6 @@ class MCPServer:
         Returns:
             是否注册成功
         """
-        from plugins.base import Plugin
-        if isinstance(plugin, Plugin):
-            return self.plugin_manager.register_plugin(plugin)
         return False
 
     # 中间件管理

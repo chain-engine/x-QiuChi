@@ -38,7 +38,7 @@ if str(src_path) not in sys.path:
 
 from core.server import MCPServer, create_server
 from core.config import settings
-from plugins import Plugin, PluginMetadata, PluginType
+from plugins import PluginMetadata, PluginType
 from core.middleware import (
     Middleware, MiddlewareChain,
     ErrorHandlerMiddleware, LoggingMiddleware,
@@ -54,7 +54,6 @@ __all__ = [
     "create_server",
     "settings",
     # 插件系统
-    "Plugin",
     "PluginMetadata",
     "PluginType",
     # 中间件
