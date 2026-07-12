@@ -13,9 +13,8 @@ from mcp.server.fastmcp import FastMCP
 
 from core.config.config import settings
 from core.transport.transport import TransportType
-from plugins.manager import PluginManager
-from plugins.registry import UnifiedRegistry, RegistryItemType
-from plugins import get_tool_collector, get_resource_collector, get_prompt_collector, PluginMetadata
+from plugins.registry import PluginRegistry, RegistryItemType
+from plugins import get_tool_collector, get_resource_collector, get_prompt_collector, PluginMetadata, discover_plugins
 from core.middleware.base import MiddlewareChain, RequestContext, ResponseContext
 from core.middleware.error_handler import ErrorHandlerMiddleware
 from core.middleware.logging import LoggingMiddleware
@@ -64,8 +63,7 @@ class MCPServer:
         )
 
         # 初始化组件
-        self.plugin_manager = PluginManager(self)
-        self.registry = UnifiedRegistry()
+        self.registry = PluginRegistry("ServerRegistry")
         self.middleware_chain = MiddlewareChain()
 
         # 默认中间件
@@ -103,13 +101,15 @@ class MCPServer:
 
     # 插件管理
     async def initialize_plugins(self) -> None:
-        """初始化插件系统"""
+        """初始化插件系统（两阶段注册）"""
         logger.info("Initializing plugin system...")
 
-        # 先初始化插件管理器（这会导入所有发现的模块，触发装饰器注册）
-        await self.plugin_manager.initialize()
+        # 阶段1：发现插件（导入模块触发装饰器收集）
+        if settings.plugins.auto_discovery:
+            discovered = discover_plugins()
+            logger.info(f"Discovered {len(discovered)} plugin items")
 
-        # 再注册装饰器标记的函数（此时装饰器实例中已经有了所有已导入的函数）
+        # 阶段2：从收集器读取并注册所有装饰器标记的函数
         self._register_decorator_functions()
 
     def _register_decorator_functions(self) -> None:
@@ -142,7 +142,6 @@ class MCPServer:
         registered_resources = resource_collector.get_items()
         for resource_name, resource_info in registered_resources.items():
             wrapper = resource_info["func"]
-            # 注册到注册表
             metadata = PluginMetadata(
                 name=resource_name,
                 description=resource_info["doc"],
@@ -185,18 +184,6 @@ class MCPServer:
         total_count = len(registered_tools) + len(registered_resources) + len(registered_prompts)
         if total_count > 0:
             logger.info(f"Registered {total_count} decorator functions: {len(registered_tools)} tools, {len(registered_resources)} resources, {len(registered_prompts)} prompts")
-
-    def register_plugin(self, plugin: Any) -> bool:
-        """
-        注册插件
-
-        Args:
-            plugin: 插件实例
-
-        Returns:
-            是否注册成功
-        """
-        return False
 
     # 中间件管理
     def add_middleware(self, middleware: Any, index: Optional[int] = None) -> "MCPServer":
@@ -248,31 +235,23 @@ class MCPServer:
             装饰器或装饰后的函数
         """
         def decorator(f: Callable) -> Callable:
-            # 创建工具包装器
             @wraps(f)
             async def wrapper(*args, **kwargs):
-                # 创建请求上下文
                 request_context = RequestContext(
                     request={"method": f.__name__, "params": kwargs},
                     server=self,
                 )
 
-                # 定义最终处理器
                 async def final_handler(req: RequestContext) -> ResponseContext:
                     try:
-                        # 执行工具函数
                         result = await f(*args, **kwargs) if inspect.iscoroutinefunction(f) else f(*args, **kwargs)
                         return ResponseContext(response={"result": result})
                     except Exception as e:
-                        # 错误将由错误处理中间件处理
                         raise
 
-                # 通过中间件链执行
                 response = await self.middleware_chain.execute(request_context, final_handler)
                 return response.response.get("result")
 
-            # 注册到注册表
-            from plugins.base import PluginMetadata
             plugin_metadata = PluginMetadata(
                 name=metadata.get("name", f.__name__),
                 description=metadata.get("description", f.__doc__ or ""),
@@ -290,10 +269,8 @@ class MCPServer:
                 tags=metadata.get("tags", []),
             )
 
-            # 同时注册到 FastMCP
             self.mcp.tool()(wrapper)
 
-            # 记录工具注册日志
             source_info = self._get_function_source_info(f)
             tool_name = metadata.get("name", f.__name__)
             if source_info:
@@ -333,8 +310,6 @@ class MCPServer:
                 response = await self.middleware_chain.execute(request_context, final_handler)
                 return response.response.get("result")
 
-            # 注册到注册表
-            from plugins.base import PluginMetadata
             plugin_metadata = PluginMetadata(
                 name=uri,
                 description=metadata.get("description", func.__doc__ or ""),
@@ -352,10 +327,8 @@ class MCPServer:
                 tags=metadata.get("tags", []),
             )
 
-            # 注册到 FastMCP
             self.mcp.resource(uri)(wrapper)
 
-            # 记录资源注册日志
             source_info = self._get_function_source_info(func)
             if source_info:
                 logger.info(f"Registered resource '{uri}' at {source_info}")
@@ -392,8 +365,6 @@ class MCPServer:
                 response = await self.middleware_chain.execute(request_context, final_handler)
                 return response.response.get("result")
 
-            # 注册到注册表
-            from plugins.base import PluginMetadata
             plugin_metadata = PluginMetadata(
                 name=name,
                 description=metadata.get("description", func.__doc__ or ""),
@@ -411,10 +382,8 @@ class MCPServer:
                 tags=metadata.get("tags", []),
             )
 
-            # 注册到 FastMCP
             self.mcp.prompt()(wrapper)
 
-            # 记录提示词注册日志
             source_info = self._get_function_source_info(func)
             if source_info:
                 logger.info(f"Registered prompt '{name}' at {source_info}")
@@ -466,9 +435,6 @@ class MCPServer:
                     task()
             except Exception as e:
                 logger.error(f"Shutdown task failed: {e}")
-
-        # 关闭插件管理器
-        await self.plugin_manager.shutdown()
 
         self._is_running = False
         logger.info(f"MCP Server '{self.name}' stopped")
@@ -606,7 +572,6 @@ class MCPServer:
             "tools": len(self.get_tools()),
             "resources": len(self.get_resources()),
             "prompts": len(self.get_prompts()),
-            "plugins": len(self.plugin_manager.plugins),
             "middlewares": len(self.middleware_chain),
         }
 
@@ -624,12 +589,10 @@ class MCPServer:
             源代码位置字符串，格式为 "filename:lineno:column"，如果无法获取则返回 None
         """
         try:
-            # 获取源文件和行号
             source_file = inspect.getsourcefile(func)
             if not source_file:
                 return None
 
-            # 转换为相对路径
             try:
                 import pathlib
                 import os
@@ -638,18 +601,13 @@ class MCPServer:
             except Exception:
                 rel_path = source_file
 
-            # 获取行号
             _, lineno = inspect.getsourcelines(func)
 
-            # 尝试获取列号
             column = None
             try:
-                # 使用 findsource 获取更详细的信息
                 lines, start_lineno = inspect.findsource(func)
                 if lines:
-                    # 查找函数定义行
-                    func_line = lines[start_lineno - 1]  # findsource 返回从 0 开始的行号
-                    # 找到 "def" 关键字的位置
+                    func_line = lines[start_lineno - 1]
                     def_pos = func_line.find("def ")
                     if def_pos != -1:
                         column = def_pos
