@@ -101,15 +101,14 @@ class MCPServer:
 
     # 插件管理
     async def initialize_plugins(self) -> None:
-        """初始化插件系统（两阶段注册）"""
+        """初始化插件系统"""
         logger.info("Initializing plugin system...")
 
-        # 阶段1：发现插件（导入模块触发装饰器收集）
+        # 发现插件（导入模块触发装饰器收集收集器）
         if settings.plugins.auto_discovery:
-            discovered = discover_plugins()
-            logger.info(f"Discovered {len(discovered)} plugin items")
+            discover_plugins()
 
-        # 阶段2：从收集器读取并注册所有装饰器标记的函数
+        # 从收集器读取并注册所有装饰器标记的函数
         self._register_decorator_functions()
 
     def _register_decorator_functions(self) -> None:
