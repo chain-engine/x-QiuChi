@@ -159,6 +159,31 @@ class PluginRegistry:
                 items.append(item)
             return items
 
+    def get_all_items_by_str_type(
+        self,
+        item_type_str: str,
+        category: Optional[str] = None,
+        subcategory: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        enabled_only: bool = True,
+    ) -> List[RegistryItem]:
+        """通过字符串类型查询（兼容没有导入 RegistryItemType 的场景）"""
+        with self._lock:
+            items = []
+            for item in self._items.values():
+                if enabled_only and not item.is_enabled:
+                    continue
+                if item.type.value != item_type_str:
+                    continue
+                if category and item.category != category:
+                    continue
+                if subcategory and item.subcategory != subcategory:
+                    continue
+                if tags and not any(tag in item.tags for tag in tags):
+                    continue
+                items.append(item)
+            return items
+
     def get_tools(self, category: Optional[str] = None, subcategory: Optional[str] = None, enabled_only: bool = True) -> List[Callable]:
         """获取工具列表"""
         return self.get_all(RegistryItemType.TOOL, category, subcategory, enabled_only=enabled_only)

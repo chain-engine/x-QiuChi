@@ -4,9 +4,11 @@ QiuChi 中间件基类
 定义中间件的标准接口和管道执行机制。
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
-from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from dataclasses import dataclass, field
 
 if TYPE_CHECKING:
     from core.server.server import MCPServer
@@ -16,8 +18,8 @@ if TYPE_CHECKING:
 class RequestContext:
     """请求上下文"""
     request: Dict[str, Any]
-    server: "MCPServer"
-    metadata: Dict[str, Any] = None
+    server: Optional["MCPServer"] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.metadata is None:
@@ -25,12 +27,10 @@ class RequestContext:
 
     @property
     def method(self) -> str:
-        """获取请求方法名"""
         return self.request.get("method", "")
 
     @property
     def request_id(self) -> str:
-        """获取请求ID"""
         return self.request.get("id", "")
 
 
@@ -38,22 +38,18 @@ class RequestContext:
 class ResponseContext:
     """响应上下文"""
     response: Dict[str, Any]
-    metadata: Dict[str, Any] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.metadata is None:
             self.metadata = {}
 
 
-Handler = Callable[[RequestContext], ResponseContext]
+Handler = Callable[[RequestContext], "ResponseContext"]
 
 
 class Middleware(ABC):
-    """
-    中间件基类
-
-    所有中间件必须继承此类，实现 handle 方法。
-    """
+    """中间件抽象基类"""
 
     @abstractmethod
     async def handle(
@@ -61,16 +57,6 @@ class Middleware(ABC):
         request: RequestContext,
         next_handler: Handler,
     ) -> ResponseContext:
-        """
-        处理请求
-
-        Args:
-            request: 请求上下文
-            next_handler: 下一个处理器
-
-        Returns:
-            响应上下文
-        """
         pass
 
     async def __call__(
@@ -78,7 +64,6 @@ class Middleware(ABC):
         request: RequestContext,
         next_handler: Handler,
     ) -> ResponseContext:
-        """使中间件可调用"""
         return await self.handle(request, next_handler)
 
 
@@ -87,108 +72,83 @@ class MiddlewareChain:
     中间件链
 
     管理中间件的执行顺序，支持管道式处理。
+    执行顺序：chain[0] -> chain[1] -> ... -> chain[-1] -> final_handler
+    越靠前离调用者越近（洋葱模型的外层）。
     """
 
     def __init__(self):
-        self.middlewares: list[Middleware] = []
+        self.middlewares: List[Middleware] = []
+        self._names: List[str] = []
 
     def add(self, middleware: Middleware) -> "MiddlewareChain":
-        """
-        添加中间件
-
-        Args:
-            middleware: 中间件实例
-
-        Returns:
-            self (支持链式调用)
-        """
         self.middlewares.append(middleware)
+        self._names.append(type(middleware).__name__)
         return self
 
-    def add_all(self, middlewares: list[Middleware]) -> "MiddlewareChain":
-        """
-        添加多个中间件
-
-        Args:
-            middlewares: 中间件列表
-
-        Returns:
-            self (支持链式调用)
-        """
-        self.middlewares.extend(middlewares)
+    def add_all(self, middlewares: List[Middleware]) -> "MiddlewareChain":
+        for m in middlewares:
+            self.add(m)
         return self
 
     def insert(self, index: int, middleware: Middleware) -> "MiddlewareChain":
-        """
-        在指定位置插入中间件
-
-        Args:
-            index: 插入位置
-            middleware: 中间件实例
-
-        Returns:
-            self (支持链式调用)
-        """
+        if index < 0:
+            index = max(0, len(self.middlewares) + index + 1)
         self.middlewares.insert(index, middleware)
+        self._names.insert(index, type(middleware).__name__)
         return self
 
     def remove(self, middleware: Middleware) -> bool:
-        """
-        移除中间件
-
-        Args:
-            middleware: 中间件实例
-
-        Returns:
-            是否移除成功
-        """
         try:
-            self.middlewares.remove(middleware)
+            idx = self.middlewares.index(middleware)
+            self.middlewares.pop(idx)
+            self._names.pop(idx)
             return True
         except ValueError:
             return False
 
+    def remove_by_name(self, name: str) -> bool:
+        for i, n in enumerate(list(self._names)):
+            if n == name:
+                self.middlewares.pop(i)
+                self._names.pop(i)
+                return True
+        return False
+
     def clear(self) -> None:
-        """清空中间件链"""
         self.middlewares.clear()
+        self._names.clear()
 
     async def execute(
         self,
         request: RequestContext,
         final_handler: Handler,
     ) -> ResponseContext:
-        """
-        执行中间件链
-
-        Args:
-            request: 请求上下文
-            final_handler: 最终处理器（通常是业务逻辑）
-
-        Returns:
-            响应上下文
-        """
-        # 创建处理器链
+        # 从后往前 wrap：保证 self.middlewares[0] 是最外层
         handler = final_handler
         for middleware in reversed(self.middlewares):
             handler = self._wrap_handler(middleware, handler)
-
-        # 执行处理器链
         return await handler(request)
 
+    @staticmethod
     def _wrap_handler(
-        self,
         middleware: Middleware,
         next_handler: Handler,
     ) -> Handler:
-        """包装中间件和处理器"""
         async def wrapped_handler(request: RequestContext) -> ResponseContext:
             return await middleware(request, next_handler)
         return wrapped_handler
 
+    def names(self) -> List[str]:
+        return list(self._names)
+
     def __len__(self) -> int:
-        """获取中间件数量"""
         return len(self.middlewares)
 
     def __iter__(self):
-        """迭代中间件"""
         return iter(self.middlewares)
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._names
+
+
+__all__ = ["RequestContext", "ResponseContext", "Handler", "Middleware", "MiddlewareChain"]

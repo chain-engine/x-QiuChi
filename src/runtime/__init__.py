@@ -1,16 +1,23 @@
 """
 QiuChi 运行时层
 
-提供请求上下文、会话管理和缓存等运行时服务。
+提供请求上下文、会话管理等运行时服务。
 """
 
-from .context import RequestContext, SessionManager, get_current_context
-from .cache import Cache, get_cache
+from .context import (
+    RequestContext,
+    SessionManager,
+    ContextManager,
+    get_current_context,
+    set_current_context,
+    clear_current_context,
+)
 
 __all__ = [
     "RequestContext",
     "SessionManager",
+    "ContextManager",
     "get_current_context",
-    "Cache",
-    "get_cache",
+    "set_current_context",
+    "clear_current_context",
 ]

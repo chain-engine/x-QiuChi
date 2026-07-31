@@ -4,6 +4,8 @@
 提供基础的认证和授权功能，支持多种认证方式。
 """
 
+from __future__ import annotations
+
 from typing import Any, Dict, List, Optional, Set
 from abc import ABC, abstractmethod
 
@@ -33,28 +35,32 @@ class AuthProvider(ABC):
 class SimpleTokenAuthProvider(AuthProvider):
     """简单令牌认证提供者"""
 
-    def __init__(self, valid_tokens: Set[str]):
-        """
-        初始化简单令牌认证
+    def __init__(self, valid_tokens: Optional[Set[str]] = None):
+        self.valid_tokens: Set[str] = set(valid_tokens or [])
 
-        Args:
-            valid_tokens: 有效令牌集合
-        """
-        self.valid_tokens = valid_tokens
+    def add_token(self, token: str) -> None:
+        self.valid_tokens.add(token)
+
+    def remove_token(self, token: str) -> bool:
+        if token in self.valid_tokens:
+            self.valid_tokens.remove(token)
+            return True
+        return False
 
     async def authenticate(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """验证令牌"""
-        # 从请求头或参数中提取令牌
         headers = request.get("headers", {})
         params = request.get("params", {})
 
-        token = (
-            headers.get("Authorization", "").replace("Bearer ", "") or
-            params.get("token") or
-            params.get("api_key")
+        # 兼容多种命名（大小写不敏感）
+        auth_header = next(
+            (v for k, v in headers.items() if str(k).lower() == "authorization"),
+            "",
         )
+        token = auth_header.replace("Bearer ", "").strip() if auth_header else ""
+        if not token:
+            token = params.get("token") or params.get("api_key") or params.get("auth_token") or ""
 
-        if token in self.valid_tokens:
+        if token and token in self.valid_tokens:
             return {"authenticated": True, "token": token, "user": "authenticated_user"}
 
         return None
@@ -73,89 +79,82 @@ class AuthMiddleware(Middleware):
         required: bool = False,
         exempt_methods: Optional[List[str]] = None,
     ):
-        """
-        初始化认证中间件
-
-        Args:
-            auth_provider: 认证提供者（默认使用简单令牌认证）
-            required: 是否必须认证（默认 False，避免默认配置陷阱）
-            exempt_methods: 免认证的方法列表
-        """
-        self.auth_provider = auth_provider or SimpleTokenAuthProvider(set())
+        self.auth_provider = auth_provider or SimpleTokenAuthProvider()
         self.required = required
         self.exempt_methods = set(exempt_methods or [])
 
-        if required and isinstance(self.auth_provider, SimpleTokenAuthProvider) and not self.auth_provider.valid_tokens:
-            logger.warning("AuthMiddleware configured with required=True but no valid tokens provided. All requests will be rejected.")
+        if (
+            required
+            and isinstance(self.auth_provider, SimpleTokenAuthProvider)
+            and not self.auth_provider.valid_tokens
+        ):
+            logger.warning(
+                "AuthMiddleware configured with required=True but no valid tokens provided. "
+                "All requests will be rejected."
+            )
 
         logger.debug(f"AuthMiddleware initialized (required={required})")
+
+    def _extract_headers(self, request: RequestContext) -> Dict[str, Any]:
+        """从请求中提取 headers（兼容 metadata 注入）"""
+        headers = request.request.get("headers", {}) or {}
+        meta_headers = request.metadata.get("headers", {}) if hasattr(request, "metadata") else {}
+        # 合并：meta_headers 优先（MCP 入口注入）
+        merged = {**headers, **meta_headers}
+        return merged
 
     async def handle(
         self,
         request: RequestContext,
         next_handler: Handler,
     ) -> ResponseContext:
-        """
-        处理认证
-
-        Args:
-            request: 请求上下文
-            next_handler: 下一个处理器
-
-        Returns:
-            响应上下文
-        """
-        # 检查是否免认证
         method = request.request.get("method", "")
         if method in self.exempt_methods:
             logger.debug(f"Method {method} exempt from authentication")
             return await next_handler(request)
 
-        # 执行认证
-        auth_result = await self.auth_provider.authenticate(request.request)
+        # 构造合并了 meta headers 的请求副本提供给 provider
+        auth_request = dict(request.request)
+        auth_request["headers"] = self._extract_headers(request)
+
+        auth_result = await self.auth_provider.authenticate(auth_request)
 
         if auth_result:
-            # 认证成功，将认证信息添加到请求上下文
             request.metadata["auth"] = auth_result
             logger.debug(f"Request authenticated: {auth_result.get('user', 'unknown')}")
             return await next_handler(request)
         elif self.required:
-            # 认证失败且必须认证
             logger.warning(f"Authentication failed for method: {method}")
             return self._create_auth_error_response()
         else:
-            # 认证失败但不要求认证
             logger.debug(f"Authentication optional and failed for method: {method}")
             return await next_handler(request)
 
     def _create_auth_error_response(self) -> ResponseContext:
-        """创建认证错误响应"""
         error_response = {
             "jsonrpc": "2.0",
             "error": {
-                "code": -32001,  # 自定义认证错误代码
+                "code": -32001,
                 "message": "Authentication required",
                 "data": {
                     "type": "auth_error",
-                    "message": "Valid authentication token is required"
-                }
-            }
+                    "message": "Valid authentication token is required",
+                },
+            },
         }
         return ResponseContext(response=error_response)
 
     def add_valid_token(self, token: str) -> None:
-        """添加有效令牌（仅对 SimpleTokenAuthProvider 有效）"""
         if isinstance(self.auth_provider, SimpleTokenAuthProvider):
-            self.auth_provider.valid_tokens.add(token)
+            self.auth_provider.add_token(token)
             logger.debug(f"Added valid token: {token[:8]}...")
 
     def remove_token(self, token: str) -> bool:
-        """移除令牌"""
         if isinstance(self.auth_provider, SimpleTokenAuthProvider):
-            if token in self.auth_provider.valid_tokens:
-                self.auth_provider.valid_tokens.remove(token)
+            ok = self.auth_provider.remove_token(token)
+            if ok:
                 logger.debug(f"Removed token: {token[:8]}...")
-                return True
+            return ok
         return False
 
 
@@ -168,14 +167,6 @@ class RoleBasedAuthMiddleware(AuthMiddleware):
         role_mappings: Dict[str, List[str]],
         default_role: str = "guest",
     ):
-        """
-        初始化基于角色的认证中间件
-
-        Args:
-            auth_provider: 认证提供者
-            role_mappings: 方法到所需角色的映射 {方法名: [所需角色]}
-            default_role: 默认角色
-        """
         super().__init__(auth_provider, required=True)
         self.role_mappings = role_mappings
         self.default_role = default_role
@@ -185,41 +176,45 @@ class RoleBasedAuthMiddleware(AuthMiddleware):
         request: RequestContext,
         next_handler: Handler,
     ) -> ResponseContext:
-        """处理基于角色的认证"""
         method = request.request.get("method", "")
-        
-        # 先执行基础认证（不调用业务处理器）
-        auth_result = await self.auth_provider.authenticate(request.request)
-        
+
+        auth_request = dict(request.request)
+        auth_request["headers"] = self._extract_headers(request)
+        auth_result = await self.auth_provider.authenticate(auth_request)
+
         if auth_result:
             request.metadata["auth"] = auth_result
             user_roles = auth_result.get("roles", [self.default_role])
         else:
             user_roles = [self.default_role]
-        
-        # 检查角色权限
+
         required_roles = self.role_mappings.get(method, [])
         if required_roles and not any(role in user_roles for role in required_roles):
             logger.warning(
-                f"User with roles {user_roles} attempted to access "
-                f"method {method} requiring roles {required_roles}"
+                f"User with roles {user_roles} attempted to access method {method} requiring roles {required_roles}"
             )
             return self._create_permission_error_response()
-        
-        # 权限通过，执行业务处理器
+
         return await next_handler(request)
 
     def _create_permission_error_response(self) -> ResponseContext:
-        """创建权限错误响应"""
         error_response = {
             "jsonrpc": "2.0",
             "error": {
-                "code": -32002,  # 自定义权限错误代码
+                "code": -32002,
                 "message": "Permission denied",
                 "data": {
                     "type": "permission_error",
-                    "message": "Insufficient permissions to access this method"
-                }
-            }
+                    "message": "Insufficient permissions to access this method",
+                },
+            },
         }
         return ResponseContext(response=error_response)
+
+
+__all__ = [
+    "AuthProvider",
+    "SimpleTokenAuthProvider",
+    "AuthMiddleware",
+    "RoleBasedAuthMiddleware",
+]
