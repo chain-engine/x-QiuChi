@@ -3,9 +3,10 @@
 > 君问归期未有期，巴山夜雨涨秋池。
 > —— [唐] 李商隐《夜雨寄北》
 
+[中文](README.md) | English
+
 QiuChi is an **enterprise-grade MCP (Model Context Protocol) server framework** built on FastMCP.
 
-The name "QiuChi" comes from Li Shangyin's poem *Night Rain Sent North*: "君问归期未有期，巴山夜雨涨秋池。"
 
 ### Core Features
 

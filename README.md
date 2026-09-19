@@ -7,13 +7,14 @@
 > 君问归期未有期，巴山夜雨涨秋池。
 > —— [唐] 李商隐《夜雨寄北》
 
+[English](README.en.md) | 中文
+
 ---
 
 ## 项目简介
 
 **秋池（QiuChi）** 是一个**生产级 MCP (Model Context Protocol) 服务器框架**，基于 [FastMCP](https://github.com/modelcontextprotocol/python-sdk) 构建。通过六层清晰架构、插件化设计、中间件管道和统一配置管理，为企业提供开箱即用的 MCP 服务器开发体验。
 
-**核心价值**：将 MCP 协议的服务器端开发从"手写脚手架"升级为"声明式开发"——用装饰器注册工具/资源/提示词，用配置文件管理一切。
 
 **适用场景**：
 
@@ -230,7 +231,7 @@ pip install uv
 ### 项目克隆
 
 ```bash
-git clone https://gitee.com/chain-engine/x-QiuChi.git
+git clone https://github.com/chain-engine/x-QiuChi.git
 cd x-QiuChi
 ```
 
@@ -422,4 +423,4 @@ QiuChi 作为 MCP 服务器框架，不提供传统 REST API，而是通过 **MC
 | 邮箱 | [john.young@foxmail.com](mailto:john.young@foxmail.com) |
 | Gitee | [https://gitee.com/yeyushilai](https://gitee.com/yeyushilai) |
 | GitHub | [https://github.com/yeyushilai](https://github.com/yeyushilai) |
-| 项目地址 | [https://gitee.com/chain-engine/x-QiuChi](https://gitee.com/chain-engine/x-QiuChi) |
+| 项目地址 | [https://github.com/chain-engine/x-QiuChi](https://github.com/chain-engine/x-QiuChi) |

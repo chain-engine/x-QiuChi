@@ -11,7 +11,6 @@
       "Bash(PYTHONPATH=src uv run python -c \"from main import create_app; app = create_app\\(\\); print\\(''OK:'', app\\)\")",
       "Bash(pkill -f 'python src/main.py')",
       "Bash(true __NEW_LINE_71e80b5de04a6452__ echo '=== 4. 验证配置切换传输层 ===' echo 当前配置: grep -E \"transport|port\" config.yaml)",
-      "Read(//e/02Codes/01Gitee/chain-engine/x-QiuChi/**)"
     ]
   }
 }
