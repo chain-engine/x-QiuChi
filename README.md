@@ -128,63 +128,48 @@ cp config.yaml.example config.yaml
 | `MCP_LOG_LEVEL` | 日志级别 |
 | `MCP_LOG_OUTPUT` | 日志输出目标 |
 
-### 5. 服务启动
+### 5. 启动服务
 
-#### 本地开发热重载启动
+#### 方式一：CLI 启动（推荐）
+
+```bash
+# HTTP 模式（默认，端口 8000）
+uv run x-QiuChi
+
+# Stdio 模式（兼容 Claude Desktop）
+uv run x-QiuChi --transport stdio
+
+# 自定义参数
+uv run x-QiuChi --host 127.0.0.1 --port 8080 --log-level DEBUG
+
+# 查看帮助
+uv run x-QiuChi --help
+```
+
+#### 方式二：uv run 直接启动
 
 ```bash
 # HTTP 模式（默认，端口 8000）
 uv run python src/main.py
-
-# 使用项目脚本入口
-uv run x-QiuChi
 
 # Stdio 模式（兼容 Claude Desktop）
 uv run python src/main.py --transport stdio
 
 # 自定义参数
 uv run python src/main.py --host 127.0.0.1 --port 8080 --log-level DEBUG
-
-# 查看全部启动参数
-uv run python src/main.py --help
 ```
 
-#### Docker 容器部署
+#### 方式三：Docker 容器部署
 
 ```bash
-# 构建镜像并启动容器
-docker compose up -d
+# 构建并启动
+docker compose up -d --build
 
-# 查看运行日志
-docker compose logs -f qiuchi-mcp
+# 查看日志
+docker compose logs -f
 
-# 自定义环境变量启动
-MCP_PORT=9000 MCP_LOG_LEVEL=DEBUG docker compose up -d
-
-# 停止并移除容器
+# 停止
 docker compose down
-```
-
-**Docker 环境变量**：
-
-| 环境变量 | 默认值 | 说明 |
-|----------|--------|------|
-| `MCP_SERVER_NAME` | `QiuChi` | 服务器名称 |
-| `MCP_TRANSPORT` | `streamable-http` | 传输层类型 |
-| `MCP_HOST` | `0.0.0.0` | 监听地址 |
-| `MCP_PORT` | `8000` | 监听端口 |
-| `MCP_LOG_LEVEL` | `INFO` | 日志级别 |
-| `MCP_LOG_OUTPUT` | `both` | 日志输出目标 |
-| `OPENWEATHER_API_KEY` | - | OpenWeatherMap API 密钥（可选） |
-
-**健康检查**：容器内置健康检查机制，默认每 30 秒检测一次：
-
-```bash
-# 查看容器健康状态
-docker inspect --format='{{.State.Health.Status}}' qiuchi-mcp
-
-# 直接访问健康端点
-curl -f http://localhost:8000/mcp
 ```
 
 ### 6. 常用工程命令
