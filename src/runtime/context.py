@@ -1,5 +1,5 @@
 """
-QiuChi 请求上下文管理
+请求上下文管理
 
 提供请求级别的上下文管理，支持异步环境下的请求隔离。
 """
@@ -9,11 +9,13 @@ from __future__ import annotations
 import uuid
 import time
 from contextvars import ContextVar
-from typing import Any, Dict, Iterator, Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from dataclasses import dataclass, field
 
+from .session import SessionManager
+
 if TYPE_CHECKING:
-    from ..core.server.server import MCPServer
+    from ..server.server import MCPServer
 
 
 @dataclass
@@ -51,75 +53,6 @@ class RequestContext:
 
 # 全局上下文变量
 _current_context: ContextVar[Optional[RequestContext]] = ContextVar("current_context", default=None)
-
-
-class SessionManager:
-    """会话管理器"""
-
-    def __init__(self, default_timeout: int = 3600):
-        self._sessions: Dict[str, Dict[str, Any]] = {}
-        self._session_timeouts: Dict[str, float] = {}
-        self._default_timeout = default_timeout
-
-    def create_session(
-        self,
-        user: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-        timeout: Optional[int] = None,
-    ) -> str:
-        session_id = str(uuid.uuid4())
-        session_data = {
-            "user": user or {},
-            "data": data or {},
-            "created_at": time.time(),
-            "last_accessed": time.time(),
-        }
-        self._sessions[session_id] = session_data
-        self._session_timeouts[session_id] = time.time() + (timeout or self._default_timeout)
-        return session_id
-
-    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
-        if session_id not in self._sessions:
-            return None
-        if time.time() > self._session_timeouts.get(session_id, 0):
-            self.destroy_session(session_id)
-            return None
-        self._sessions[session_id]["last_accessed"] = time.time()
-        return self._sessions[session_id]
-
-    def update_session(
-        self,
-        session_id: str,
-        data: Optional[Dict[str, Any]] = None,
-        user: Optional[Dict[str, Any]] = None,
-        extend_timeout: bool = True,
-    ) -> bool:
-        session = self.get_session(session_id)
-        if not session:
-            return False
-        if data is not None:
-            session["data"].update(data)
-        if user is not None:
-            session["user"].update(user)
-        if extend_timeout:
-            self._session_timeouts[session_id] = time.time() + self._default_timeout
-        return True
-
-    def destroy_session(self, session_id: str) -> bool:
-        self._sessions.pop(session_id, None)
-        self._session_timeouts.pop(session_id, None)
-        return True
-
-    def cleanup_expired_sessions(self) -> int:
-        expired = [
-            sid for sid, exp in self._session_timeouts.items() if time.time() > exp
-        ]
-        for sid in expired:
-            self.destroy_session(sid)
-        return len(expired)
-
-    def get_all_sessions(self) -> Dict[str, Dict[str, Any]]:
-        return self._sessions.copy()
 
 
 # 上下文管理函数
@@ -208,7 +141,6 @@ class ContextManager:
 
 __all__ = [
     "RequestContext",
-    "SessionManager",
     "ContextManager",
     "get_current_context",
     "set_current_context",

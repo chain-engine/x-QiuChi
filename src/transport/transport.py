@@ -1,5 +1,5 @@
 """
-QiuChi 传输层实现
+传输层实现
 
 增强的传输配置系统，支持：
 - 多种传输方式
@@ -13,8 +13,8 @@ from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel, Field
 
 # 从共享类型模块导入
-from core.types import TransportType
-from core.config.config import settings
+from src.constants.enums import TransportType
+from core.config import settings
 
 
 class SSEConfig(BaseModel):

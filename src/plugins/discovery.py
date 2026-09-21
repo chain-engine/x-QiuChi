@@ -1,5 +1,5 @@
 """
-QiuChi 插件发现器
+插件发现器
 
 提供插件自动发现功能，封装为 PluginDiscovery 类。
 
@@ -13,8 +13,8 @@ import importlib
 from pathlib import Path
 from typing import Any, List
 
-from core.config.config import settings
-from core.logging.logger import get_logger
+from core.config import settings
+from core.logger import get_logger
 
 logger = get_logger(__name__)
 

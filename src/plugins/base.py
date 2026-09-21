@@ -1,5 +1,5 @@
 """
-QiuChi 插件基础定义（plugins 包）
+插件基础定义（plugins 包）
 
 包含插件系统的核心枚举和元数据定义。
 """
@@ -41,4 +41,13 @@ class PluginMetadata:
     config_schema: Optional[Dict[str, Any]] = None
 
 
-__all__ = ["PluginType", "PluginStatus", "PluginMetadata"]
+@dataclass
+class PluginDependency:
+    """插件依赖声明"""
+
+    plugin_name: str
+    version_spec: str = "*"  # 支持语义化版本表达式，例如 ">=1.0.0"
+    optional: bool = False
+
+
+__all__ = ["PluginType", "PluginStatus", "PluginMetadata", "PluginDependency"]

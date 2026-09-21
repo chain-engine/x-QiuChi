@@ -1,5 +1,5 @@
 """
-QiuChi 核心服务器类
+核心服务器类
 
 企业级 MCP 服务器封装，提供插件化、中间件等高级特性。
 """
@@ -13,29 +13,29 @@ from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 
 from mcp.server.fastmcp import FastMCP
 
-from core.config.config import settings
-from core.plugins import PluginManager
-from core.transport.transport import TransportType
-from core.server.lifecycle import LifecycleManager, ServerState
+from core.config import settings
+from plugins import PluginManager
+from transport.transport import TransportType
+from server.lifecycle import LifecycleManager, ServerState
 from plugins.collector import (
     register_server_collectors,
     unregister_server_collectors,
     set_active_server,
 )
-from core.middleware.base import (
+from core.middleware import (
     Middleware,
     MiddlewareChain,
     RequestContext,
     ResponseContext,
+    ErrorHandlerMiddleware,
+    LoggingMiddleware,
+    MCPAuthMiddleware,
+    CacheMiddleware,
 )
-from core.middleware.error_handler import ErrorHandlerMiddleware
-from core.middleware.logging import LoggingMiddleware
-from core.middleware.auth import AuthMiddleware
-from core.middleware.cache import CacheMiddleware
-from core.logging.logger import get_logger
+from core.logger import get_logger
 
 if TYPE_CHECKING:
-    from core.transport.transport import TransportConfig
+    from transport.transport import TransportConfig
 
 logger = get_logger(__name__)
 
@@ -103,7 +103,7 @@ class MCPServer:
 
         # 认证
         if settings.middleware.auth.enabled:
-            self.add_middleware(AuthMiddleware(
+            self.add_middleware(MCPAuthMiddleware(
                 required=settings.middleware.auth.required,
                 exempt_methods=settings.middleware.auth.exempt_methods,
             ))
@@ -418,7 +418,7 @@ class MCPServer:
     ) -> None:
         async def async_run():
             await self.start()
-            from core.transport.transport import get_transport_config
+            from transport.transport import get_transport_config
             transport_config = get_transport_config(
                 transport or settings.mcp.transport.value,
                 host or settings.mcp.host,

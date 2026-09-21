@@ -1,7 +1,7 @@
 [project]
-name = "qiuchi"
+name = "秋池（QiuChi）"
 version = "0.1.0"
-description = "QiuChi (秋池) - an enterprise-grade MCP server framework"
+description = "An enterprise-grade MCP server framework"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
@@ -29,7 +29,6 @@ dev = [
 ]
 
 [project.scripts]
-qiuchi = "src.main:main"
 x-QiuChi = "src.main:main"
 
 [build-system]

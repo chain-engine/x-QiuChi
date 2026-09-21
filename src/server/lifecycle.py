@@ -1,5 +1,5 @@
 """
-QiuChi 服务器生命周期管理
+服务器生命周期管理
 
 管理服务器的启动、关闭和状态转换。
 """
@@ -8,7 +8,7 @@ import asyncio
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from core.logging.logger import get_logger
+from core.logger import get_logger
 
 logger = get_logger(__name__)
 

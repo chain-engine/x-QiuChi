@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QiuChi 项目完整性测试脚本
+项目完整性测试脚本
 
 运行此脚本以验证项目是否能正常工作。
 """
@@ -75,7 +75,7 @@ def test_plugin_system():
     """测试插件系统"""
     print("[4/7] Testing plugin system...")
     from main import create_server
-    from core.plugins import PluginManager
+    from plugins import PluginManager
 
     server = create_server('PluginTest')
     manager = PluginManager(server)

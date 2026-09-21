@@ -1,5 +1,5 @@
 """
-QiuChi 统一注册表
+统一注册表
 
 提供统一的插件注册和发现机制，支持：
 - 工具、资源、提示词统一注册
@@ -14,7 +14,7 @@ from enum import Enum
 from threading import RLock
 
 from .base import PluginType, PluginMetadata
-from core.logging.logger import get_logger
+from core.logger import get_logger
 
 logger = get_logger(__name__)
 

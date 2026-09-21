@@ -173,7 +173,7 @@ async def demo_tools_list(client):
         tools = await load_mcp_tools(session)
 
         print("\n" + "=" * 60)
-        print("QiuChi 可用工具列表")
+        print("秋池（QiuChi）可用工具列表")
         print("=" * 60)
 
         for i, tool in enumerate(tools, 1):

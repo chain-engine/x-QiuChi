@@ -1,12 +1,5 @@
 # 秋池（QiuChi）
 
-[![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-orange.svg)](https://github.com/astral-sh/ruff)
-
-> 君问归期未有期，巴山夜雨涨秋池。
-> —— [唐] 李商隐《夜雨寄北》
-
 [English](README.en.md) | 中文
 
 ---
@@ -172,23 +165,23 @@ flowchart TD
 ```mermaid
 flowchart TD
     A["src/main.py"] --> B["src/__init__.py<br/>(统一 API 入口)"]
-    A --> K["src/core/logging/logger.py"]
+    A --> K["src/core/logger.py"]
     K --> K1["loguru (外部依赖)"]
 
-    B --> C["src/core/server/server.py"]
+    B --> C["src/server/server.py"]
     B --> G["src/plugins/base.py<br/>(装饰器工厂)"]
     B --> H["src/runtime/context.py"]
-    B --> I["src/core/config/config.py"]
-    I --> I1["Pydantic Settings<br/>(外部依赖)"]
+    B --> I["src/core/config.py"]
+    I --> I1["dataclass 配置段"]
 
     C --> C1["FastMCP (外部依赖)"]
-    C --> D["src/core/plugins/manager.py"]
+    C --> D["src/plugins/manager.py"]
     C --> E["src/core/middleware/base.py"]
-    C --> F["src/core/transport/transport.py"]
+    C --> F["src/transport/transport.py"]
 
-    D --> D1["src/core/plugins/base.py"]
-    D --> D2["src/core/plugins/registry.py"]
-    D --> D3["src/core/plugins/discovery.py"]
+    D --> D1["src/plugins/base.py"]
+    D --> D2["src/plugins/registry.py"]
+    D --> D3["src/plugins/discovery.py"]
 
     E --> E1["error_handler.py"]
     E --> E2["logging.py"]
@@ -357,7 +350,7 @@ mypy src/
 
 ## API 文档
 
-QiuChi 作为 MCP 服务器框架，不提供传统 REST API，而是通过 **MCP 协议** 进行能力发现与交互：
+秋池（QiuChi）作为 MCP 服务器框架，不提供传统 REST API，而是通过 **MCP 协议** 进行能力发现与交互：
 
 | 能力 | MCP 方法 | 说明 |
 |------|---------|------|
@@ -384,8 +377,8 @@ QiuChi 作为 MCP 服务器框架，不提供传统 REST API，而是通过 **MC
 |---------|---------|---------|------|
 | 会话存储 | 内存字典 | `src/runtime/context.py` | SessionManager，支持 TTL 和自动清理 |
 | 缓存存储 | 内存字典 | `src/core/middleware/cache.py` | MemoryCacheBackend，支持 TTL、SHA-256 Key |
-| 插件注册表 | 内存字典 | `src/core/plugins/registry.py` | PluginRegistry，线程安全（RLock） |
-| 日志文件 | 本地文件 | `config.yaml → logging.file_path` | 默认 `logs/qiuchi.log`，每日轮转，保留 7 天 |
+| 插件注册表 | 内存字典 | `src/plugins/registry.py` | PluginRegistry，线程安全（RLock） |
+| 日志文件 | 本地文件 | `config.yaml → logging.file_path` | 默认 `logs/x-QiuChi_{time}.log`，每小时轮转，保留 7 天 |
 
 > **扩展**：缓存中间件设计了 `CacheBackend` 抽象类，可扩展为 Redis 等外部存储后端。
 

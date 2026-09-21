@@ -1,4 +1,4 @@
-# QiuChi 配置文件示例
+# 配置文件示例
 # 复制为 config.yaml 并根据需要修改
 
 # MCP 服务器配置
@@ -14,8 +14,8 @@ mcp:
 logging:
   level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
   output: "both"  # stderr, file, both
-  file_path: "logs/qiuchi.log"
-  rotation: "1 day"
+  file_path: "logs/x-QiuChi_{time:YYYY-MM-DD-HH}.log"
+  rotation: "1 hour"
   retention: "7 days"
   format: "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{file.name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
 

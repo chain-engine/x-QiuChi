@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-QiuChi (秋池) - 企业级 MCP 服务器框架
+秋池（QiuChi）
 
 一个基于 FastMCP 框架封装的企业级 MCP (Model Context Protocol) 服务器。
 提供插件化架构、中间件支持、统一配置等企业级特性。
@@ -36,17 +36,17 @@ src_path = Path(__file__).parent
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from core.server import MCPServer, create_server
+from server import MCPServer, create_server
 from core.config import settings
 from plugins import PluginMetadata, PluginType
 from core.middleware import (
     Middleware, MiddlewareChain,
     ErrorHandlerMiddleware, LoggingMiddleware,
-    AuthMiddleware, CacheMiddleware,
+    MCPAuthMiddleware, CacheMiddleware,
 )
-from core.transport import TransportType, TransportConfig
+from transport import TransportType, TransportConfig
 from plugins import tool, resource, prompt
-from core.logging.logger import setup_logging
+from core.logger import setup_logging
 
 __all__ = [
     # 核心类
@@ -61,7 +61,7 @@ __all__ = [
     "MiddlewareChain",
     "ErrorHandlerMiddleware",
     "LoggingMiddleware",
-    "AuthMiddleware",
+    "MCPAuthMiddleware",
     "CacheMiddleware",
     # 传输层
     "TransportType",
@@ -165,7 +165,7 @@ Examples:
 def update_settings_from_args(args):
     """根据命令行参数更新配置"""
     # 更新传输配置
-    from core.transport.transport import TransportType
+    from transport.transport import TransportType
     settings.mcp.transport = TransportType(args.transport)
     settings.mcp.host = args.host
     settings.mcp.port = args.port
@@ -173,7 +173,7 @@ def update_settings_from_args(args):
     settings.mcp.version = args.version
 
     # 更新日志配置
-    from core.config.config import LogLevel, LogOutput
+    from core.config import LogLevel, LogOutput
     settings.logging.level = LogLevel(args.log_level)
     settings.logging.file_path = args.log_file
 
@@ -191,7 +191,7 @@ def update_settings_from_args(args):
 
 def print_startup_info(server, args):
     """打印启动信息"""
-    from core.logging.logger import get_logger
+    from core.logger import get_logger
 
     logger = get_logger("main")
 
@@ -249,12 +249,12 @@ def main():
     try:
         main_async()
     except KeyboardInterrupt:
-        from core.logging.logger import get_logger
+        from core.logger import get_logger
         logger = get_logger("main")
         logger.info("Server stopped by user")
         sys.exit(0)
     except Exception as e:
-        from core.logging.logger import get_logger
+        from core.logger import get_logger
         logger = get_logger("main")
         logger.error(f"Failed to start server: {e}")
         sys.exit(1)

@@ -1,8 +1,5 @@
 # QiuChi
 
-> 君问归期未有期，巴山夜雨涨秋池。
-> —— [唐] 李商隐《夜雨寄北》
-
 [中文](README.md) | English
 
 QiuChi is an **enterprise-grade MCP (Model Context Protocol) server framework** built on FastMCP.
@@ -245,7 +242,7 @@ print(response['messages'][-1].content)
 
 ## Containerization Deployment
 
-QiuChi (秋池) supports Docker containerization for easy deployment in production or isolated environments.
+QiuChi supports Docker containerization for easy deployment in production or isolated environments.
 
 ### Docker Image Build
 
@@ -414,7 +411,7 @@ def my_function(param: str) -> str:
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from core.server import MCPServer
+    from server import MCPServer
 
 def register(server: "MCPServer") -> None:
     @server.tool

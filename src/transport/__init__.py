@@ -1,5 +1,5 @@
 """
-QiuChi 传输层模块
+传输层模块
 
 提供多种传输方式支持：
 - stdio: 标准输入/输出（Claude Desktop 兼容）
