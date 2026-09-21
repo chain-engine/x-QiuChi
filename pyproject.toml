@@ -1,5 +1,5 @@
 [project]
-name = "秋池（QiuChi）"
+name = "x-QiuChi"
 version = "0.1.0"
 description = "An enterprise-grade MCP server framework"
 readme = "README.md"

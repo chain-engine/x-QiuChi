@@ -107,8 +107,8 @@ Examples:
     parser.add_argument(
         "--transport",
         choices=["stdio", "sse", "streamable-http"],
-        default=settings.mcp.transport.value,
-        help=f"传输类型（默认: {settings.mcp.transport.value}）"
+        default=settings.mcp.transport,
+        help=f"传输类型（默认: {settings.mcp.transport}）"
     )
     parser.add_argument(
         "--host",
@@ -133,8 +133,8 @@ Examples:
     parser.add_argument(
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        default=settings.logging.level.value,
-        help=f"日志级别（默认: {settings.logging.level.value}）"
+        default=settings.logging.level,
+        help=f"日志级别（默认: {settings.logging.level}）"
     )
     parser.add_argument(
         "--log-file",
@@ -165,16 +165,14 @@ Examples:
 def update_settings_from_args(args):
     """根据命令行参数更新配置"""
     # 更新传输配置
-    from transport.transport import TransportType
-    settings.mcp.transport = TransportType(args.transport)
+    settings.mcp.transport = args.transport
     settings.mcp.host = args.host
     settings.mcp.port = args.port
     settings.mcp.server_name = args.name
     settings.mcp.version = args.version
 
     # 更新日志配置
-    from core.config import LogLevel, LogOutput
-    settings.logging.level = LogLevel(args.log_level)
+    settings.logging.level = args.log_level
     settings.logging.file_path = args.log_file
 
     # 更新功能开关
@@ -199,15 +197,15 @@ def print_startup_info(server, args):
     logger.info(f"QiuChi Server v{settings.mcp.version}")
     logger.info("=" * 60)
     logger.info(f"Server: {settings.mcp.server_name}")
-    logger.info(f"Transport: {settings.mcp.transport.value}")
+    logger.info(f"Transport: {settings.mcp.transport}")
 
-    if settings.mcp.transport.value in ["sse", "streamable-http"]:
+    if settings.mcp.transport in ["sse", "streamable-http"]:
         logger.info(f"Listening: http://{settings.mcp.host}:{settings.mcp.port}")
 
     logger.info(f"Features: Tools={settings.features.tools}, "
                 f"Resources={settings.features.resources}, "
                 f"Prompts={settings.features.prompts}")
-    logger.info(f"Log level: {settings.logging.level.value}")
+    logger.info(f"Log level: {settings.logging.level}")
     logger.info(f"Config file: {settings.config_file}")
     logger.info("=" * 60)
 
@@ -222,8 +220,8 @@ def main_async():
 
     # 设置日志
     setup_logging(
-        level=settings.logging.level.value,
-        output=settings.logging.output.value,
+        level=settings.logging.level,
+        output=settings.logging.output,
         file_path=settings.logging.file_path,
     )
 
@@ -238,7 +236,7 @@ def main_async():
 
     # 启动服务器
     server.run(
-        transport=settings.mcp.transport.value,
+        transport=settings.mcp.transport,
         host=settings.mcp.host,
         port=settings.mcp.port,
     )

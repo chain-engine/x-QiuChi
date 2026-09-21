@@ -420,7 +420,7 @@ class MCPServer:
             await self.start()
             from transport.transport import get_transport_config
             transport_config = get_transport_config(
-                transport or settings.mcp.transport.value,
+                transport or settings.mcp.transport,
                 host or settings.mcp.host,
                 port or settings.mcp.port,
             )
