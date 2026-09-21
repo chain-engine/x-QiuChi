@@ -2,198 +2,251 @@
 
 [中文](README.md) | English
 
-QiuChi is an **enterprise-grade MCP (Model Context Protocol) server framework** built on FastMCP.
+---
 
+## Project Introduction
 
-### Core Features
+**QiuChi** is a **production-grade MCP (Model Context Protocol) server framework** built on [FastMCP](https://github.com/modelcontextprotocol/python-sdk). It delivers an out-of-the-box MCP server development experience for enterprises through a six-layer architecture, plugin-based design, middleware pipeline, and unified configuration management.
 
-- **MCP Protocol Compliant**: Implements Tools, Resources, and Prompts primitives
-- **Modular Design**: Separated by primitives following MCP decoupling principles
-- **Plugin Registry System**: Decorator-based registration, auto-discovery, category management
-- **Multiple Transports**: Switch between Stdio/SSE/HTTP via configuration
-- **Dynamic Discovery**: Supports tools/list, resources/list, prompts/list
-- **stderr Logging**: Ensures stdout contains only JSON-RPC messages
-- **Full Type Hints**: All functions include Type Hints and Docstrings
+**Core Value**:
 
-## Project Structure
+- **Protocol Compliant** — Full implementation of MCP protocol's three primitives: Tools, Resources, and Prompts
+- **Clean Architecture** — Six distinct layers: Core / Plugins / Runtime / Transport / Utils / Examples
+- **Out of the Box** — One-line decorator registration, automatic plugin discovery, plug-and-play middleware
+- **Production Ready** — Structured logging, health checks, containerized deployment, TLS support
 
-```
-QiuChi/
-├── src/                        # Enterprise MCP Framework
-│   ├── __init__.py             # Package entry
-│   ├── main.py                 # Application entry
-│   ├── core/                   # Core modules
-│   │   ├── config.py           # Configuration management
-│   │   ├── server.py           # MCPServer wrapper
-│   │   ├── transport.py        # Transport abstraction
-│   │   ├── registry.py         # Base registry class
-│   │   └── logger.py           # stderr logging
-│   │
-│   ├── tools/                  # Tools primitive (executable functions)
-│   │   ├── base.py             # Tool registry system
-│   │   ├── calculator.py       # Calculator tools
-│   │   └── weather.py          # Weather tools
-│   │
-│   ├── resources/              # Resources primitive (data resources)
-│   │   ├── base.py             # Resource registry system
-│   │   └── knowledge.py        # Knowledge base resources
-│   │
-│   └── prompts/                # Prompts primitive (prompt templates)
-│       ├── base.py             # Prompt registry system
-│       └── templates.py        # Prompt templates
-│
-├── examples/                   # Example code
-│   ├── mcp_clients/
-│   └── mcp_servers/
-│
-├── config.yaml                 # Configuration file
-└── pyproject.toml              # Project configuration
-```
+**Use Cases**:
 
-## Architecture
+- Rapidly building MCP tool services for LLM applications (Claude, GPT, etc.)
+- Building enterprise-grade AI Agent toolchain platforms
+- MCP services requiring flexible switching between multiple transports (Stdio / SSE / HTTP)
+- AI infrastructure requiring plugin-based extensibility and middleware governance
 
-### Project Architecture
-
-```mermaid
-graph TB
-    subgraph "Configuration Layer"
-        CONFIG[config.yaml]
-        ENV[Environment Variables]
-    end
-
-    subgraph "Application Layer"
-        MAIN[main.py]
-        SETTINGS[Settings Singleton]
-    end
-
-    subgraph "Core Layer"
-        SERVER[MCPServer]
-        TRANSPORT[TransportConfig]
-        REGISTRY[BaseRegistry]
-        LOGGER[Logger]
-    end
-
-    subgraph "Primitives Layer"
-        subgraph "Tools"
-            TOOL_REG[ToolRegistry]
-            TOOL_MODULES[Tool Modules]
-        end
-        subgraph "Resources"
-            RES_REG[ResourceRegistry]
-            RES_MODULES[Resource Modules]
-        end
-        subgraph "Prompts"
-            PROMPT_REG[PromptRegistry]
-            PROMPT_MODULES[Prompt Modules]
-        end
-    end
-
-    subgraph "Transport Layer"
-        STDIO[Stdio]
-        SSE[SSE]
-        HTTP[StreamableHTTP]
-    end
-
-    CONFIG --> SETTINGS
-    ENV --> SETTINGS
-    SETTINGS --> SERVER
-    SERVER --> TRANSPORT
-    SERVER --> LOGGER
-    REGISTRY --> TOOL_REG
-    REGISTRY --> RES_REG
-    REGISTRY --> PROMPT_REG
-    TOOL_REG --> TOOL_MODULES
-    RES_REG --> RES_MODULES
-    PROMPT_REG --> PROMPT_MODULES
-    TOOL_MODULES --> SERVER
-    RES_MODULES --> SERVER
-    PROMPT_MODULES --> SERVER
-    TRANSPORT --> STDIO
-    TRANSPORT --> SSE
-    TRANSPORT --> HTTP
-```
-
-### Core Flow
-
-```mermaid
-sequenceDiagram
-    participant Client as MCP Client
-    participant Transport as Transport Layer
-    participant Server as MCPServer
-    participant Registry as Registry
-    participant Tool as Tool Function
-
-    Note over Client,Tool: Startup Phase
-    Server->>Registry: discover_tools()
-    Registry-->>Server: Tool list registered
-    Server->>Transport: bind(transport)
-    Transport-->>Server: Listening on port/stdio
-
-    Note over Client,Tool: Request Processing
-    Client->>Transport: JSON-RPC Request
-    Transport->>Server: Parse request
-    Server->>Registry: get(tool_name)
-    Registry-->>Server: Tool function
-    Server->>Tool: execute(args)
-    Tool-->>Server: Result
-    Server->>Transport: JSON-RPC Response
-    Transport-->>Client: Return result
-```
-
-### Registration Flow
-
-```mermaid
-flowchart LR
-    subgraph "Module Loading"
-        A[Import Module] --> B{Has register function?}
-        B -->|Yes| C[Call register]
-        B -->|No| D{Has decorator?}
-        D -->|Yes| E[Auto-register]
-        D -->|No| F[Skip]
-    end
-
-    subgraph "Registry Center"
-        C --> G[Registry.register]
-        E --> G
-        G --> H[Store in _items]
-    end
-
-    subgraph "Query Interface"
-        I[get_all] --> H
-        J[get_by_category] --> H
-        K[contains] --> H
-    end
-```
-
-## Requirements
-
-- Python 3.11+
-- uv package manager
+---
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Requirements
+
+| Dependency | Minimum Version | Description |
+|------------|----------------|-------------|
+| Python | >= 3.11 | Required for type hints, exception groups, and other features |
+| uv | >= 0.1 | Recommended package manager ([Installation Guide](https://docs.astral.sh/uv/getting-started/installation/)) |
+| Git | >= 2.0 | Repository cloning |
+
+**Windows**:
+
+```powershell
+# Install uv (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Or install via pip
+pip install uv
+```
+
+**Linux**:
 
 ```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or install via pip
+pip install uv
+```
+
+**macOS**:
+
+```bash
+# Install via Homebrew
+brew install uv
+
+# Or use the official installer
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or install via pip
+pip install uv
+```
+
+### 2. Clone the Repository
+
+```bash
+git clone https://github.com/chain-engine/x-QiuChi.git
+cd x-QiuChi
+```
+
+### 3. Install Dependencies
+
+```bash
+# Sync dependencies with uv (recommended)
 uv sync
+
+# Development mode (includes testing, formatting, type checking tools)
+uv sync --extra dev
 ```
 
-### 2. Start Server
+### 4. Environment Configuration
 
 ```bash
-# HTTP mode (default)
-PYTHONPATH=src uv run python src/main.py
-
-# Stdio mode (Claude Desktop compatible)
-MCP_TRANSPORT=stdio PYTHONPATH=src uv run python src/main.py
-
-# Custom port
-MCP_PORT=8080 PYTHONPATH=src uv run python src/main.py
+# Copy the configuration file
+cp config.yaml.example config.yaml
 ```
 
-### 3. Client Integration
+**Core Configuration Options** (`config.yaml`):
 
-#### HTTP Native
+| Option | Default | Description |
+|--------|---------|-------------|
+| `mcp.server_name` | `QiuChi` | MCP server name |
+| `mcp.version` | `1.0.0` | Server version |
+| `mcp.transport` | `streamable-http` | Transport type: `stdio` / `sse` / `streamable-http` |
+| `mcp.host` | `0.0.0.0` | HTTP listen address |
+| `mcp.port` | `8000` | HTTP listen port |
+| `mcp.json_response` | `true` | Enable JSON response mode |
+| `logging.level` | `INFO` | Log level: `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
+| `logging.output` | `both` | Log output target: `stderr` / `file` / `both` |
+| `logging.file_path` | `logs/x-QiuChi_{time}.log` | Log file path (supports time templates) |
+| `logging.rotation` | `1 hour` | Log rotation period |
+| `logging.retention` | `7 days` | Log retention duration |
+| `features.tools` | `true` | Enable Tools primitive |
+| `features.resources` | `true` | Enable Resources primitive |
+| `features.prompts` | `true` | Enable Prompts primitive |
+| `features.middleware` | `true` | Enable middleware pipeline |
+| `features.cache` | `false` | Enable cache middleware |
+| `plugins.auto_discovery` | `true` | Enable automatic plugin discovery |
+| `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | Plugin scan paths |
+| `middleware.auth.enabled` | `false` | Enable token authentication |
+| `middleware.cache.enabled` | `false` | Enable in-memory cache |
+| `middleware.cache.default_ttl` | `300` | Cache default TTL (seconds) |
+
+**Environment Variable Override**: All configuration can be overridden via environment variables. Priority: **Environment Variables > YAML > Defaults**. Common environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `MCP_SERVER_NAME` | Server name |
+| `MCP_TRANSPORT` | Transport type |
+| `MCP_HOST` | Listen address |
+| `MCP_PORT` | Listen port |
+| `MCP_LOG_LEVEL` | Log level |
+| `MCP_LOG_OUTPUT` | Log output target |
+
+### 5. Start the Server
+
+#### Local Development with Hot Reload
+
+```bash
+# HTTP mode (default, port 8000)
+uv run python src/main.py
+
+# Using the project script entry
+uv run x-QiuChi
+
+# Stdio mode (compatible with Claude Desktop)
+uv run python src/main.py --transport stdio
+
+# Custom parameters
+uv run python src/main.py --host 127.0.0.1 --port 8080 --log-level DEBUG
+
+# View all startup parameters
+uv run python src/main.py --help
+```
+
+#### Docker Container Deployment
+
+```bash
+# Build image and start container
+docker compose up -d
+
+# View runtime logs
+docker compose logs -f qiuchi-mcp
+
+# Start with custom environment variables
+MCP_PORT=9000 MCP_LOG_LEVEL=DEBUG docker compose up -d
+
+# Stop and remove container
+docker compose down
+```
+
+**Docker Environment Variables**:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_SERVER_NAME` | `QiuChi` | Server name |
+| `MCP_TRANSPORT` | `streamable-http` | Transport type |
+| `MCP_HOST` | `0.0.0.0` | Listen address |
+| `MCP_PORT` | `8000` | Listen port |
+| `MCP_LOG_LEVEL` | `INFO` | Log level |
+| `MCP_LOG_OUTPUT` | `both` | Log output target |
+| `OPENWEATHER_API_KEY` | - | OpenWeatherMap API key (optional) |
+
+**Health Check**: The container includes a built-in health check mechanism (every 30 seconds by default):
+
+```bash
+# Check container health status
+docker inspect --format='{{.State.Health.Status}}' qiuchi-mcp
+
+# Directly access the health endpoint
+curl -f http://localhost:8000/mcp
+```
+
+### 6. Common Engineering Commands
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run specific test file (verbose output)
+uv run pytest tests/test_integration.py -v
+
+# Test coverage report
+uv run pytest --cov=src tests/
+
+# Code formatting
+uv run ruff format src/
+
+# Static code analysis
+uv run ruff check src/
+
+# Auto-fix fixable lint issues
+uv run ruff check --fix src/
+
+# Type checking
+uv run mypy src/
+
+# MCP Inspector validation
+npx @anthropic-ai/mcp-inspector
+# Connect to: http://localhost:8000/mcp
+```
+
+### 7. Usage Examples
+
+#### Register Tools with Decorators
+
+```python
+from main import create_server, tool, resource, prompt
+
+server = create_server("MyServer")
+
+# Register a tool
+@tool(category="math")
+def add(a: float, b: float) -> float:
+    """Add two numbers."""
+    return a + b
+
+# Register a resource
+@resource(name="config://app", category="config")
+def get_app_config() -> str:
+    """Get application configuration."""
+    return '{"version": "1.0.0"}'
+
+# Register a prompt
+@prompt(category="code")
+def code_review(language: str) -> str:
+    """Generate a code review prompt."""
+    return f"Please review this {language} code for best practices."
+
+server.run()
+```
+
+#### HTTP Client Calls
 
 ```python
 import httpx
@@ -203,7 +256,7 @@ resp = httpx.get("http://localhost:8000/mcp",
                  headers={"Accept": "text/event-stream"})
 session_id = resp.headers.get("mcp-session-id")
 
-# Call tool
+# Call a tool
 resp = httpx.post(
     "http://localhost:8000/mcp",
     json={"jsonrpc": "2.0", "method": "tools/call",
@@ -215,14 +268,13 @@ resp = httpx.post(
 print(resp.json())  # {"result": {"content": [{"text": "30.0"}]}}
 ```
 
-#### LangChain/LangGraph
+#### LangChain / LangGraph Integration
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.chat_models import init_chat_model
 from langgraph.prebuilt import create_react_agent
 
-# Create client
 client = MultiServerMCPClient({
     "qiuchi_mcp": {
         "transport": "http",
@@ -230,261 +282,301 @@ client = MultiServerMCPClient({
     }
 })
 
-# Get MCP tools and create Agent
 tools = await client.get_tools()
 model = init_chat_model("openai:gpt-4o-mini")
 agent = create_react_agent(model, tools)
 
-# Execute query
 response = await agent.ainvoke({"messages": "Calculate 123 + 456"})
 print(response['messages'][-1].content)
 ```
 
-## Containerization Deployment
+---
 
-QiuChi supports Docker containerization for easy deployment in production or isolated environments.
+## Project Structure
 
-### Docker Image Build
-
-```bash
-# Build the image
-docker build -t qiuchi-mcp:latest .
-
-# Run container (map port 8000)
-docker run -d --name qiuchi-mcp \
-  -p 8000:8000 \
-  -e OPENWEATHER_API_KEY=your_api_key_here \
-  qiuchi-mcp:latest
+```
+x-QiuChi/
+├── config.yaml                      # Runtime configuration file
+├── config.yaml.example              # Configuration example (all fields documented)
+├── pyproject.toml                   # Package config, dependencies, toolchain settings
+├── Dockerfile                       # Multi-stage build image definition
+├── docker-compose.yml               # Container orchestration config
+├── LICENSE                          # MIT open source license
+│
+├── src/                             # Source root directory
+│   ├── main.py                      # Main entry: CLI argument parsing and server startup
+│   │
+│   ├── constants/                   # Constants layer
+│   │   ├── base.py                  # Base constants
+│   │   ├── constants.py             # Business constants
+│   │   └── enums.py                 # Enum type definitions
+│   │
+│   ├── core/                        # Core layer: framework infrastructure
+│   │   ├── config.py                # Pydantic Settings config management (multi-source priority, hot reload)
+│   │   ├── exceptions.py            # Custom exception hierarchy
+│   │   ├── logger.py                # loguru structured logging (file rotation, sensitive info filtering)
+│   │   └── middleware.py            # Middleware pipeline (ErrorHandler / Logging / Auth / Cache)
+│   │
+│   ├── plugins/                     # Plugin layer: plugin system core
+│   │   ├── base.py                  # Plugin abstract base class and metadata (PluginType / PluginMetadata)
+│   │   ├── registry.py              # UnifiedRegistry (thread-safe)
+│   │   ├── manager.py               # PluginManager (auto-discovery, dependency resolution, lifecycle)
+│   │   ├── discovery.py             # Plugin discovery scanner
+│   │   ├── loader.py                # Plugin loader
+│   │   └── collector.py             # Plugin collector (decorator registration entry)
+│   │
+│   ├── server/                      # Server layer: MCP server core
+│   │   ├── server.py                # MCPServer class (wraps FastMCP, decorator registration, middleware)
+│   │   └── lifecycle.py             # Server lifecycle state machine (UNINITIALIZED → RUNNING → STOPPED)
+│   │
+│   ├── runtime/                     # Runtime layer: request context and session management
+│   │   ├── context.py               # RequestContext
+│   │   └── session.py               # SessionManager
+│   │
+│   ├── transport/                   # Transport layer: multi-protocol transport abstraction
+│   │   └── transport.py             # Transport config (Stdio / SSE / Streamable-HTTP / TLS)
+│   │
+│   ├── utils/                       # Utils layer: general-purpose helper functions
+│   │   └── helpers.py               # Utility function collection
+│   │
+│   └── examples/                    # Examples layer: built-in example plugins
+│       ├── tools/
+│       │   └── math.py              # 8 math tools (add, subtract, multiply, divide, power, sqrt, temperature)
+│       ├── resources/
+│       │   └── config.py            # 3 config resources (server config / version / API docs)
+│       └── prompts/
+│           └── templates.py         # 5 prompt templates (greeting, code review, weather outfit, etc.)
+│
+├── examples/                        # External example code
+│   ├── mcp_clients/
+│   │   ├── mcp_client.py            # Native JSON-RPC MCP client example
+│   │   └── langchain_mcp_client.py  # LangChain MCP integration example
+│   └── mcp_servers/
+│       └── weather_mcp_server.py    # OpenWeatherMap MCP service example
+│
+├── tests/                           # Test directory
+│   └── test_integration.py          # 7-step integration test suite
+│
+├── docs/                            # Documentation directory
+├── scripts/                         # Script tools directory
+├── static/                          # Static assets directory
+├── logs/                            # Log output directory (generated at runtime)
+└── tmp/                             # Temporary files directory
 ```
 
-### Docker Compose Deployment
+---
 
-Using Docker Compose makes it easier to manage service configuration and log persistence.
+## System Architecture
 
-```bash
-# Copy environment variable example file
-cp .env.example .env
-# Edit .env file with actual configuration
+### System Layered Architecture
 
-# Start service
-docker-compose up -d
+```mermaid
+flowchart TD
+    A["MCP Client<br/>(Claude Desktop / LangChain / Custom Client)"]
+    B["Transport Layer<br/>Stdio / SSE / Streamable-HTTP"]
+    C["Middleware Pipeline<br/>ErrorHandler → Logging → Auth → Cache → Handler"]
+    subgraph D["MCP Three Primitives"]
+        direction LR
+        D1["Tools Primitive"]
+        D2["Resources Primitive"]
+        D3["Prompts Primitive"]
+    end
+    E["Plugin System<br/>Discovery → Load → Register → Enable → Serve"]
+    F["Unified Registry (Thread-Safe)"]
+    G["Core Server<br/>MCPServer (Wraps FastMCP) + Lifecycle Management"]
+    H["Configuration Management<br/>Pydantic Settings (Env > YAML > Defaults)"]
+    I["Structured Logging<br/>loguru (stderr + File Rotation)"]
 
-# View logs
-docker-compose logs -f qiuchi-mcp
-
-# Stop service
-docker-compose down
+    A -->|"MCP Protocol (JSON-RPC)"| B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
 ```
 
-### Environment Variables Configuration
+### Server Startup Flow
 
-The container supports overriding all configuration parameters via environment variables. See [.env.example](.env.example) for details. Main environment variables include:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| MCP_SERVER_NAME | Server name | QiuChi |
-| MCP_VERSION | Server version | 1.0.0 |
-| MCP_TRANSPORT | Transport type | streamable-http |
-| MCP_HOST | HTTP listen address | 0.0.0.0 |
-| MCP_PORT | HTTP listen port | 8000 |
-| MCP_LOG_LEVEL | Log level | INFO |
-| MCP_LOG_OUTPUT | Log output target | both |
-| OPENWEATHER_API_KEY | OpenWeatherMap API key | - |
-
-### Health Check
-
-The container includes a built-in health check. You can verify service status with:
-
-```bash
-# Check container health status
-docker inspect --format='{{.State.Health.Status}}' qiuchi-mcp
-
-# Directly access health endpoint
-curl -f http://localhost:8000/mcp
+```mermaid
+flowchart TD
+    S1["Parse CLI Arguments / Load Config"] --> S2["Create MCPServer Instance"]
+    S2 --> S3["Register Default Middleware Pipeline<br/>ErrorHandler / Logging / Auth (Optional) / Cache (Optional)"]
+    S3 --> S4["Scan discovery_paths<br/>Auto-Discover and Load Plugins"]
+    S4 --> S5["Register to UnifiedRegistry<br/>(Tools / Resources / Prompts)"]
+    S5 --> S6["Start Transport Layer Listener<br/>(Stdio / SSE / HTTP)"]
+    S6 --> S7["State: RUNNING"]
 ```
 
-### Log Persistence
+### Request Processing Flow
 
-By default, logs are output to both stderr and files. When using Docker Compose, log files are persisted to the named volume `qiuchi-logs`.
-
-```bash
-# Check log file location
-docker volume inspect qiuchi-logs
-
-# Export logs
-docker cp qiuchi-mcp:/app/logs ./logs
+```mermaid
+flowchart TD
+    R1["Receive MCP Request"] --> R2["Middleware Chain<br/>ErrorHandler → Logging → Auth → Cache"]
+    R2 --> R3{"Cache Hit?"}
+    R3 -->|"Yes"| R8["Return Cached Result"]
+    R3 -->|"No"| R4["Route to Primitive Handler<br/>Tool / Resource / Prompt"]
+    R4 --> R5["Execute Business Logic"]
+    R5 --> R6["Write to Cache (Optional)"]
+    R6 --> R7["Return MCP Response"]
 ```
 
-## Built-in Features
+### Module Dependency Graph
 
-### Tools (9)
+```mermaid
+flowchart TD
+    A["src/main.py<br/>Main Entry"] --> B["src/server/server.py<br/>MCPServer"]
+    A --> K["src/core/logger.py<br/>Logging System"]
+    K --> K1["loguru (External)"]
 
-| Tool | Description |
-|------|-------------|
-| add | Add two numbers |
-| subtract | Subtract two numbers |
-| multiply | Multiply two numbers |
-| divide | Divide two numbers |
-| power | Power operation |
-| sqrt | Square root |
-| get_weather | Weather query |
-| celsius_to_fahrenheit | Celsius to Fahrenheit |
-| fahrenheit_to_celsius | Fahrenheit to Celsius |
+    B --> C1["FastMCP (External)"]
+    B --> D["src/plugins/manager.py<br/>Plugin Manager"]
+    B --> E["src/core/middleware.py<br/>Middleware Pipeline"]
+    B --> F["src/transport/transport.py<br/>Transport Layer"]
 
-### Resources (3)
+    D --> D1["src/plugins/base.py<br/>Plugin Base"]
+    D --> D2["src/plugins/registry.py<br/>Unified Registry"]
+    D --> D3["src/plugins/discovery.py<br/>Plugin Discovery"]
+
+    E --> E1["ErrorHandler Middleware"]
+    E --> E2["Logging Middleware"]
+    E --> E3["Auth Middleware"]
+    E --> E4["Cache Middleware"]
+
+    B --> G["src/runtime/<br/>Context & Session"]
+    B --> H["src/core/config.py<br/>Config Management"]
+    H --> H1["Pydantic Settings (External)"]
+```
+
+---
+
+## Tech Stack
+
+| Category | Technology | Version | Description |
+|----------|-----------|---------|-------------|
+| **Language** | [Python](https://www.python.org/) | >= 3.11 | Primary development language |
+| **MCP Framework** | [FastMCP (mcp)](https://github.com/modelcontextprotocol/python-sdk) | >= 1.0.0 | MCP protocol Python SDK, server core |
+| **Data Validation** | [Pydantic](https://docs.pydantic.dev/) / pydantic-settings | >= 2.0.0 | Type-safe config management and data validation |
+| **HTTP Client** | [httpx](https://www.python-httpx.org/) | >= 0.27.0 | Async HTTP client |
+| **HTTP Utility** | [Requests](https://requests.readthedocs.io/) | >= 2.28.0 | Synchronous HTTP request library |
+| **Config Parsing** | [PyYAML](https://pyyaml.org/) | >= 6.0 | YAML config file parsing |
+| **Logging** | [loguru](https://loguru.readthedocs.io/) | >= 0.7.0 | Structured logging, file rotation, sensitive info filtering |
+| **Code Quality** | [Ruff](https://docs.astral.sh/ruff/) | >= 0.6.0 | Code formatting + Linting (replaces Black + Flake8) |
+| **Type Checking** | [Mypy](https://mypy.readthedocs.io/) | >= 1.0.0 | Static type checking (strict mode) |
+| **Testing** | [Pytest](https://docs.pytest.org/) + pytest-asyncio | >= 8.0.0 | Unit testing and async testing |
+| **Package Manager** | [uv](https://docs.astral.sh/uv/) | >= 0.1 | High-performance Python package manager |
+| **Containerization** | [Docker](https://www.docker.com/) / Docker Compose | - | Multi-stage build, non-root user, health checks |
+| **Build Backend** | [Hatchling](https://hatch.pypa.io/) | - | PEP 517 build backend |
+
+---
+
+## API Documentation
+
+QiuChi, as an MCP server framework, does not provide traditional REST APIs. Instead, it uses the **MCP protocol** for capability discovery and interaction.
+
+### MCP Protocol Interface List
+
+| Capability | MCP Method | Description |
+|-----------|-----------|-------------|
+| Tool List | `tools/list` | Get all registered tools with their parameter definitions |
+| Tool Call | `tools/call` | Call a specified tool and return execution results |
+| Resource List | `resources/list` | Get all registered resources with their URIs |
+| Resource Read | `resources/read` | Read the content of a specified URI resource |
+| Prompt List | `prompts/list` | Get all registered prompt templates |
+| Prompt Get | `prompts/get` | Get a specified prompt template with its parameters |
+
+### Built-in Examples
+
+**Tools (8)**:
+
+| Tool Name | Description |
+|-----------|-------------|
+| `add` | Add two numbers |
+| `subtract` | Subtract two numbers |
+| `multiply` | Multiply two numbers |
+| `divide` | Divide two numbers |
+| `power` | Power operation |
+| `sqrt` | Square root |
+| `celsius_to_fahrenheit` | Celsius to Fahrenheit |
+| `fahrenheit_to_celsius` | Fahrenheit to Celsius |
+
+**Resources (3)**:
 
 | Resource URI | Description |
 |--------------|-------------|
-| knowledge://docs | API documentation |
-| knowledge://config | Server configuration |
-| knowledge://version | Version information |
+| `config://server` | Server configuration info |
+| `config://version` | Version information |
+| `docs://api` | API documentation |
 
-### Prompts (5)
+**Prompts (5)**:
 
-| Prompt | Description |
-|--------|-------------|
-| greeting | Personalized greeting |
-| code_review | Code review prompt |
-| weather_outfit_advice | Weather outfit advice |
-| explain_concept | Concept explanation prompt |
-| summarize_document | Document summary prompt |
+| Prompt Name | Description |
+|-------------|-------------|
+| `greeting` | Personalized greeting |
+| `code_review` | Code review prompt |
+| `weather_outfit_advice` | Weather outfit advice |
+| `explain_concept` | Concept explanation prompt |
+| `summarize_document` | Document summary prompt |
 
-## Configuration
+---
 
-### config.yaml
+## Storage Configuration
 
-```yaml
-mcp:
-  server_name: "QiuChi"
-  version: "1.0.0"
-  transport: "streamable-http"  # stdio, sse, streamable-http
-  host: "0.0.0.0"
-  port: 8000
+### In-Memory Storage
 
-logging:
-  level: "INFO"
-  output: "both"  # stderr for MCP; also write under project-root logs/
+| Storage Type | Implementation | Config Location | Description |
+|-------------|---------------|-----------------|-------------|
+| Session Storage | In-memory dict | `src/runtime/session.py` | SessionManager with TTL and auto-cleanup |
+| Cache Storage | In-memory dict | `src/core/middleware.py` | CacheMiddleware with TTL, SHA-256 key generation |
+| Plugin Registry | In-memory dict | `src/plugins/registry.py` | UnifiedRegistry, thread-safe (RLock) |
 
-features:
-  tools: true
-  resources: true
-  prompts: true
-```
+### Log File Storage
 
-### Environment Variables
+| Config Option | Default | Description |
+|---------------|---------|-------------|
+| `logging.file_path` | `logs/x-QiuChi_{time:YYYY-MM-DD-HH}.log` | Log file path (supports time template variables) |
+| `logging.rotation` | `1 hour` | Log rotation period |
+| `logging.retention` | `7 days` | Log retention duration |
+| `logging.output` | `both` | Output target: `stderr` (stderr only) / `file` (file only) / `both` (both) |
 
-| Variable | Description |
-|----------|-------------|
-| MCP_TRANSPORT | Transport type (stdio/sse/streamable-http) |
-| MCP_PORT | HTTP listen port |
-| MCP_LOG_LEVEL | Log level |
-| OPENWEATHER_API_KEY | Weather API key |
+> **Extension Note**: The cache middleware defines an abstract backend interface that can be extended to external storage backends like Redis. The current version does not include object storage integration, but extension interfaces are reserved for future use.
 
-## Extension Development
-
-### Adding a New Tool
-
-**Method 1: Decorator Registration (Recommended)**
-
-```python
-# src/tools/my_tool.py
-from tools import register_tool
-
-@register_tool(category="custom", subcategory="example")
-def my_function(param: str) -> str:
-    """
-    Tool description.
-
-    Args:
-        param: Parameter description
-
-    Returns:
-        Result description
-    """
-    return f"Result: {param}"
-```
-
-**Method 2: Server Registration**
-
-```python
-# src/tools/my_tool.py
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from server import MCPServer
-
-def register(server: "MCPServer") -> None:
-    @server.tool
-    def my_function(param: str) -> str:
-        """
-        Tool description.
-
-        Args:
-            param: Parameter description
-
-        Returns:
-            Result description
-        """
-        return f"Result: {param}"
-```
-
-### Adding a New Resource
-
-```python
-# src/resources/my_resource.py
-from resources import register_resource
-
-@register_resource(name="config://app", category="config")
-def get_app_config() -> str:
-    """Get application configuration."""
-    return '{"version": "1.0.0"}'
-```
-
-### Adding a New Prompt
-
-```python
-# src/prompts/my_prompt.py
-from prompts import register_prompt
-
-@register_prompt(category="code")
-def code_review(language: str) -> str:
-    """Generate a code review prompt."""
-    return f"Review this {language} code for best practices."
-```
-
-### Registry Query
-
-```python
-from tools import tool_registry, get_tools_by_category
-from resources import resource_registry, get_all_resources
-from prompts import prompt_registry, get_all_prompts
-
-# Get all tools
-all_tools = tool_registry.get_all()
-
-# Get by category
-math_tools = get_tools_by_category("math")
-
-# Get by subcategory
-qiuchi_tools = tool_registry.get_all(category="mcp", subcategory="qiuchi_mcp")
-
-# Print registry info
-tool_registry.print_info()
-```
-
-## MCP Inspector Validation
-
-```bash
-# Install MCP Inspector
-npx @anthropic-ai/mcp-inspector
-
-# Validate HTTP mode
-# Connect to http://localhost:8000/mcp
-
-# Validate Stdio mode
-# Command: PYTHONPATH=src uv run python src/main.py
-```
+---
 
 ## License
 
-MIT License
+This project is licensed under the [MIT](LICENSE) License.
+
+---
+
+## References
+
+| Resource | Link |
+|----------|------|
+| MCP Protocol Specification | https://modelcontextprotocol.io/ |
+| FastMCP SDK | https://github.com/modelcontextprotocol/python-sdk |
+| Python Official Documentation | https://docs.python.org/3.11/ |
+| Pydantic Documentation | https://docs.pydantic.dev/ |
+| Pydantic Settings Documentation | https://docs.pydantic.dev/latest/concepts/pydantic_settings/ |
+| uv Package Manager | https://docs.astral.sh/uv/ |
+| loguru Logging Library | https://loguru.readthedocs.io/ |
+| httpx Documentation | https://www.python-httpx.org/ |
+| PyYAML Documentation | https://pyyaml.org/wiki/PyYAMLDocumentation |
+| Ruff Documentation | https://docs.astral.sh/ruff/ |
+| Mypy Documentation | https://mypy.readthedocs.io/ |
+| Pytest Documentation | https://docs.pytest.org/ |
+| Docker Official Documentation | https://docs.docker.com/ |
+| Hatchling Documentation | https://hatch.pypa.io/ |
+
+---
+
+## Contact
+
+| Channel | Information |
+|---------|-------------|
+| Author | John Young |
+| Email | [john.young@foxmail.com](mailto:john.young@foxmail.com) |
+| Gitee | https://gitee.com/yeyushilai |
+| GitHub | https://github.com/yeyushilai |
+| Project | https://github.com/chain-engine/x-QiuChi |
