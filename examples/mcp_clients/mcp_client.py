@@ -35,7 +35,7 @@ from requests.exceptions import RequestException, Timeout, HTTPError
 class MCPConfig:
     """MCP 客户端配置（支持环境变量覆盖）"""
     
-    base_url: str = field(default_factory=lambda: os.getenv("MCP_BASE_URL", "http://localhost:8000"))
+    base_url: str = field(default_factory=lambda: os.getenv("MCP_BASE_URL", "http://localhost:8100"))
     mcp_path: str = field(default_factory=lambda: os.getenv("MCP_PATH", "/mcp"))
     timeout: int = field(default_factory=lambda: int(os.getenv("MCP_TIMEOUT", "30")))
     max_retries: int = field(default_factory=lambda: int(os.getenv("MCP_MAX_RETRIES", "3")))
@@ -176,7 +176,7 @@ class MCPClient:
     
     示例：
     ```python
-    client = MCPClient(base_url="http://prod-mcp:8000")
+    client = MCPClient(base_url="http://prod-mcp:8100")
     
     # 方式 1: 直接调用
     result = client.call("tools/list", {})
@@ -536,7 +536,7 @@ def create_mcp_client(
     示例：
     ```python
     client = create_mcp_client()
-    client = create_mcp_client(base_url="http://prod:8000", timeout=60)
+    client = create_mcp_client(base_url="http://prod:8100", timeout=60)
     client = create_mcp_client(config={"base_url": "...", "timeout": 45})
     ```
     """
