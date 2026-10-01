@@ -11,13 +11,10 @@
 """
 
 from src.constants.constants import (
-    API_PREFIX,
     APP_DESCRIPTION,
     APP_ID,
     APP_NAME,
     APP_VERSION,
-    CONTEXT_REAL_IP,
-    CONTEXT_REQUEST_ID,
     DEFAULT_CONFIG_DIR,
     DEFAULT_CONFIG_FILE,
     ENV_DEVELOPMENT,
@@ -29,7 +26,6 @@ from src.constants.constants import (
     MSG_NOT_FOUND,
     MSG_SUCCESS,
     MSG_VALIDATION_ERROR,
-    REQUEST_ID_HEADER,
     USERNAME_MAX_LENGTH,
     USERNAME_MIN_LENGTH,
 )
@@ -40,15 +36,11 @@ __all__ = [
     "APP_NAME",
     "APP_VERSION",
     "APP_DESCRIPTION",
-    "API_PREFIX",
     "ENV_DEVELOPMENT",
     "ENV_TESTING",
     "ENV_PRODUCTION",
     "DEFAULT_CONFIG_DIR",
     "DEFAULT_CONFIG_FILE",
-    "REQUEST_ID_HEADER",
-    "CONTEXT_REQUEST_ID",
-    "CONTEXT_REAL_IP",
     "MSG_SUCCESS",
     "MSG_INTERNAL_ERROR",
     "MSG_NOT_FOUND",
