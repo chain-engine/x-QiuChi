@@ -150,13 +150,13 @@ uv run x-QiuChi --help
 
 ```bash
 # HTTP 模式（默认，端口 8888）
-uv run python src/main.py
+uv run python -m src.main
 
 # Stdio 模式（兼容 Claude Desktop）
-uv run python src/main.py --transport stdio
+uv run python -m src.main --transport stdio
 
 # 自定义参数
-uv run python src/main.py --host 127.0.0.1 --port 8080 --log-level DEBUG
+uv run python -m src.main --host 127.0.0.1 --port 8080 --log-level DEBUG
 ```
 
 #### 方式三：Docker 容器部署

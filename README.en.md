@@ -134,19 +134,19 @@ cp config.yaml.example config.yaml
 
 ```bash
 # HTTP mode (default, port 8888)
-uv run python src/main.py
+uv run python -m src.main
 
 # Using the project script entry
 uv run x-QiuChi
 
 # Stdio mode (compatible with Claude Desktop)
-uv run python src/main.py --transport stdio
+uv run python -m src.main --transport stdio
 
 # Custom parameters
-uv run python src/main.py --host 127.0.0.1 --port 8080 --log-level DEBUG
+uv run python -m src.main --host 127.0.0.1 --port 8080 --log-level DEBUG
 
 # View all startup parameters
-uv run python src/main.py --help
+uv run python -m src.main --help
 ```
 
 #### Docker Container Deployment

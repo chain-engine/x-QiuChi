@@ -55,4 +55,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import httpx, sys; r = httpx.post('http://localhost:8888/mcp', json={'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'healthcheck','version':'1.0'}}}, headers={'Accept':'application/json, text/event-stream'}, timeout=5); sys.exit(0 if r.status_code == 200 else 1)"
 
 # 启动命令
-CMD ["python", "src/main.py"]
+CMD ["python", "-m", "src.main"]

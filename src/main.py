@@ -14,7 +14,7 @@
 - 完整的类型提示和文档
 
 快速开始:
-    >>> from main import create_server, tool, resource, prompt
+    >>> from src.main import create_server, tool, resource, prompt
     >>> server = create_server("MyServer")
     >>>
     >>> @tool(category="math")
@@ -30,16 +30,10 @@
 
 import argparse
 import sys
-from pathlib import Path
 
-root_path = Path(__file__).resolve().parent.parent
-if str(root_path) not in sys.path:
-    sys.path.insert(0, str(root_path))
-
-# noqa: E402 —— 以下导入依赖上方 sys.path 引导（以 src 为包根），须保持在顶部之后
-from src.core.config import settings  # noqa: E402
-from src.core.logger import setup_logging  # noqa: E402
-from src.core.middleware import (  # noqa: E402
+from src.core.config import settings
+from src.core.logger import setup_logging
+from src.core.middleware import (
     CacheMiddleware,
     ErrorHandlerMiddleware,
     LoggingMiddleware,
@@ -47,9 +41,9 @@ from src.core.middleware import (  # noqa: E402
     Middleware,
     MiddlewareChain,
 )
-from src.plugins import PluginMetadata, PluginType, prompt, resource, tool  # noqa: E402
-from src.server import MCPServer, create_server  # noqa: E402
-from src.transport import TransportConfig, TransportType  # noqa: E402
+from src.plugins import PluginMetadata, PluginType, prompt, resource, tool
+from src.server import MCPServer, create_server
+from src.transport import TransportConfig, TransportType
 
 __all__ = [
     # 核心类
