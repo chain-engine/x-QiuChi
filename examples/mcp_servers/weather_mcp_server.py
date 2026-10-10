@@ -6,8 +6,17 @@ Run from the repository root:
 """
 
 import os
+from pathlib import Path
 import httpx
 from mcp.server.fastmcp import FastMCP
+
+# 自动加载项目根目录 .env 文件
+try:
+    from dotenv import load_dotenv
+    PROJECT_ROOT = Path(__file__).parent.parent.parent
+    load_dotenv(PROJECT_ROOT / ".env")
+except ImportError:
+    pass
 
 # Create an MCP server
 mcp = FastMCP("RealWeatherService", json_response=True, port=8888)

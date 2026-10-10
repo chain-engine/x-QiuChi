@@ -34,6 +34,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 SRC_PATH = PROJECT_ROOT / "src"
 
+# 自动加载 .env 文件
+try:
+    from dotenv import load_dotenv
+    load_dotenv(PROJECT_ROOT / ".env")
+except ImportError:
+    pass
+
 
 async def create_http_client():
     """
@@ -102,8 +109,13 @@ async def run_simple_agent(client, query: str):
     print(f"可用工具: {[tool.name for tool in tools]}")
     print(f"{'='*60}\n")
 
-    # 创建 ReAct Agent（需要 OPENAI_API_KEY）
-    model = init_chat_model("openai:gpt-4o-mini")
+    # 创建 ReAct Agent（支持 OpenAI 或 MiMo）
+    from langchain_openai import ChatOpenAI
+    model = ChatOpenAI(
+        model=os.environ.get("AI_LLM_MODEL", "mimo-v2.6-pro"),
+        base_url=os.environ.get("AI_LLM_BASE_URL", "https://api.xiaomimimo.com/v1"),
+        api_key=os.environ.get("AI_LLM_API_KEY") or os.environ.get("OPENAI_API_KEY"),
+    )
     agent = create_react_agent(model, tools)
 
     # 运行查询
@@ -135,8 +147,13 @@ async def run_langgraph_agent(client, query: str):
     print(f"可用工具: {[tool.name for tool in tools]}")
     print(f"{'='*60}\n")
 
-    # 初始化模型
-    model = init_chat_model("openai:gpt-4o-mini")
+    # 初始化模型（支持 OpenAI 或 MiMo）
+    from langchain_openai import ChatOpenAI
+    model = ChatOpenAI(
+        model=os.environ.get("AI_LLM_MODEL", "mimo-v2.6-pro"),
+        base_url=os.environ.get("AI_LLM_BASE_URL", "https://api.xiaomimimo.com/v1"),
+        api_key=os.environ.get("AI_LLM_API_KEY") or os.environ.get("OPENAI_API_KEY"),
+    )
 
     # 定义调用模型的节点
     def call_model(state: MessagesState):
@@ -208,11 +225,13 @@ async def main():
 
     args = parser.parse_args()
 
-    # 检查环境变量
-    if args.demo != "list" and not os.environ.get("OPENAI_API_KEY"):
-        print("错误: 请设置 OPENAI_API_KEY 环境变量")
-        print("  export OPENAI_API_KEY=your_api_key")
-        sys.exit(1)
+    # 检查环境变量（支持 OpenAI 或 MiMo）
+    if args.demo != "list":
+        api_key = os.environ.get("AI_LLM_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            print("错误: 请设置 AI_LLM_API_KEY 环境变量")
+            print("  export AI_LLM_API_KEY=your_api_key")
+            sys.exit(1)
 
     # HTTP 模式提示
     if args.mode == "http":
