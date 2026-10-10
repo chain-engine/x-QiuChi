@@ -4,7 +4,7 @@
 展示如何使用 QiuChi 的资源装饰器创建资源。
 """
 
-from plugins import resource
+from src.plugins import resource
 
 
 @resource(name="config://server", category="system", tags=["configuration"])
@@ -16,6 +16,7 @@ def get_server_config() -> str:
         服务器配置的 JSON 字符串
     """
     import json
+
     config = {
         "name": "QiuChi Server",
         "version": "1.0.0",
@@ -25,7 +26,7 @@ def get_server_config() -> str:
             "tools": True,
             "resources": True,
             "prompts": True,
-        }
+        },
     }
     return json.dumps(config, indent=2)
 
@@ -39,6 +40,7 @@ def get_version_info() -> str:
         版本信息的 JSON 字符串
     """
     import json
+
     info = {
         "name": "QiuChi",
         "version": "1.0.0",

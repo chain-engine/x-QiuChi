@@ -7,16 +7,16 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from core.logger import get_logger
+from src.core.logger import get_logger
 
 from .base import PluginMetadata, PluginStatus, PluginType
 
 logger = get_logger(__name__)
 
 
-class Plugin(abc.ABC):
+class Plugin(abc.ABC):  # noqa: B024  # 抽象基类，生命周期方法均有默认实现，子类按需覆写
     """
     插件抽象基类
 
@@ -71,7 +71,7 @@ class PluginLoader:
     """
 
     def __init__(self) -> None:
-        self._plugins: Dict[str, Plugin] = {}
+        self._plugins: dict[str, Plugin] = {}
 
     def register(self, plugin: Plugin) -> bool:
         if plugin.name in self._plugins:
@@ -81,13 +81,13 @@ class PluginLoader:
         logger.debug(f"Plugin '{plugin.name}' registered")
         return True
 
-    def get(self, name: str) -> Optional[Plugin]:
+    def get(self, name: str) -> Plugin | None:
         return self._plugins.get(name)
 
-    def get_all(self) -> List[Plugin]:
+    def get_all(self) -> list[Plugin]:
         return list(self._plugins.values())
 
-    def get_by_type(self, plugin_type: PluginType) -> List[Plugin]:
+    def get_by_type(self, plugin_type: PluginType) -> list[Plugin]:
         return [p for p in self._plugins.values() if p.type == plugin_type]
 
     def remove(self, name: str) -> bool:

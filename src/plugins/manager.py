@@ -15,10 +15,10 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
-from core.config import settings
-from core.logger import get_logger
+from src.core.config import settings
+from src.core.logger import get_logger
 
 from .base import PluginStatus, PluginType
 from .loader import Plugin, PluginLoader
@@ -37,19 +37,19 @@ class PluginManager:
     def __init__(self, server: Any):
         self.server = server
         self.loader = PluginLoader()
-        self._discovered: Set[str] = set()
+        self._discovered: set[str] = set()
 
     # ------------------------------------------------------------------
     # 基础查询
     # ------------------------------------------------------------------
     @property
-    def plugins(self) -> List[Plugin]:
+    def plugins(self) -> list[Plugin]:
         return self.loader.get_all()
 
-    def get_plugin(self, name: str) -> Optional[Plugin]:
+    def get_plugin(self, name: str) -> Plugin | None:
         return self.loader.get(name)
 
-    def get_by_type(self, plugin_type: PluginType) -> List[Plugin]:
+    def get_by_type(self, plugin_type: PluginType) -> list[Plugin]:
         return self.loader.get_by_type(plugin_type)
 
     # ------------------------------------------------------------------
@@ -62,7 +62,7 @@ class PluginManager:
             return False
         return self.loader.register(plugin)
 
-    def discover(self, paths: Optional[List[str]] = None) -> List[str]:
+    def discover(self, paths: list[str] | None = None) -> list[str]:
         """
         自动发现插件
 
@@ -177,14 +177,14 @@ class PluginManager:
     # ------------------------------------------------------------------
     # 依赖解析
     # ------------------------------------------------------------------
-    def _ordered_by_dependency(self) -> List[Plugin]:
+    def _ordered_by_dependency(self) -> list[Plugin]:
         """拓扑排序：依赖在前，被依赖在后"""
         plugins = self.loader.get_all()
         name_to_plugin = {p.name: p for p in plugins}
-        visited: Set[str] = set()
-        ordered: List[Plugin] = []
+        visited: set[str] = set()
+        ordered: list[Plugin] = []
 
-        def visit(name: str, stack: Set[str]) -> None:
+        def visit(name: str, stack: set[str]) -> None:
             if name in visited or name not in name_to_plugin:
                 return
             if name in stack:
@@ -216,9 +216,9 @@ class PluginManager:
     # ------------------------------------------------------------------
     # 统计
     # ------------------------------------------------------------------
-    def stats(self) -> Dict[str, Any]:
-        type_counts: Dict[str, int] = {}
-        status_counts: Dict[str, int] = {}
+    def stats(self) -> dict[str, Any]:
+        type_counts: dict[str, int] = {}
+        status_counts: dict[str, int] = {}
         for plugin in self.loader.get_all():
             type_counts[plugin.type.value] = type_counts.get(plugin.type.value, 0) + 1
             status_counts[plugin.status.value] = status_counts.get(plugin.status.value, 0) + 1

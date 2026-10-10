@@ -11,7 +11,7 @@
     - 日志轮转和自动清理
 
 Usage:
-    from core.logger import logger, setup_logging, get_logger
+    from src.core.logger import logger, setup_logging, get_logger
 
     # 在应用启动时调用一次
     setup_logging()
@@ -29,7 +29,6 @@ from __future__ import annotations
 import json as _json
 import os
 import sys
-from typing import Optional
 
 from loguru import logger as _logger
 
@@ -60,6 +59,7 @@ _CONSOLE_FORMAT: str = (
 # ============================================================
 # JSON 序列化（生产环境结构化日志）
 # ============================================================
+
 
 def _json_serializer(record: dict) -> str:
     """将 loguru 日志记录序列化为扁平 JSON 字符串。
@@ -116,6 +116,7 @@ def _json_formatter(record: dict) -> str:
 # Logger 封装类
 # ============================================================
 
+
 class Logger:
     """
     日志器
@@ -166,13 +167,14 @@ class Logger:
 # 初始化
 # ============================================================
 
+
 def setup_logging(
-    level: Optional[str] = None,
-    output: Optional[str] = None,
-    file_path: Optional[str] = None,
-    rotation: Optional[str] = None,
-    retention: Optional[str] = None,
-    log_format: Optional[str] = None,
+    level: str | None = None,
+    output: str | None = None,
+    file_path: str | None = None,
+    rotation: str | None = None,
+    retention: str | None = None,
+    log_format: str | None = None,
 ) -> None:
     """初始化日志配置，全局只能调用一次。
 
@@ -197,7 +199,7 @@ def setup_logging(
     if _configured:
         return
 
-    from core.config import settings, PROJECT_ROOT
+    from src.core.config import PROJECT_ROOT, settings
 
     config = settings.logging
 
@@ -259,9 +261,7 @@ def setup_logging(
     # 兜底：确保所有日志记录都有 request_id 字段
     # ----------------------------------------------------------
     _logger.configure(
-        patcher=lambda record: record["extra"].setdefault(
-            "request_id", _DEFAULT_REQUEST_ID
-        )
+        patcher=lambda record: record["extra"].setdefault("request_id", _DEFAULT_REQUEST_ID)
     )
 
     _configured = True
@@ -271,6 +271,7 @@ def setup_logging(
 # ============================================================
 # 公开 API
 # ============================================================
+
 
 def get_logger(name: str) -> Logger:
     """获取命名日志器。
@@ -290,7 +291,7 @@ def get_log_file_path() -> str:
     Returns:
         str: 日志文件路径
     """
-    from core.config import settings
+    from src.core.config import settings
 
     return settings.logging.file_path
 

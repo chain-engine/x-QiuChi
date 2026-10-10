@@ -5,11 +5,11 @@
 """
 
 from .context import (
-    RequestContext,
     ContextManager,
+    RequestContext,
+    clear_current_context,
     get_current_context,
     set_current_context,
-    clear_current_context,
 )
 from .session import SessionManager
 

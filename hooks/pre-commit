@@ -1,0 +1,35 @@
+#!/bin/sh
+# x-QiuChi pre-commit hook
+# Runs before every `git commit`:
+#   uv run ruff check --fix src/ tests/
+#   uv run ruff format  src/ tests/
+# Auto-fixable issues are fixed and re-staged; unfixable ones abort the commit.
+# To skip this check temporarily: git commit --no-verify
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+run_ruff() {
+    if command -v uv >/dev/null 2>&1; then
+        uv run ruff "$@"
+    elif [ -x .venv/Scripts/ruff.exe ]; then
+        .venv/Scripts/ruff.exe "$@"
+    else
+        echo "pre-commit: ruff not found (uv not on PATH and .venv/Scripts/ruff.exe missing)." >&2
+        echo "pre-commit: run 'uv sync' first, or bypass with 'git commit --no-verify'." >&2
+        exit 1
+    fi
+}
+
+echo "pre-commit: ruff check --fix src/ tests/"
+run_ruff check --fix src/ tests/
+
+echo "pre-commit: ruff format src/ tests/"
+run_ruff format src/ tests/
+
+# Re-stage only files under src/ tests/ that were already staged,
+# so auto-fixed formatting is included in this commit.
+git diff --cached --name-only --diff-filter=ACM -z -- src tests | xargs -0 -r git add --
+
+echo "pre-commit: ruff check & format finished."

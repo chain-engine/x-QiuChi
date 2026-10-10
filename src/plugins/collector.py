@@ -17,8 +17,9 @@
 from __future__ import annotations
 
 import threading
-from typing import Any, Callable, Dict, Optional, TypeVar
+from collections.abc import Callable
 from functools import wraps
+from typing import Any, TypeVar
 
 from .base import PluginType
 
@@ -31,10 +32,10 @@ class PluginCollector:
 
     def __init__(self, plugin_type: PluginType):
         self.plugin_type = plugin_type
-        self._items: Dict[str, Dict[str, Any]] = {}
+        self._items: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
 
-    def collect(self, func: FuncType, name: Optional[str] = None, **metadata):
+    def collect(self, func: FuncType, name: str | None = None, **metadata):
         func_name = name or func.__name__
         func_doc = func.__doc__ or ""
 
@@ -64,7 +65,7 @@ class PluginCollector:
             }
         return wrapper
 
-    def get_items(self) -> Dict[str, Dict[str, Any]]:
+    def get_items(self) -> dict[str, dict[str, Any]]:
         with self._lock:
             return self._items.copy()
 
@@ -80,8 +81,8 @@ _prompt_collector = PluginCollector(PluginType.PROMPT)
 
 
 # 多服务器隔离：按 server id 维护独立收集器
-_collectors_by_server: Dict[int, Dict[PluginType, PluginCollector]] = {}
-_active_server_id: Optional[int] = None
+_collectors_by_server: dict[int, dict[PluginType, PluginCollector]] = {}
+_active_server_id: int | None = None
 _global_lock = threading.Lock()
 
 
@@ -102,8 +103,6 @@ def unregister_server_collectors(server: Any) -> None:
     sid = id(server)
     with _global_lock:
         _collectors_by_server.pop(sid, None)
-        for tool_name, collector in _tool_collector._items.items() if False else []:
-            pass
     # 同时清理全局收集器中该 server 装饰的项（通过 _source_server 标记）
     _prune_global(_tool_collector, sid)
     _prune_global(_resource_collector, sid)
@@ -119,7 +118,7 @@ def _prune_global(collector: PluginCollector, server_id: int) -> None:
             items.pop(k, None)
 
 
-def set_active_server(server: Optional[Any]) -> None:
+def set_active_server(server: Any | None) -> None:
     """设置当前激活的服务器（装饰器调用时使用）"""
     global _active_server_id
     _active_server_id = id(server) if server is not None else None
@@ -153,16 +152,21 @@ def get_prompt_collector() -> PluginCollector:
 
 def _make_decorator(plugin_type: PluginType):
     def factory(
-        name: Optional[str] = None,
+        name: str | None = None,
         category: str = "default",
-        subcategory: Optional[str] = None,
-        tags: Optional[list] = None,
+        subcategory: str | None = None,
+        tags: list | None = None,
         **metadata,
     ) -> Callable[[FuncType], FuncType]:
         def decorator(func: FuncType) -> FuncType:
             collector = _get_collector(plugin_type)
             wrapper = collector.collect(
-                func, name=name, category=category, subcategory=subcategory, tags=tags or [], **metadata
+                func,
+                name=name,
+                category=category,
+                subcategory=subcategory,
+                tags=tags or [],
+                **metadata,
             )
             # 标记来源 server，便于 unregister 时清理
             if _active_server_id is not None:
@@ -170,7 +174,9 @@ def _make_decorator(plugin_type: PluginType):
                 if wrapper.__name__ in items:
                     items[wrapper.__name__]["__source_server__"] = _active_server_id
             return wrapper
+
         return decorator
+
     return factory
 
 
@@ -180,23 +186,23 @@ resource = _make_decorator(PluginType.RESOURCE)
 prompt = _make_decorator(PluginType.PROMPT)
 
 
-def get_all_tool_collectors() -> Dict[Optional[int], PluginCollector]:
+def get_all_tool_collectors() -> dict[int | None, PluginCollector]:
     """获取所有工具收集器（按 server 隔离）"""
-    result: Dict[Optional[int], PluginCollector] = {None: _tool_collector}
+    result: dict[int | None, PluginCollector] = {None: _tool_collector}
     for sid, bucket in _collectors_by_server.items():
         result[sid] = bucket[PluginType.TOOL]
     return result
 
 
-def get_all_resource_collectors() -> Dict[Optional[int], PluginCollector]:
-    result: Dict[Optional[int], PluginCollector] = {None: _resource_collector}
+def get_all_resource_collectors() -> dict[int | None, PluginCollector]:
+    result: dict[int | None, PluginCollector] = {None: _resource_collector}
     for sid, bucket in _collectors_by_server.items():
         result[sid] = bucket[PluginType.RESOURCE]
     return result
 
 
-def get_all_prompt_collectors() -> Dict[Optional[int], PluginCollector]:
-    result: Dict[Optional[int], PluginCollector] = {None: _prompt_collector}
+def get_all_prompt_collectors() -> dict[int | None, PluginCollector]:
+    result: dict[int | None, PluginCollector] = {None: _prompt_collector}
     for sid, bucket in _collectors_by_server.items():
         result[sid] = bucket[PluginType.PROMPT]
     return result

@@ -12,16 +12,20 @@
     3. 从 Collector 读取并注册到 PluginRegistry
 """
 
-from .base import PluginType, PluginMetadata, PluginStatus, PluginDependency
+from .base import PluginDependency, PluginMetadata, PluginStatus, PluginType
 from .collector import (
-    tool, resource, prompt,
-    get_tool_collector, get_resource_collector, get_prompt_collector,
     PluginCollector,
+    get_prompt_collector,
+    get_resource_collector,
+    get_tool_collector,
+    prompt,
+    resource,
+    tool,
 )
-from .registry import PluginRegistry, RegistryItemType, global_registry
-from .discovery import PluginDiscovery, discover_plugins, create_discovery
+from .discovery import PluginDiscovery, create_discovery, discover_plugins
 from .loader import Plugin, PluginLoader
 from .manager import PluginManager
+from .registry import PluginRegistry, RegistryItemType, global_registry
 
 __all__ = [
     # 基础类型

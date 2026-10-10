@@ -22,7 +22,7 @@ services:
       - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY:-}
 
       # Python 路径
-      - PYTHONPATH=/app/src
+      - PYTHONPATH=/app
     volumes:
       # 挂载日志目录（可选）
       - qiuchi-logs:/app/logs

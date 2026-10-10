@@ -34,7 +34,7 @@ COPY --from=builder /app/config.yaml /app/config.yaml
 
 # 设置环境变量
 ENV PATH="/app/venv/bin:$PATH"
-ENV PYTHONPATH="/app/src"
+ENV PYTHONPATH="/app"
 ENV MCP_TRANSPORT="streamable-http"
 ENV MCP_HOST="0.0.0.0"
 ENV MCP_PORT="8888"
@@ -50,9 +50,9 @@ USER appuser
 # 暴露端口
 EXPOSE 8888
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8888/mcp', headers={'Accept': 'text/event-stream'}, timeout=5)" || exit 1
+# 健康检查（compose 中可被覆盖；默认做一次真实的 MCP initialize 握手并校验 200）
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import httpx, sys; r = httpx.post('http://localhost:8888/mcp', json={'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'healthcheck','version':'1.0'}}}, headers={'Accept':'application/json, text/event-stream'}, timeout=5); sys.exit(0 if r.status_code == 200 else 1)"
 
 # 启动命令
 CMD ["python", "src/main.py"]

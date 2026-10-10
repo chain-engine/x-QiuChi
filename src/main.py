@@ -32,21 +32,24 @@ import argparse
 import sys
 from pathlib import Path
 
-src_path = Path(__file__).parent
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
+root_path = Path(__file__).resolve().parent.parent
+if str(root_path) not in sys.path:
+    sys.path.insert(0, str(root_path))
 
-from server import MCPServer, create_server
-from core.config import settings
-from plugins import PluginMetadata, PluginType
-from core.middleware import (
-    Middleware, MiddlewareChain,
-    ErrorHandlerMiddleware, LoggingMiddleware,
-    MCPAuthMiddleware, CacheMiddleware,
+# noqa: E402 —— 以下导入依赖上方 sys.path 引导（以 src 为包根），须保持在顶部之后
+from src.core.config import settings  # noqa: E402
+from src.core.logger import setup_logging  # noqa: E402
+from src.core.middleware import (  # noqa: E402
+    CacheMiddleware,
+    ErrorHandlerMiddleware,
+    LoggingMiddleware,
+    MCPAuthMiddleware,
+    Middleware,
+    MiddlewareChain,
 )
-from transport import TransportType, TransportConfig
-from plugins import tool, resource, prompt
-from core.logger import setup_logging
+from src.plugins import PluginMetadata, PluginType, prompt, resource, tool  # noqa: E402
+from src.server import MCPServer, create_server  # noqa: E402
+from src.transport import TransportConfig, TransportType  # noqa: E402
 
 __all__ = [
     # 核心类
@@ -88,19 +91,19 @@ Examples:
   %(prog)s --transport stdio  # 启动 Stdio 服务器
   %(prog)s --port 8080        # 在端口 8080 上启动
   %(prog)s --config custom.yaml  # 使用自定义配置文件
-        """
+        """,
     )
 
     # 服务器配置
     parser.add_argument(
         "--name",
         default=settings.mcp.server_name,
-        help=f"服务器名称（默认: {settings.mcp.server_name}）"
+        help=f"服务器名称（默认: {settings.mcp.server_name}）",
     )
     parser.add_argument(
         "--version",
         default=settings.mcp.version,
-        help=f"服务器版本（默认: {settings.mcp.version}）"
+        help=f"服务器版本（默认: {settings.mcp.version}）",
     )
 
     # 传输配置
@@ -108,56 +111,38 @@ Examples:
         "--transport",
         choices=["stdio", "sse", "streamable-http"],
         default=settings.mcp.transport,
-        help=f"传输类型（默认: {settings.mcp.transport}）"
+        help=f"传输类型（默认: {settings.mcp.transport}）",
     )
     parser.add_argument(
-        "--host",
-        default=settings.mcp.host,
-        help=f"HTTP 监听地址（默认: {settings.mcp.host}）"
+        "--host", default=settings.mcp.host, help=f"HTTP 监听地址（默认: {settings.mcp.host}）"
     )
     parser.add_argument(
         "--port",
         type=int,
         default=settings.mcp.port,
-        help=f"HTTP 监听端口（默认: {settings.mcp.port}）"
+        help=f"HTTP 监听端口（默认: {settings.mcp.port}）",
     )
 
     # 配置文件
-    parser.add_argument(
-        "--config",
-        default="config.yaml",
-        help="配置文件路径（默认: config.yaml）"
-    )
+    parser.add_argument("--config", default="config.yaml", help="配置文件路径（默认: config.yaml）")
 
     # 日志配置
     parser.add_argument(
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         default=settings.logging.level,
-        help=f"日志级别（默认: {settings.logging.level}）"
+        help=f"日志级别（默认: {settings.logging.level}）",
     )
     parser.add_argument(
         "--log-file",
         default=settings.logging.file_path,
-        help=f"日志文件路径（默认: {settings.logging.file_path}）"
+        help=f"日志文件路径（默认: {settings.logging.file_path}）",
     )
 
     # 功能开关
-    parser.add_argument(
-        "--no-tools",
-        action="store_true",
-        help="禁用 Tools 原语"
-    )
-    parser.add_argument(
-        "--no-resources",
-        action="store_true",
-        help="禁用 Resources 原语"
-    )
-    parser.add_argument(
-        "--no-prompts",
-        action="store_true",
-        help="禁用 Prompts 原语"
-    )
+    parser.add_argument("--no-tools", action="store_true", help="禁用 Tools 原语")
+    parser.add_argument("--no-resources", action="store_true", help="禁用 Resources 原语")
+    parser.add_argument("--no-prompts", action="store_true", help="禁用 Prompts 原语")
 
     return parser.parse_args()
 
@@ -189,7 +174,7 @@ def update_settings_from_args(args):
 
 def print_startup_info(server, args):
     """打印启动信息"""
-    from core.logger import get_logger
+    from src.core.logger import get_logger
 
     logger = get_logger("main")
 
@@ -202,9 +187,11 @@ def print_startup_info(server, args):
     if settings.mcp.transport in ["sse", "streamable-http"]:
         logger.info(f"Listening: http://{settings.mcp.host}:{settings.mcp.port}")
 
-    logger.info(f"Features: Tools={settings.features.tools}, "
-                f"Resources={settings.features.resources}, "
-                f"Prompts={settings.features.prompts}")
+    logger.info(
+        f"Features: Tools={settings.features.tools}, "
+        f"Resources={settings.features.resources}, "
+        f"Prompts={settings.features.prompts}"
+    )
     logger.info(f"Log level: {settings.logging.level}")
     logger.info(f"Config file: {settings.config_file}")
     logger.info("=" * 60)
@@ -247,12 +234,14 @@ def main():
     try:
         main_async()
     except KeyboardInterrupt:
-        from core.logger import get_logger
+        from src.core.logger import get_logger
+
         logger = get_logger("main")
         logger.info("Server stopped by user")
         sys.exit(0)
     except Exception as e:
-        from core.logger import get_logger
+        from src.core.logger import get_logger
+
         logger = get_logger("main")
         logger.error(f"Failed to start server: {e}")
         sys.exit(1)

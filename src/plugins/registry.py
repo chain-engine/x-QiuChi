@@ -8,19 +8,22 @@
 - 线程安全
 """
 
-from typing import Any, Dict, List, Optional, Set, Union, Callable
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from threading import RLock
+from typing import Any
 
-from .base import PluginType, PluginMetadata
-from core.logger import get_logger
+from src.core.logger import get_logger
+
+from .base import PluginMetadata
 
 logger = get_logger(__name__)
 
 
-class RegistryItemType(str, Enum):
+class RegistryItemType(StrEnum):
     """注册表项类型"""
+
     TOOL = "tool"
     RESOURCE = "resource"
     PROMPT = "prompt"
@@ -29,13 +32,14 @@ class RegistryItemType(str, Enum):
 @dataclass
 class RegistryItem:
     """注册表项"""
+
     name: str
     item: Any
     type: RegistryItemType
     metadata: PluginMetadata
     category: str = "default"
-    subcategory: Optional[str] = None
-    tags: Set[str] = field(default_factory=set)
+    subcategory: str | None = None
+    tags: set[str] = field(default_factory=set)
     is_enabled: bool = True
 
 
@@ -44,7 +48,7 @@ class PluginRegistry:
 
     def __init__(self, name: str = "PluginRegistry"):
         self.name = name
-        self._items: Dict[str, RegistryItem] = {}
+        self._items: dict[str, RegistryItem] = {}
         self._lock = RLock()
         logger.debug(f"Initialized registry: {name}")
 
@@ -56,8 +60,8 @@ class PluginRegistry:
         metadata: PluginMetadata,
         *,
         category: str = "default",
-        subcategory: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        subcategory: str | None = None,
+        tags: list[str] | None = None,
         enabled: bool = True,
         overwrite: bool = False,
     ) -> bool:
@@ -76,18 +80,24 @@ class PluginRegistry:
                 tags=set(tags or []),
                 is_enabled=enabled,
             )
-            logger.debug(f"[{self.name}] Registered: {name} (type={item_type}, category={category})")
+            logger.debug(
+                f"[{self.name}] Registered: {name} (type={item_type}, category={category})"
+            )
             return True
 
     def register_tool(self, name: str, tool: Callable, metadata: PluginMetadata, **kwargs) -> bool:
         """注册工具"""
         return self.register(name, tool, RegistryItemType.TOOL, metadata, **kwargs)
 
-    def register_resource(self, name: str, resource: Callable, metadata: PluginMetadata, **kwargs) -> bool:
+    def register_resource(
+        self, name: str, resource: Callable, metadata: PluginMetadata, **kwargs
+    ) -> bool:
         """注册资源"""
         return self.register(name, resource, RegistryItemType.RESOURCE, metadata, **kwargs)
 
-    def register_prompt(self, name: str, prompt: Callable, metadata: PluginMetadata, **kwargs) -> bool:
+    def register_prompt(
+        self, name: str, prompt: Callable, metadata: PluginMetadata, **kwargs
+    ) -> bool:
         """注册提示词"""
         return self.register(name, prompt, RegistryItemType.PROMPT, metadata, **kwargs)
 
@@ -99,12 +109,12 @@ class PluginRegistry:
                 return True
             return False
 
-    def get(self, name: str) -> Optional[Any]:
+    def get(self, name: str) -> Any | None:
         with self._lock:
             item = self._items.get(name)
             return item.item if item and item.is_enabled else None
 
-    def get_item(self, name: str, enabled_only: bool = True) -> Optional[RegistryItem]:
+    def get_item(self, name: str, enabled_only: bool = True) -> RegistryItem | None:
         with self._lock:
             item = self._items.get(name)
             if enabled_only and item and not item.is_enabled:
@@ -113,12 +123,12 @@ class PluginRegistry:
 
     def get_all(
         self,
-        item_type: Optional[RegistryItemType] = None,
-        category: Optional[str] = None,
-        subcategory: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        item_type: RegistryItemType | None = None,
+        category: str | None = None,
+        subcategory: str | None = None,
+        tags: list[str] | None = None,
         enabled_only: bool = True,
-    ) -> List[Any]:
+    ) -> list[Any]:
         with self._lock:
             items = []
             for item in self._items.values():
@@ -137,12 +147,12 @@ class PluginRegistry:
 
     def get_all_items(
         self,
-        item_type: Optional[RegistryItemType] = None,
-        category: Optional[str] = None,
-        subcategory: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        item_type: RegistryItemType | None = None,
+        category: str | None = None,
+        subcategory: str | None = None,
+        tags: list[str] | None = None,
         enabled_only: bool = True,
-    ) -> List[RegistryItem]:
+    ) -> list[RegistryItem]:
         with self._lock:
             items = []
             for item in self._items.values():
@@ -162,11 +172,11 @@ class PluginRegistry:
     def get_all_items_by_str_type(
         self,
         item_type_str: str,
-        category: Optional[str] = None,
-        subcategory: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        category: str | None = None,
+        subcategory: str | None = None,
+        tags: list[str] | None = None,
         enabled_only: bool = True,
-    ) -> List[RegistryItem]:
+    ) -> list[RegistryItem]:
         """通过字符串类型查询（兼容没有导入 RegistryItemType 的场景）"""
         with self._lock:
             items = []
@@ -184,17 +194,27 @@ class PluginRegistry:
                 items.append(item)
             return items
 
-    def get_tools(self, category: Optional[str] = None, subcategory: Optional[str] = None, enabled_only: bool = True) -> List[Callable]:
+    def get_tools(
+        self, category: str | None = None, subcategory: str | None = None, enabled_only: bool = True
+    ) -> list[Callable]:
         """获取工具列表"""
         return self.get_all(RegistryItemType.TOOL, category, subcategory, enabled_only=enabled_only)
 
-    def get_resources(self, category: Optional[str] = None, subcategory: Optional[str] = None, enabled_only: bool = True) -> List[Callable]:
+    def get_resources(
+        self, category: str | None = None, subcategory: str | None = None, enabled_only: bool = True
+    ) -> list[Callable]:
         """获取资源列表"""
-        return self.get_all(RegistryItemType.RESOURCE, category, subcategory, enabled_only=enabled_only)
+        return self.get_all(
+            RegistryItemType.RESOURCE, category, subcategory, enabled_only=enabled_only
+        )
 
-    def get_prompts(self, category: Optional[str] = None, subcategory: Optional[str] = None, enabled_only: bool = True) -> List[Callable]:
+    def get_prompts(
+        self, category: str | None = None, subcategory: str | None = None, enabled_only: bool = True
+    ) -> list[Callable]:
         """获取提示词列表"""
-        return self.get_all(RegistryItemType.PROMPT, category, subcategory, enabled_only=enabled_only)
+        return self.get_all(
+            RegistryItemType.PROMPT, category, subcategory, enabled_only=enabled_only
+        )
 
     def enable(self, name: str) -> bool:
         with self._lock:
@@ -218,11 +238,11 @@ class PluginRegistry:
 
     def list_names(
         self,
-        item_type: Optional[RegistryItemType] = None,
-        category: Optional[str] = None,
-        subcategory: Optional[str] = None,
+        item_type: RegistryItemType | None = None,
+        category: str | None = None,
+        subcategory: str | None = None,
         enabled_only: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         with self._lock:
             names = []
             for item in self._items.values():
@@ -237,7 +257,7 @@ class PluginRegistry:
                 names.append(item.name)
             return names
 
-    def list_categories(self, item_type: Optional[RegistryItemType] = None) -> List[str]:
+    def list_categories(self, item_type: RegistryItemType | None = None) -> list[str]:
         with self._lock:
             categories = set()
             for item in self._items.values():
@@ -248,13 +268,15 @@ class PluginRegistry:
 
     def count(
         self,
-        item_type: Optional[RegistryItemType] = None,
-        category: Optional[str] = None,
-        subcategory: Optional[str] = None,
+        item_type: RegistryItemType | None = None,
+        category: str | None = None,
+        subcategory: str | None = None,
         enabled_only: bool = True,
     ) -> int:
         with self._lock:
-            return len(self.get_all_items(item_type, category, subcategory, enabled_only=enabled_only))
+            return len(
+                self.get_all_items(item_type, category, subcategory, enabled_only=enabled_only)
+            )
 
     def clear(self) -> None:
         with self._lock:
@@ -267,14 +289,14 @@ class PluginRegistry:
             enabled = sum(1 for item in self._items.values() if item.is_enabled)
             logger.info(f"[{self.name}] Total items: {total} (enabled: {enabled})")
 
-            type_stats: Dict[RegistryItemType, int] = {}
+            type_stats: dict[RegistryItemType, int] = {}
             for item in self._items.values():
                 type_stats[item.type] = type_stats.get(item.type, 0) + 1
 
             for item_type, count in sorted(type_stats.items()):
                 logger.info(f"  - {item_type.value}: {count}")
 
-            category_stats: Dict[str, int] = {}
+            category_stats: dict[str, int] = {}
             for item in self._items.values():
                 category_stats[item.category] = category_stats.get(item.category, 0) + 1
 

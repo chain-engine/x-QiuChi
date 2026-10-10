@@ -6,11 +6,11 @@
 
 from __future__ import annotations
 
-import uuid
 import time
+import uuid
 from contextvars import ContextVar
-from typing import Any, Dict, Optional, TYPE_CHECKING
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from .session import SessionManager
 
@@ -28,12 +28,12 @@ class RequestContext:
 
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: float = field(default_factory=time.time)
-    request_data: Dict[str, Any] = field(default_factory=dict)
-    response_data: Optional[Dict[str, Any]] = None
-    server: Optional["MCPServer"] = None
-    session_id: Optional[str] = None
-    user: Optional[Dict[str, Any]] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    request_data: dict[str, Any] = field(default_factory=dict)
+    response_data: dict[str, Any] | None = None
+    server: MCPServer | None = None
+    session_id: str | None = None
+    user: dict[str, Any] | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def update_metadata(self, key: str, value: Any) -> None:
         self.metadata[key] = value
@@ -41,7 +41,7 @@ class RequestContext:
     def get_metadata(self, key: str, default: Any = None) -> Any:
         return self.metadata.get(key, default)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "request_id": self.request_id,
             "timestamp": self.timestamp,
@@ -52,7 +52,7 @@ class RequestContext:
 
 
 # 全局上下文变量
-_current_context: ContextVar[Optional[RequestContext]] = ContextVar("current_context", default=None)
+_current_context: ContextVar[RequestContext | None] = ContextVar("current_context", default=None)
 
 
 # 上下文管理函数
@@ -60,7 +60,7 @@ def set_current_context(context: RequestContext) -> Any:
     return _current_context.set(context)
 
 
-def get_current_context() -> Optional[RequestContext]:
+def get_current_context() -> RequestContext | None:
     return _current_context.get()
 
 
@@ -81,14 +81,14 @@ class ContextManager:
     - 异步 async with：async with server.context() as ctx:
     """
 
-    def __init__(self, server: "MCPServer"):
+    def __init__(self, server: MCPServer):
         self.server = server
         self.session_manager = SessionManager()
 
     def create_request_context(
         self,
-        request_data: Dict[str, Any],
-        session_id: Optional[str] = None,
+        request_data: dict[str, Any],
+        session_id: str | None = None,
     ) -> RequestContext:
         context = RequestContext(
             request_data=request_data,
@@ -103,14 +103,14 @@ class ContextManager:
 
     def process_request(
         self,
-        request_data: Dict[str, Any],
-        session_id: Optional[str] = None,
+        request_data: dict[str, Any],
+        session_id: str | None = None,
     ) -> RequestContext:
         context = self.create_request_context(request_data, session_id)
         set_current_context(context)
         return context
 
-    def finalize_request(self, response_data: Dict[str, Any]) -> None:
+    def finalize_request(self, response_data: dict[str, Any]) -> None:
         context = get_current_context()
         if context:
             context.response_data = response_data
@@ -120,9 +120,7 @@ class ContextManager:
     # 上下文管理器协议
     # ------------------------------------------------------------------
     def __enter__(self) -> RequestContext:
-        self._token = set_current_context(
-            RequestContext(server=self.server)
-        )
+        self._token = set_current_context(RequestContext(server=self.server))
         return _current_context.get()
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -130,9 +128,7 @@ class ContextManager:
 
     async def __aenter__(self) -> RequestContext:
         # 复用同步 token，ContextVar 跨 await 仍然保持
-        self._token = set_current_context(
-            RequestContext(server=self.server)
-        )
+        self._token = set_current_context(RequestContext(server=self.server))
         return _current_context.get()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:

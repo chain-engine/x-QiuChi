@@ -4,7 +4,7 @@
 展示如何使用 QiuChi 的装饰器 API 创建工具。
 """
 
-from plugins import tool
+from src.plugins import tool
 
 
 @tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
@@ -84,7 +84,7 @@ def power(base: float, exponent: float) -> float:
     Returns:
         base 的 exponent 次方
     """
-    return base ** exponent
+    return base**exponent
 
 
 @tool(category="math", subcategory="advanced", tags=["root"])
@@ -103,7 +103,7 @@ def sqrt(number: float) -> float:
     """
     if number < 0:
         raise ValueError("Cannot calculate square root of negative number")
-    return number ** 0.5
+    return number**0.5
 
 
 @tool(category="conversion", tags=["temperature"])
@@ -117,7 +117,7 @@ def celsius_to_fahrenheit(celsius: float) -> float:
     Returns:
         对应的华氏度
     """
-    return (celsius * 9/5) + 32
+    return (celsius * 9 / 5) + 32
 
 
 @tool(category="conversion", tags=["temperature"])
@@ -131,7 +131,7 @@ def fahrenheit_to_celsius(fahrenheit: float) -> float:
     Returns:
         对应的摄氏度
     """
-    return (fahrenheit - 32) * 5/9
+    return (fahrenheit - 32) * 5 / 9
 
 
 __all__ = [

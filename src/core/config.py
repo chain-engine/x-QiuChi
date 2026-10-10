@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 应用配置管理模块
 
@@ -7,7 +6,7 @@
 配置优先级：环境变量 > YAML 配置文件 > 代码默认值。
 
 Usage:
-    from core.config import settings
+    from src.core.config import settings
     port = settings.mcp.port
 """
 
@@ -21,7 +20,7 @@ from typing import Any, Final
 
 import yaml
 
-from constants.enums import LogLevel, LogOutput, TransportType
+from src.constants.enums import LogLevel, LogOutput, TransportType
 
 # 常量内联（避免跨包循环导入）
 DEFAULT_CONFIG_FILE: str = "config.yaml"
@@ -40,6 +39,7 @@ PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
 # ============================================================
 # 辅助函数
 # ============================================================
+
 
 def _to_bool(value: Any) -> bool:
     """将值转换为布尔类型。"""
@@ -73,9 +73,11 @@ def _find_project_root() -> Path:
 # Dataclass 配置段
 # ============================================================
 
+
 @dataclass
 class MCPConfig:
     """MCP 服务器配置。"""
+
     server_name: str = "QiuChi"
     version: str = "1.0.0"
     transport: str = TransportType.STREAMABLE_HTTP.value
@@ -87,6 +89,7 @@ class MCPConfig:
 @dataclass
 class LoggingConfig:
     """日志配置。"""
+
     level: LogLevel = LogLevel.INFO
     output: LogOutput = LogOutput.BOTH
     file_path: str = "logs/x-QiuChi_{time:YYYY-MM-DD-HH}.log"
@@ -103,6 +106,7 @@ class LoggingConfig:
 @dataclass
 class FeaturesConfig:
     """功能开关配置。"""
+
     tools: bool = True
     resources: bool = True
     prompts: bool = True
@@ -113,8 +117,9 @@ class FeaturesConfig:
 @dataclass
 class PluginConfig:
     """插件配置。"""
+
     auto_discovery: bool = True
-    discovery_paths: list[str] = field(default_factory=lambda: ["plugins", "examples"])
+    discovery_paths: list[str] = field(default_factory=lambda: ["src.plugins", "src.examples"])
     enabled_plugins: list[str] = field(default_factory=list)
     disabled_plugins: list[str] = field(default_factory=list)
 
@@ -122,6 +127,7 @@ class PluginConfig:
 @dataclass
 class AuthConfig:
     """认证配置。"""
+
     enabled: bool = False
     required: bool = True
     exempt_methods: list[str] = field(default_factory=list)
@@ -130,12 +136,14 @@ class AuthConfig:
 @dataclass
 class ErrorHandlerConfig:
     """错误处理中间件配置。"""
+
     include_traceback: bool = False
 
 
 @dataclass
 class LoggingMiddlewareConfig:
     """日志中间件配置。"""
+
     log_request: bool = True
     log_response: bool = True
 
@@ -143,6 +151,7 @@ class LoggingMiddlewareConfig:
 @dataclass
 class CacheConfig:
     """缓存配置。"""
+
     enabled: bool = False
     default_ttl: int = 300
     max_size: int = 1000
@@ -152,6 +161,7 @@ class CacheConfig:
 @dataclass
 class MiddlewareConfig:
     """中间件配置。"""
+
     error_handler: ErrorHandlerConfig = field(default_factory=ErrorHandlerConfig)
     logging: LoggingMiddlewareConfig = field(default_factory=LoggingMiddlewareConfig)
     auth: AuthConfig = field(default_factory=AuthConfig)
@@ -174,6 +184,7 @@ _ENV_SECTION_MAP: dict[str, tuple[str, list[str]]] = {
 # ============================================================
 # 核心配置类
 # ============================================================
+
 
 class Settings:
     """应用全局配置类。
@@ -243,7 +254,7 @@ class Settings:
             },
             "plugins": {
                 "auto_discovery": True,
-                "discovery_paths": ["plugins", "examples"],
+                "discovery_paths": ["src.plugins", "src.examples"],
                 "enabled_plugins": [],
                 "disabled_plugins": [],
             },
@@ -413,7 +424,7 @@ class Settings:
             )
 
         # 日志级别校验
-        valid_levels = [l.value for l in LogLevel]
+        valid_levels = [level.value for level in LogLevel]
         if self.logging.level not in valid_levels:
             raise ValueError(
                 f"LOGGING_LEVEL must be one of {valid_levels}, got '{self.logging.level}'"

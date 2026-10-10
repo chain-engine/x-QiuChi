@@ -112,7 +112,7 @@ cp config.yaml.example config.yaml
 | `features.middleware` | `true` | 是否启用中间件管道 |
 | `features.cache` | `false` | 是否启用缓存中间件 |
 | `plugins.auto_discovery` | `true` | 是否自动发现插件 |
-| `plugins.discovery_paths` | `["plugins", "examples"]` | 插件扫描路径 |
+| `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | 插件扫描路径 |
 | `middleware.auth.enabled` | `false` | 是否启用 Token 认证 |
 | `middleware.cache.enabled` | `false` | 是否启用内存缓存 |
 | `middleware.cache.default_ttl` | `300` | 缓存默认 TTL（秒） |
@@ -200,6 +200,15 @@ uv run mypy src/
 npx @anthropic-ai/mcp-inspector
 # 连接地址: http://localhost:8888/mcp
 ```
+
+> **提交前自动检查**：仓库已配置 git pre-commit 钩子（`hooks/pre-commit`），每次 `git commit` 前自动执行：
+>
+> ```sh
+> uv run ruff check --fix src/ tests/
+> uv run ruff format src/ tests/
+> ```
+>
+> 能自动修复的问题会被自动修复并重新暂存；无法自动修复的会阻止提交（可用 `git commit --no-verify` 临时跳过）。克隆仓库后首次启用：`git config core.hooksPath hooks`
 
 ### 7. 使用方法示例
 

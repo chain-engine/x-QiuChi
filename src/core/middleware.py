@@ -12,7 +12,7 @@
     - ``CacheMiddleware`` — MCP 请求缓存（内存后端，可扩展）
 
 Usage:
-    from core.middleware import MiddlewareChain, ErrorHandlerMiddleware, LoggingMiddleware
+    from src.core.middleware import MiddlewareChain, ErrorHandlerMiddleware, LoggingMiddleware
     chain = MiddlewareChain()
     chain.add(ErrorHandlerMiddleware())
     chain.add(LoggingMiddleware())
@@ -28,12 +28,12 @@ import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from core.logger import logger
+from src.core.logger import logger
 
 if TYPE_CHECKING:
-    from server.server import MCPServer
+    from src.server.server import MCPServer
 
 # ---------------------------------------------------------------------------
 #  常量
@@ -54,8 +54,15 @@ RATE_LIMIT_ERROR: int = -32003
 # MCP 认证中间件敏感字段集合
 _SENSITIVE_FIELDS: frozenset[str] = frozenset(
     {
-        "password", "token", "api_key", "secret", "auth",
-        "credentials", "key", "passphrase", "private_key",
+        "password",
+        "token",
+        "api_key",
+        "secret",
+        "auth",
+        "credentials",
+        "key",
+        "passphrase",
+        "private_key",
     }
 )
 
@@ -82,9 +89,9 @@ class RequestContext:
         metadata: 中间件间传递的元数据
     """
 
-    request: Dict[str, Any]
-    server: Optional["MCPServer"] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    request: dict[str, Any]
+    server: MCPServer | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.metadata is None:
@@ -110,8 +117,8 @@ class ResponseContext:
         metadata: 中间件间传递的元数据
     """
 
-    response: Dict[str, Any]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    response: dict[str, Any]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.metadata is None:
@@ -170,22 +177,22 @@ class MiddlewareChain:
     """
 
     def __init__(self) -> None:
-        self.middlewares: List[Middleware] = []
-        self._names: List[str] = []
+        self.middlewares: list[Middleware] = []
+        self._names: list[str] = []
 
-    def add(self, middleware: Middleware) -> "MiddlewareChain":
+    def add(self, middleware: Middleware) -> MiddlewareChain:
         """在链尾追加中间件。"""
         self.middlewares.append(middleware)
         self._names.append(type(middleware).__name__)
         return self
 
-    def add_all(self, middlewares: List[Middleware]) -> "MiddlewareChain":
+    def add_all(self, middlewares: list[Middleware]) -> MiddlewareChain:
         """批量追加中间件。"""
         for m in middlewares:
             self.add(m)
         return self
 
-    def insert(self, index: int, middleware: Middleware) -> "MiddlewareChain":
+    def insert(self, index: int, middleware: Middleware) -> MiddlewareChain:
         """在指定位置插入中间件，支持负索引。"""
         if index < 0:
             index = max(0, len(self.middlewares) + index + 1)
@@ -238,9 +245,10 @@ class MiddlewareChain:
     ) -> Handler:
         async def wrapped_handler(request: RequestContext) -> ResponseContext:
             return await middleware(request, next_handler)
+
         return wrapped_handler
 
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         """返回中间件名称列表（副本）。"""
         return list(self._names)
 
@@ -290,11 +298,11 @@ class ErrorHandlerMiddleware(Middleware):
         self,
         error: Exception,
         request: RequestContext,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         error_type = type(error).__name__
         error_message = str(error)
 
-        error_response: Dict[str, Any] = {
+        error_response: dict[str, Any] = {
             "jsonrpc": "2.0",
             "error": {
                 "code": INTERNAL_ERROR,
@@ -320,11 +328,11 @@ class ErrorHandlerMiddleware(Middleware):
     @staticmethod
     def create_validation_error(
         message: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
         rid: Any = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """创建参数校验错误响应。"""
-        resp: Dict[str, Any] = {
+        resp: dict[str, Any] = {
             "jsonrpc": "2.0",
             "error": {
                 "code": INVALID_PARAMS,
@@ -340,9 +348,9 @@ class ErrorHandlerMiddleware(Middleware):
     def create_method_not_found_error(
         method: str,
         rid: Any = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """创建方法未找到错误响应。"""
-        resp: Dict[str, Any] = {
+        resp: dict[str, Any] = {
             "jsonrpc": "2.0",
             "error": {
                 "code": METHOD_NOT_FOUND,
@@ -375,7 +383,7 @@ class LoggingMiddleware(Middleware):
         self,
         log_request: bool = True,
         log_response: bool = True,
-        slow_threshold: Optional[float] = None,
+        slow_threshold: float | None = None,
     ) -> None:
         self.log_request = log_request
         self.log_response = log_response
@@ -406,9 +414,7 @@ class LoggingMiddleware(Middleware):
             return response
         except Exception as e:
             execution_time = time.time() - start_time
-            logger.error(
-                f"Request {request_id} failed after {execution_time:.3f}s: {e}"
-            )
+            logger.error(f"Request {request_id} failed after {execution_time:.3f}s: {e}")
             raise
 
     def _log_request(self, request: RequestContext, request_id: str) -> None:
@@ -441,9 +447,7 @@ class LoggingMiddleware(Middleware):
                 f"code={error_code}, message={error_message}"
             )
         else:
-            logger.info(
-                f"Request {request_id} ({method}) completed in {execution_time:.3f}s"
-            )
+            logger.info(f"Request {request_id} ({method}) completed in {execution_time:.3f}s")
 
     @staticmethod
     def _filter_sensitive_data(data: Any) -> Any:
@@ -460,20 +464,19 @@ class LoggingMiddleware(Middleware):
             elif isinstance(value, list):
                 filtered[key] = [
                     LoggingMiddleware._filter_sensitive_data(item)
-                    if isinstance(item, dict) else item
+                    if isinstance(item, dict)
+                    else item
                     for item in value
                 ]
         return filtered
 
-    def _get_source_location(
-        self, method_name: str, request: RequestContext
-    ) -> Optional[str]:
+    def _get_source_location(self, method_name: str, request: RequestContext) -> str | None:
         """尝试获取处理函数的源码位置（用于调试）。"""
         server = getattr(request, "server", None)
         if not server or not hasattr(server, "registry"):
             return None
         try:
-            from plugins.registry import RegistryItemType
+            from src.plugins.registry import RegistryItemType
 
             item = server.registry.get_item(method_name)
             if item and item.type == RegistryItemType.TOOL:
@@ -483,12 +486,12 @@ class LoggingMiddleware(Middleware):
         return None
 
     @staticmethod
-    def _get_function_source(func: Any) -> Optional[str]:
+    def _get_function_source(func: Any) -> str | None:
         """获取函数的源文件和行号。"""
         try:
             original = func
             while hasattr(original, "__wrapped__"):
-                original = getattr(original, "__wrapped__")
+                original = original.__wrapped__
             source_file = inspect.getsourcefile(original)
             if not source_file:
                 return None
@@ -518,8 +521,6 @@ class LoggingMiddleware(Middleware):
             return None
 
 
-
-
 # ---------------------------------------------------------------------------
 #  认证
 # ---------------------------------------------------------------------------
@@ -532,9 +533,7 @@ class AuthProvider(ABC):
     """
 
     @abstractmethod
-    async def authenticate(
-        self, request: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    async def authenticate(self, request: dict[str, Any]) -> dict[str, Any] | None:
         """认证请求。
 
         Args:
@@ -555,8 +554,8 @@ class SimpleTokenAuthProvider(AuthProvider):
         valid_tokens: 有效的 token 集合
     """
 
-    def __init__(self, valid_tokens: Optional[Set[str]] = None) -> None:
-        self.valid_tokens: Set[str] = set(valid_tokens or [])
+    def __init__(self, valid_tokens: set[str] | None = None) -> None:
+        self.valid_tokens: set[str] = set(valid_tokens or [])
 
     def add_token(self, token: str) -> None:
         """添加有效 token。"""
@@ -569,9 +568,7 @@ class SimpleTokenAuthProvider(AuthProvider):
             return True
         return False
 
-    async def authenticate(
-        self, request: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    async def authenticate(self, request: dict[str, Any]) -> dict[str, Any] | None:
         headers = request.get("headers", {})
         params = request.get("params", {})
 
@@ -580,16 +577,9 @@ class SimpleTokenAuthProvider(AuthProvider):
             (v for k, v in headers.items() if str(k).lower() == "authorization"),
             "",
         )
-        token = (
-            auth_header.replace("Bearer ", "").strip() if auth_header else ""
-        )
+        token = auth_header.replace("Bearer ", "").strip() if auth_header else ""
         if not token:
-            token = (
-                params.get("token")
-                or params.get("api_key")
-                or params.get("auth_token")
-                or ""
-            )
+            token = params.get("token") or params.get("api_key") or params.get("auth_token") or ""
 
         if token and token in self.valid_tokens:
             return {
@@ -615,9 +605,9 @@ class MCPAuthMiddleware(Middleware):
 
     def __init__(
         self,
-        auth_provider: Optional[AuthProvider] = None,
+        auth_provider: AuthProvider | None = None,
         required: bool = False,
-        exempt_methods: Optional[List[str]] = None,
+        exempt_methods: list[str] | None = None,
     ) -> None:
         self.auth_provider = auth_provider or SimpleTokenAuthProvider()
         self.required = required
@@ -635,14 +625,10 @@ class MCPAuthMiddleware(Middleware):
 
         logger.debug(f"MCPAuthMiddleware initialized (required={required})")
 
-    def _extract_headers(self, request: RequestContext) -> Dict[str, Any]:
+    def _extract_headers(self, request: RequestContext) -> dict[str, Any]:
         """从请求中提取 headers（兼容 metadata 注入）。"""
         headers = request.request.get("headers", {}) or {}
-        meta_headers = (
-            request.metadata.get("headers", {})
-            if hasattr(request, "metadata")
-            else {}
-        )
+        meta_headers = request.metadata.get("headers", {}) if hasattr(request, "metadata") else {}
         return {**headers, **meta_headers}
 
     async def handle(
@@ -661,17 +647,13 @@ class MCPAuthMiddleware(Middleware):
 
         if auth_result:
             request.metadata["auth"] = auth_result
-            logger.debug(
-                f"Request authenticated: {auth_result.get('user', 'unknown')}"
-            )
+            logger.debug(f"Request authenticated: {auth_result.get('user', 'unknown')}")
             return await next_handler(request)
         elif self.required:
             logger.warning(f"Authentication failed for method: {method}")
             return self._create_auth_error_response()
         else:
-            logger.debug(
-                f"Authentication optional and failed for method: {method}"
-            )
+            logger.debug(f"Authentication optional and failed for method: {method}")
             return await next_handler(request)
 
     @staticmethod
@@ -715,14 +697,12 @@ class CacheBackend(ABC):
     """MCP 缓存后端基类。"""
 
     @abstractmethod
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """获取缓存值。"""
         ...
 
     @abstractmethod
-    async def set(
-        self, key: str, value: Any, ttl: Optional[int] = None
-    ) -> bool:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """设置缓存值。"""
         ...
 
@@ -736,7 +716,7 @@ class CacheBackend(ABC):
         """清空缓存。"""
         ...
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """获取缓存统计信息。"""
         return {"backend": type(self).__name__}
 
@@ -753,11 +733,11 @@ class MemoryCacheBackend(CacheBackend):
     def __init__(self, max_size: int = 1024) -> None:
         import asyncio
 
-        self._cache: Dict[str, Tuple[Any, Optional[float]]] = {}
+        self._cache: dict[str, tuple[Any, float | None]] = {}
         self._lock = asyncio.Lock()
         self._max_size = max_size
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         async with self._lock:
             entry = self._cache.get(key)
             if entry is None:
@@ -768,9 +748,7 @@ class MemoryCacheBackend(CacheBackend):
                 return None
             return value
 
-    async def set(
-        self, key: str, value: Any, ttl: Optional[int] = None
-    ) -> bool:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         async with self._lock:
             # 容量上限保护：避免无界增长
             if key not in self._cache and len(self._cache) >= self._max_size:
@@ -795,15 +773,11 @@ class MemoryCacheBackend(CacheBackend):
             self._cache.clear()
             return True
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         async with self._lock:
             total = len(self._cache)
             now = time.time()
-            expired = sum(
-                1
-                for _, (_, exp) in self._cache.items()
-                if exp is not None and now > exp
-            )
+            expired = sum(1 for _, (_, exp) in self._cache.items() if exp is not None and now > exp)
             return {
                 "backend": "MemoryCacheBackend",
                 "total_entries": total,
@@ -828,10 +802,10 @@ class CacheMiddleware(Middleware):
 
     def __init__(
         self,
-        cache_backend: Optional[CacheBackend] = None,
+        cache_backend: CacheBackend | None = None,
         default_ttl: int = 300,
         enabled: bool = True,
-        cacheable_methods: Optional[list] = None,
+        cacheable_methods: list | None = None,
         bypass_header: str = "X-Cache-Bypass",
     ) -> None:
         self.cache_backend = cache_backend or MemoryCacheBackend()
@@ -840,9 +814,7 @@ class CacheMiddleware(Middleware):
         self.cacheable_methods = set(cacheable_methods or [])
         self.bypass_header = bypass_header
 
-        logger.debug(
-            f"CacheMiddleware initialized (enabled={enabled}, default_ttl={default_ttl}s)"
-        )
+        logger.debug(f"CacheMiddleware initialized (enabled={enabled}, default_ttl={default_ttl}s)")
 
     async def handle(
         self,
@@ -853,9 +825,7 @@ class CacheMiddleware(Middleware):
             return await next_handler(request)
 
         if self._should_bypass_cache(request):
-            logger.debug(
-                f"Bypassing cache for request: {request.request.get('id', 'unknown')}"
-            )
+            logger.debug(f"Bypassing cache for request: {request.request.get('id', 'unknown')}")
             return await next_handler(request)
 
         method = request.request.get("method", "")
@@ -876,22 +846,14 @@ class CacheMiddleware(Middleware):
         if self._should_cache_response(response):
             ttl = self._get_ttl_for_request(request)
             await self.cache_backend.set(cache_key, response.response, ttl)
-            logger.debug(
-                f"Cached response for key: {cache_key[:32]}... (ttl={ttl}s)"
-            )
+            logger.debug(f"Cached response for key: {cache_key[:32]}... (ttl={ttl}s)")
 
         return response
 
     def _should_bypass_cache(self, request: RequestContext) -> bool:
         headers = request.request.get("headers", {})
-        meta_headers = (
-            request.metadata.get("headers", {})
-            if hasattr(request, "metadata")
-            else {}
-        )
-        bypass = headers.get(self.bypass_header, "") or meta_headers.get(
-            self.bypass_header, ""
-        )
+        meta_headers = request.metadata.get("headers", {}) if hasattr(request, "metadata") else {}
+        bypass = headers.get(self.bypass_header, "") or meta_headers.get(self.bypass_header, "")
         return str(bypass).lower() in ("true", "1", "yes")
 
     def _generate_cache_key(self, request: RequestContext) -> str:
@@ -900,16 +862,14 @@ class CacheMiddleware(Middleware):
         params = request_data.get("params", {})
         headers = request_data.get("headers", {})
 
-        cache_dict: Dict[str, Any] = {
+        cache_dict: dict[str, Any] = {
             "method": method,
             "params": self._normalize_params(params),
         }
 
         auth_header = headers.get("Authorization")
         if auth_header:
-            cache_dict["auth_hash"] = hashlib.sha256(
-                auth_header.encode()
-            ).hexdigest()
+            cache_dict["auth_hash"] = hashlib.sha256(auth_header.encode()).hexdigest()
 
         cache_str = json.dumps(cache_dict, sort_keys=True, default=str)
         return f"qiuchi:cache:{hashlib.sha256(cache_str.encode()).hexdigest()}"
@@ -924,9 +884,7 @@ class CacheMiddleware(Middleware):
                 normalized[key] = CacheMiddleware._normalize_params(value)
             elif isinstance(value, list):
                 normalized[key] = [
-                    CacheMiddleware._normalize_params(item)
-                    if isinstance(item, dict)
-                    else item
+                    CacheMiddleware._normalize_params(item) if isinstance(item, dict) else item
                     for item in value
                 ]
             else:
@@ -940,11 +898,7 @@ class CacheMiddleware(Middleware):
     def _get_ttl_for_request(self, request: RequestContext) -> int:
         headers = request.request.get("headers", {})
         params = request.request.get("params", {})
-        meta_headers = (
-            request.metadata.get("headers", {})
-            if hasattr(request, "metadata")
-            else {}
-        )
+        meta_headers = request.metadata.get("headers", {}) if hasattr(request, "metadata") else {}
 
         ttl = (
             headers.get("X-Cache-TTL")
@@ -964,12 +918,10 @@ class CacheMiddleware(Middleware):
 
     async def invalidate_method(self, method: str) -> int:
         """按方法名失效缓存（内存后端不支持模式匹配）。"""
-        logger.warning(
-            f"Memory cache does not support pattern invalidation for method: {method}"
-        )
+        logger.warning(f"Memory cache does not support pattern invalidation for method: {method}")
         return 0
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """获取缓存统计信息。"""
         return await self.cache_backend.get_stats()
 

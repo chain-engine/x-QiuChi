@@ -16,10 +16,10 @@ sys.path.insert(0, str(src_path))
 def test_configuration():
     """测试配置系统"""
     print("[1/7] Testing configuration...")
-    from core.config import settings
+    from src.core.config import settings
 
-    assert settings.mcp.server_name == 'QiuChi'
-    assert settings.mcp.transport in ['stdio', 'sse', 'streamable-http']
+    assert settings.mcp.server_name == "QiuChi"
+    assert settings.mcp.transport in ["stdio", "sse", "streamable-http"]
     assert settings.mcp.port > 0
 
     print("    [OK] Configuration loaded successfully")
@@ -31,12 +31,12 @@ def test_server_creation():
     print("[2/7] Testing server creation...")
     from main import create_server
 
-    server = create_server('TestServer', '1.0.0')
-    assert server.name == 'TestServer'
-    assert server.version == '1.0.0'
+    server = create_server("TestServer", "1.0.0")
+    assert server.name == "TestServer"
+    assert server.version == "1.0.0"
 
     stats = server.get_stats()
-    assert stats['running'] is False
+    assert stats["running"] is False
 
     print("    [OK] Server created successfully")
     return True
@@ -45,27 +45,27 @@ def test_server_creation():
 def test_decorators():
     """测试装饰器"""
     print("[3/7] Testing decorators...")
-    from main import tool, resource, prompt
+    from main import prompt, resource, tool
 
-    @tool(category='test')
+    @tool(category="test")
     def test_tool(x: int) -> int:
         """Test tool"""
         return x * 2
 
-    @resource(name='test://resource')
+    @resource(name="test://resource")
     def test_resource() -> str:
         """Test resource"""
-        return 'test'
+        return "test"
 
-    @prompt(category='test')
+    @prompt(category="test")
     def test_prompt(name: str) -> str:
         """Test prompt"""
-        return f'Hello {name}'
+        return f"Hello {name}"
 
     # Test functions
     assert test_tool(5) == 10
-    assert test_resource() == 'test'
-    assert test_prompt('World') == 'Hello World'
+    assert test_resource() == "test"
+    assert test_prompt("World") == "Hello World"
 
     print("    [OK] Decorators working correctly")
     return True
@@ -75,9 +75,9 @@ def test_plugin_system():
     """测试插件系统"""
     print("[4/7] Testing plugin system...")
     from main import create_server
-    from plugins import PluginManager
+    from src.plugins import PluginManager
 
-    server = create_server('PluginTest')
+    server = create_server("PluginTest")
     manager = PluginManager(server)
 
     assert manager.server == server
@@ -91,13 +91,9 @@ def test_middleware():
     """测试中间件"""
     print("[5/7] Testing middleware...")
     from main import create_server
-    from core.middleware import (
-        ErrorHandlerMiddleware,
-        LoggingMiddleware,
-        CacheMiddleware
-    )
+    from src.core.middleware import CacheMiddleware, ErrorHandlerMiddleware, LoggingMiddleware
 
-    server = create_server('MiddlewareTest')
+    server = create_server("MiddlewareTest")
 
     # Add middlewares
     server.add_middleware(ErrorHandlerMiddleware())
@@ -117,7 +113,7 @@ def test_examples():
 
     try:
         # Test math tools
-        from examples.tools.math import add, subtract, multiply, divide
+        from src.examples.tools.math import add, divide, multiply, subtract
 
         assert add(10, 5) == 15.0
         assert subtract(10, 5) == 5.0
@@ -127,7 +123,7 @@ def test_examples():
         print("    [OK] Math tools working")
 
         # Test config resources
-        from examples.resources.config import get_server_config
+        from src.examples.resources.config import get_server_config
 
         config = get_server_config()
         assert isinstance(config, str)
@@ -136,10 +132,10 @@ def test_examples():
         print("    [OK] Config resources working")
 
         # Test prompt templates
-        from examples.prompts.templates import greeting
+        from src.examples.prompts.templates import greeting
 
-        greeting_text = greeting('Test')
-        assert 'Test' in greeting_text
+        greeting_text = greeting("Test")
+        assert "Test" in greeting_text
 
         print("    [OK] Prompt templates working")
 
@@ -154,20 +150,20 @@ def test_server_stats():
     print("[7/7] Testing server statistics...")
     from main import create_server
 
-    server = create_server('StatsTest')
+    server = create_server("StatsTest")
     stats = server.get_stats()
 
-    assert 'name' in stats
-    assert 'version' in stats
-    assert 'running' in stats
-    assert 'tools' in stats
-    assert 'resources' in stats
-    assert 'prompts' in stats
-    assert 'middlewares' in stats
+    assert "name" in stats
+    assert "version" in stats
+    assert "running" in stats
+    assert "tools" in stats
+    assert "resources" in stats
+    assert "prompts" in stats
+    assert "middlewares" in stats
 
-    assert stats['name'] == 'StatsTest'
-    assert stats['running'] is False
-    assert stats['middlewares'] >= 0
+    assert stats["name"] == "StatsTest"
+    assert stats["running"] is False
+    assert stats["middlewares"] >= 0
 
     print("    [OK] Server statistics working")
     return True

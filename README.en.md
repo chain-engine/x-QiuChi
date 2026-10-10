@@ -112,7 +112,7 @@ cp config.yaml.example config.yaml
 | `features.middleware` | `true` | Enable middleware pipeline |
 | `features.cache` | `false` | Enable cache middleware |
 | `plugins.auto_discovery` | `true` | Enable automatic plugin discovery |
-| `plugins.discovery_paths` | `["plugins", "examples"]` | Plugin scan paths |
+| `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable token authentication |
 | `middleware.cache.enabled` | `false` | Enable in-memory cache |
 | `middleware.cache.default_ttl` | `300` | Cache default TTL (seconds) |
@@ -215,6 +215,15 @@ uv run mypy src/
 npx @anthropic-ai/mcp-inspector
 # Connect to: http://localhost:8888/mcp
 ```
+
+> **Pre-commit auto-check**: the repo ships a git pre-commit hook (`hooks/pre-commit`) that runs on every `git commit`:
+>
+> ```sh
+> uv run ruff check --fix src/ tests/
+> uv run ruff format src/ tests/
+> ```
+>
+> Auto-fixable issues are fixed and re-staged; unfixable ones abort the commit (bypass with `git commit --no-verify`). Enable it once after cloning: `git config core.hooksPath hooks`
 
 ### 7. Usage Examples
 

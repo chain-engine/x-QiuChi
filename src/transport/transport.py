@@ -9,16 +9,18 @@
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 # 从共享类型模块导入
-from constants.enums import TransportType
-from core.config import settings
+from src.constants.enums import TransportType
+from src.core.config import settings
 
 
 class SSEConfig(BaseModel):
     """SSE 传输配置"""
+
     ping_interval: int = Field(default=30, description="心跳间隔（秒）")
     max_connections: int = Field(default=100, description="最大连接数")
     retry_timeout: int = Field(default=3000, description="重连超时时间（毫秒）")
@@ -26,6 +28,7 @@ class SSEConfig(BaseModel):
 
 class HTTPConfig(BaseModel):
     """HTTP 传输配置"""
+
     max_body_size: int = Field(default=10 * 1024 * 1024, description="最大请求体大小（字节）")
     request_timeout: int = Field(default=30, description="请求超时时间（秒）")
     keepalive_timeout: int = Field(default=5, description="Keep-Alive 超时时间（秒）")
@@ -36,10 +39,11 @@ class HTTPConfig(BaseModel):
 
 class TLSConfig(BaseModel):
     """TLS/SSL 配置"""
+
     enabled: bool = Field(default=False, description="是否启用 TLS")
-    cert_file: Optional[str] = Field(default=None, description="证书文件路径")
-    key_file: Optional[str] = Field(default=None, description="私钥文件路径")
-    ca_file: Optional[str] = Field(default=None, description="CA 证书文件路径")
+    cert_file: str | None = Field(default=None, description="证书文件路径")
+    key_file: str | None = Field(default=None, description="私钥文件路径")
+    ca_file: str | None = Field(default=None, description="CA 证书文件路径")
     verify_client: bool = Field(default=False, description="是否验证客户端证书")
 
 
@@ -54,9 +58,9 @@ class TransportConfig:
     transport: TransportType = TransportType.STREAMABLE_HTTP
     host: str = "0.0.0.0"
     port: int = 8888
-    sse_config: Optional[SSEConfig] = None
-    http_config: Optional[HTTPConfig] = None
-    tls_config: Optional[TLSConfig] = None
+    sse_config: SSEConfig | None = None
+    http_config: HTTPConfig | None = None
+    tls_config: TLSConfig | None = None
 
     def __post_init__(self):
         """初始化后处理"""
@@ -67,7 +71,7 @@ class TransportConfig:
         if self.tls_config is None:
             self.tls_config = TLSConfig()
 
-    def get_run_kwargs(self) -> Dict[str, Any]:
+    def get_run_kwargs(self) -> dict[str, Any]:
         """
         获取 FastMCP.run() 所需的参数。
 
@@ -83,24 +87,30 @@ class TransportConfig:
 
         # 为 HTTP/SSE 传输添加额外配置
         if self.transport in [TransportType.SSE, TransportType.STREAMABLE_HTTP]:
-            kwargs.update({
-                "host": self.host,
-                "port": self.port,
-            })
+            kwargs.update(
+                {
+                    "host": self.host,
+                    "port": self.port,
+                }
+            )
 
             # 添加 HTTP 配置
             if self.http_config:
-                kwargs.update({
-                    "max_body_size": self.http_config.max_body_size,
-                    "request_timeout": self.http_config.request_timeout,
-                })
+                kwargs.update(
+                    {
+                        "max_body_size": self.http_config.max_body_size,
+                        "request_timeout": self.http_config.request_timeout,
+                    }
+                )
 
             # 添加 TLS 配置
             if self.tls_config and self.tls_config.enabled:
-                kwargs.update({
-                    "ssl_certfile": self.tls_config.cert_file,
-                    "ssl_keyfile": self.tls_config.key_file,
-                })
+                kwargs.update(
+                    {
+                        "ssl_certfile": self.tls_config.cert_file,
+                        "ssl_keyfile": self.tls_config.key_file,
+                    }
+                )
 
         return kwargs
 
@@ -184,14 +194,14 @@ class TransportConfig:
         if not (1 <= self.port <= 65535):
             return False
 
-        # 检查 TLS 配置
-        if self.tls_config and self.tls_config.enabled:
-            if not self.tls_config.cert_file or not self.tls_config.key_file:
-                return False
+        # 检查 TLS 配置：启用时证书与密钥必须齐全
+        return not (
+            self.tls_config
+            and self.tls_config.enabled
+            and (not self.tls_config.cert_file or not self.tls_config.key_file)
+        )
 
-        return True
-
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为字典"""
         return {
             "transport": self.transport.value,
@@ -205,7 +215,7 @@ class TransportConfig:
 
 
 # 预定义的传输配置
-TRANSPORT_PRESETS: Dict[str, TransportConfig] = {
+TRANSPORT_PRESETS: dict[str, TransportConfig] = {
     "stdio": TransportConfig(transport=TransportType.STDIO),
     "sse": TransportConfig(transport=TransportType.SSE),
     "http": TransportConfig(transport=TransportType.STREAMABLE_HTTP),
@@ -217,10 +227,10 @@ TRANSPORT_PRESETS: Dict[str, TransportConfig] = {
 
 
 def get_transport_config(
-    transport: Union[str, TransportType],
+    transport: str | TransportType,
     host: str = "0.0.0.0",
     port: int = 8888,
-    preset: Optional[str] = None,
+    preset: str | None = None,
 ) -> TransportConfig:
     """
     获取传输配置的便捷函数

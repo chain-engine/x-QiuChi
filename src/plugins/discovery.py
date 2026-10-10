@@ -11,10 +11,10 @@
 
 import importlib
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
-from core.config import settings
-from core.logger import get_logger
+from src.core.config import settings
+from src.core.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -23,9 +23,9 @@ class PluginDiscovery:
     """插件发现器"""
 
     def __init__(self):
-        self._discovered_items: List[str] = []
+        self._discovered_items: list[str] = []
 
-    def discover(self) -> List[str]:
+    def discover(self) -> list[str]:
         """
         自动发现插件
 
@@ -49,7 +49,7 @@ class PluginDiscovery:
         logger.info(f"发现 {len(self._discovered_items)} 个插件项: {self._discovered_items}")
         return self._discovered_items.copy()
 
-    def _scan_module(self, module: Any, module_path: Path) -> List[str]:
+    def _scan_module(self, module: Any, module_path: Path) -> list[str]:
         """扫描模块中的插件"""
         discovered = []
 
@@ -80,7 +80,7 @@ class PluginDiscovery:
 
         return discovered
 
-    def get_discovered_items(self) -> List[str]:
+    def get_discovered_items(self) -> list[str]:
         """获取所有已发现的插件项"""
         return self._discovered_items.copy()
 
@@ -89,7 +89,7 @@ class PluginDiscovery:
         self._discovered_items.clear()
 
 
-def discover_plugins() -> List[str]:
+def discover_plugins() -> list[str]:
     """
     便捷函数：发现插件
 

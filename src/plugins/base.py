@@ -5,19 +5,21 @@
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from enum import StrEnum
+from typing import Any
 
 
-class PluginType(str, Enum):
+class PluginType(StrEnum):
     """插件类型枚举"""
+
     TOOL = "tool"
     RESOURCE = "resource"
     PROMPT = "prompt"
 
 
-class PluginStatus(str, Enum):
+class PluginStatus(StrEnum):
     """插件状态枚举"""
+
     UNLOADED = "unloaded"
     LOADED = "loaded"
     ENABLED = "enabled"
@@ -28,6 +30,7 @@ class PluginStatus(str, Enum):
 @dataclass
 class PluginMetadata:
     """插件元数据"""
+
     name: str
     version: str = "1.0.0"
     description: str = ""
@@ -35,10 +38,10 @@ class PluginMetadata:
     license: str = "MIT"
     type: PluginType = PluginType.TOOL
     category: str = "default"
-    subcategory: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
-    dependencies: List[str] = field(default_factory=list)
-    config_schema: Optional[Dict[str, Any]] = None
+    subcategory: str | None = None
+    tags: list[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
+    config_schema: dict[str, Any] | None = None
 
 
 @dataclass

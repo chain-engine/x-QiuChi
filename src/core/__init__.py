@@ -4,17 +4,17 @@
 提供核心配置、中间件、日志、插件等基础能力。
 """
 
-from core.config import settings, Settings
-from core.logger import get_logger, setup_logging
-from core.middleware import (
-    Middleware,
-    MiddlewareChain,
+from src.core.config import Settings, settings
+from src.core.logger import get_logger, setup_logging
+from src.core.middleware import (
+    CacheMiddleware,
     ErrorHandlerMiddleware,
     LoggingMiddleware,
     MCPAuthMiddleware,
-    CacheMiddleware,
+    Middleware,
+    MiddlewareChain,
 )
-from plugins import PluginManager, PluginType, PluginMetadata, PluginStatus
+from src.plugins import PluginManager, PluginMetadata, PluginStatus, PluginType
 
 __all__ = [
     "settings",

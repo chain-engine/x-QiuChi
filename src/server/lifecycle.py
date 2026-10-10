@@ -5,16 +5,17 @@
 """
 
 import asyncio
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from enum import StrEnum
 
-from core.logger import get_logger
+from src.core.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class ServerState(str, Enum):
+class ServerState(StrEnum):
     """服务器状态枚举"""
+
     UNINITIALIZED = "uninitialized"
     INITIALIZING = "initializing"
     READY = "ready"
@@ -39,9 +40,9 @@ class LifecycleManager:
 
     def __init__(self):
         self.state = ServerState.UNINITIALIZED
-        self._startup_hooks: List[Callable] = []
-        self._shutdown_hooks: List[Callable] = []
-        self._error_hooks: List[Callable] = []
+        self._startup_hooks: list[Callable] = []
+        self._shutdown_hooks: list[Callable] = []
+        self._error_hooks: list[Callable] = []
 
     def add_startup_hook(self, hook: Callable) -> None:
         """添加启动钩子"""

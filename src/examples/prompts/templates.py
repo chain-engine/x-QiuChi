@@ -4,7 +4,7 @@
 展示如何使用 QiuChi 的提示词装饰器创建提示词模板。
 """
 
-from plugins import prompt
+from src.plugins import prompt
 
 
 @prompt(category="greeting", tags=["welcome", "social"])
@@ -61,7 +61,7 @@ def weather_outfit_advice(weather: str, temperature: float) -> str:
     """
     return f"""Based on the current weather ({weather}, {temperature}°C), here's my outfit advice:
 
-1. **Temperature consideration**: {temperature}°C is {'very cold' if temperature < 0 else 'cold' if temperature < 10 else 'cool' if temperature < 20 else 'warm' if temperature < 30 else 'hot'}.
+1. **Temperature consideration**: {temperature}°C is {"very cold" if temperature < 0 else "cold" if temperature < 10 else "cool" if temperature < 20 else "warm" if temperature < 30 else "hot"}.
 2. **Weather-specific advice**: {{
     'sunny': 'Wear sunglasses and apply sunscreen',
     'rainy': 'Bring an umbrella and wear waterproof shoes',

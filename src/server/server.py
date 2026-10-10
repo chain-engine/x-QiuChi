@@ -8,34 +8,34 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from mcp.server.fastmcp import FastMCP
 
-from core.config import settings
-from plugins import PluginManager
-from transport.transport import TransportType
-from server.lifecycle import LifecycleManager, ServerState
-from plugins.collector import (
-    register_server_collectors,
-    unregister_server_collectors,
-    set_active_server,
-)
-from core.middleware import (
+from src.core.config import settings
+from src.core.logger import get_logger
+from src.core.middleware import (
+    CacheMiddleware,
+    ErrorHandlerMiddleware,
+    LoggingMiddleware,
+    MCPAuthMiddleware,
     Middleware,
     MiddlewareChain,
     RequestContext,
     ResponseContext,
-    ErrorHandlerMiddleware,
-    LoggingMiddleware,
-    MCPAuthMiddleware,
-    CacheMiddleware,
 )
-from core.logger import get_logger
+from src.plugins import PluginManager
+from src.plugins.collector import (
+    register_server_collectors,
+    unregister_server_collectors,
+)
+from src.server.lifecycle import LifecycleManager, ServerState
+from src.transport.transport import TransportType
 
 if TYPE_CHECKING:
-    from transport.transport import TransportConfig
+    from src.runtime.context import ContextManager
 
 logger = get_logger(__name__)
 
@@ -53,8 +53,8 @@ class MCPServer:
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        version: Optional[str] = None,
+        name: str | None = None,
+        version: str | None = None,
         **kwargs: Any,
     ):
         self.name = name or settings.mcp.server_name
@@ -82,8 +82,8 @@ class MCPServer:
         self._setup_default_middleware()
 
         # 状态
-        self._startup_tasks: List[Callable] = []
-        self._shutdown_tasks: List[Callable] = []
+        self._startup_tasks: list[Callable] = []
+        self._shutdown_tasks: list[Callable] = []
 
         # 记录已用中间件包装过的 FastMCP handler（防双重包装）
         self._wrapped_handlers: set = set()
@@ -103,10 +103,12 @@ class MCPServer:
 
         # 认证
         if settings.middleware.auth.enabled:
-            self.add_middleware(MCPAuthMiddleware(
-                required=settings.middleware.auth.required,
-                exempt_methods=settings.middleware.auth.exempt_methods,
-            ))
+            self.add_middleware(
+                MCPAuthMiddleware(
+                    required=settings.middleware.auth.required,
+                    exempt_methods=settings.middleware.auth.exempt_methods,
+                )
+            )
 
         # 缓存
         if settings.features.cache:
@@ -116,7 +118,7 @@ class MCPServer:
             f"Setup {len(self.middleware_chain)} middlewares: {', '.join(self.middleware_chain.names())}"
         )
 
-    def add_middleware(self, middleware: Middleware, index: Optional[int] = None) -> "MCPServer":
+    def add_middleware(self, middleware: Middleware, index: int | None = None) -> MCPServer:
         if index is None:
             self.middleware_chain.add(middleware)
         else:
@@ -140,7 +142,8 @@ class MCPServer:
         # 关键：在导入示例模块之前，激活当前 server，
         # 这样装饰器收集到的函数会进入 server 隔离的桶
         if settings.plugins.auto_discovery:
-            import plugins.collector as collector_module
+            import src.plugins.collector as collector_module
+
             logger.debug(f"Setting active server: {id(self)}")
             collector_module.set_active_server(self)
             try:
@@ -166,13 +169,11 @@ class MCPServer:
         这里清除 sys.modules 中的缓存，强制重新 import。
         """
         import sys
-        from plugins import discover_plugins
+
+        from src.plugins import discover_plugins
 
         # 清除 examples 模块缓存，强制重新 import 以触发装饰器
-        modules_to_remove = [
-            name for name in sys.modules
-            if name.startswith("examples.")
-        ]
+        modules_to_remove = [name for name in sys.modules if name.startswith("examples.")]
         for name in modules_to_remove:
             sys.modules.pop(name, None)
 
@@ -181,17 +182,14 @@ class MCPServer:
     def _should_register_func(self, name: str) -> bool:
         enabled = settings.plugins.enabled_plugins
         disabled = settings.plugins.disabled_plugins
-        if disabled and name in disabled:
-            return False
-        if enabled and name not in enabled:
-            return False
-        return True
+        # 未被禁用，且（未启用白名单或已命中白名单）时注册
+        return not (disabled and name in disabled) and not (enabled and name not in enabled)
 
     def _register_decorator_functions(self) -> None:
         # 装饰器在模块 import 时收集。set_active_server(self) 已在
         # initialize_plugins 中调用过，所以使用 server 隔离的 collector。
-        import plugins.collector as collector_module
-        from plugins.base import PluginType
+        import src.plugins.collector as collector_module
+        from src.plugins.base import PluginType
 
         bucket = collector_module._collectors_by_server.get(id(self), {})
         if bucket:
@@ -230,7 +228,6 @@ class MCPServer:
         中间件在原函数执行前后插入。返回的 wrapper 既能被 MCP 直接调用
         （保持原签名），又能被外部代码通过 __wrapped__ 访问原函数。
         """
-        from functools import wraps
         import inspect
 
         is_coro = inspect.iscoroutinefunction(func)
@@ -248,7 +245,8 @@ class MCPServer:
                 server=self,
             )
             try:
-                from runtime.context import get_current_context
+                from src.runtime.context import get_current_context
+
                 current = get_current_context()
                 if current is not None:
                     req.metadata = dict(current.metadata)
@@ -258,9 +256,13 @@ class MCPServer:
             async def _final_handler(req: RequestContext):
                 try:
                     if is_coro:
-                        result = await func(*req.request.get("_args", ()), **req.request.get("_kwargs", {}))
+                        result = await func(
+                            *req.request.get("_args", ()), **req.request.get("_kwargs", {})
+                        )
                     else:
-                        result = func(*req.request.get("_args", ()), **req.request.get("_kwargs", {}))
+                        result = func(
+                            *req.request.get("_args", ()), **req.request.get("_kwargs", {})
+                        )
                     if asyncio.iscoroutine(result):
                         result = await result
                     return ResponseContext(response={"result": result})
@@ -274,8 +276,9 @@ class MCPServer:
         wrapped.__wrapped__ = func
         return wrapped
 
-    def _register_tool(self, name: str, info: Dict[str, Any]) -> None:
-        from plugins import PluginMetadata
+    def _register_tool(self, name: str, info: dict[str, Any]) -> None:
+        from src.plugins import PluginMetadata
+
         wrapper = self._build_middleware_wrapper(info["func"], "tool", name)
         metadata = PluginMetadata(
             name=name,
@@ -297,8 +300,9 @@ class MCPServer:
         self.mcp.tool(name=name, description=info["doc"])(wrapper)
         logger.debug(f"Registered tool: {name}")
 
-    def _register_resource(self, uri: str, info: Dict[str, Any]) -> None:
-        from plugins import PluginMetadata
+    def _register_resource(self, uri: str, info: dict[str, Any]) -> None:
+        from src.plugins import PluginMetadata
+
         wrapper = self._build_middleware_wrapper(info["func"], "resource", uri)
         metadata = PluginMetadata(
             name=uri,
@@ -318,8 +322,9 @@ class MCPServer:
         self.mcp.resource(uri, name=uri, description=info["doc"])(wrapper)
         logger.debug(f"Registered resource: {uri}")
 
-    def _register_prompt(self, name: str, info: Dict[str, Any]) -> None:
-        from plugins import PluginMetadata
+    def _register_prompt(self, name: str, info: dict[str, Any]) -> None:
+        from src.plugins import PluginMetadata
+
         wrapper = self._build_middleware_wrapper(info["func"], "prompt", name)
         metadata = PluginMetadata(
             name=name,
@@ -343,16 +348,19 @@ class MCPServer:
     # 便捷装饰器（@server.tool(...) 等价于 @tool(...)）
     # 这些走装饰器收集器流程，最终也会经过 _register_decorator_functions
     # ------------------------------------------------------------------
-    def tool(self, name: Optional[str] = None, **metadata):
-        from plugins import tool as tool_decorator
+    def tool(self, name: str | None = None, **metadata):
+        from src.plugins import tool as tool_decorator
+
         return tool_decorator(name=name, **metadata)
 
-    def resource(self, name: Optional[str] = None, **metadata):
-        from plugins import resource as resource_decorator
+    def resource(self, name: str | None = None, **metadata):
+        from src.plugins import resource as resource_decorator
+
         return resource_decorator(name=name, **metadata)
 
-    def prompt(self, name: Optional[str] = None, **metadata):
-        from plugins import prompt as prompt_decorator
+    def prompt(self, name: str | None = None, **metadata):
+        from src.plugins import prompt as prompt_decorator
+
         return prompt_decorator(name=name, **metadata)
 
     # ------------------------------------------------------------------
@@ -399,11 +407,11 @@ class MCPServer:
         await self.lifecycle.shutdown()
         logger.info(f"MCP Server '{self.name}' stopped")
 
-    def add_startup_task(self, task: Callable) -> "MCPServer":
+    def add_startup_task(self, task: Callable) -> MCPServer:
         self._startup_tasks.append(task)
         return self
 
-    def add_shutdown_task(self, task: Callable) -> "MCPServer":
+    def add_shutdown_task(self, task: Callable) -> MCPServer:
         self._shutdown_tasks.append(task)
         return self
 
@@ -412,13 +420,14 @@ class MCPServer:
     # ------------------------------------------------------------------
     def run(
         self,
-        transport: Optional[str] = None,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
+        transport: str | None = None,
+        host: str | None = None,
+        port: int | None = None,
     ) -> None:
         async def async_run():
             await self.start()
-            from transport.transport import get_transport_config
+            from src.transport.transport import get_transport_config
+
             transport_config = get_transport_config(
                 transport or settings.mcp.transport,
                 host or settings.mcp.host,
@@ -426,7 +435,9 @@ class MCPServer:
             )
 
             try:
-                logger.info(f"Starting MCP Server with transport: {transport_config.transport.value}")
+                logger.info(
+                    f"Starting MCP Server with transport: {transport_config.transport.value}"
+                )
                 if transport_config.transport == TransportType.STDIO:
                     await self.mcp.run_stdio_async()
                 elif transport_config.transport == TransportType.SSE:
@@ -436,7 +447,9 @@ class MCPServer:
                     logger.info(f"Listening on {transport_config.host}:{transport_config.port}")
                     await self.mcp.run_streamable_http_async()
                 else:
-                    raise ValueError(f"Unsupported transport type: {transport_config.transport.value}")
+                    raise ValueError(
+                        f"Unsupported transport type: {transport_config.transport.value}"
+                    )
             except KeyboardInterrupt:
                 logger.info("Server stopped by user")
             except Exception as e:
@@ -453,7 +466,7 @@ class MCPServer:
     # ------------------------------------------------------------------
     # 查询接口
     # ------------------------------------------------------------------
-    def get_tools(self) -> List[Dict[str, Any]]:
+    def get_tools(self) -> list[dict[str, Any]]:
         return [
             {
                 "name": item.name,
@@ -465,7 +478,7 @@ class MCPServer:
             for item in self.registry.get_all_items_by_str_type("tool")
         ]
 
-    def get_resources(self) -> List[Dict[str, Any]]:
+    def get_resources(self) -> list[dict[str, Any]]:
         return [
             {
                 "uri": item.name,
@@ -477,7 +490,7 @@ class MCPServer:
             for item in self.registry.get_all_items_by_str_type("resource")
         ]
 
-    def get_prompts(self) -> List[Dict[str, Any]]:
+    def get_prompts(self) -> list[dict[str, Any]]:
         return [
             {
                 "name": item.name,
@@ -489,7 +502,7 @@ class MCPServer:
             for item in self.registry.get_all_items_by_str_type("prompt")
         ]
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "version": self.version,
@@ -502,9 +515,10 @@ class MCPServer:
             "plugins": self.plugin_manager.stats(),
         }
 
-    def context(self) -> "ContextManager":
+    def context(self) -> ContextManager:
         """获取上下文管理器（用于 with 语句）"""
-        from runtime.context import ContextManager
+        from src.runtime.context import ContextManager
+
         return ContextManager(self)
 
     def __repr__(self) -> str:
@@ -512,8 +526,8 @@ class MCPServer:
 
 
 def create_server(
-    name: Optional[str] = None,
-    version: Optional[str] = None,
+    name: str | None = None,
+    version: str | None = None,
     **kwargs: Any,
 ) -> MCPServer:
     return MCPServer(name, version, **kwargs)
@@ -521,5 +535,6 @@ def create_server(
 
 def _make_registry():
     """延迟创建 PluginRegistry 以避免循环导入"""
-    from plugins.registry import PluginRegistry
+    from src.plugins.registry import PluginRegistry
+
     return PluginRegistry("ServerRegistry")
