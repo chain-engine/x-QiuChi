@@ -176,7 +176,7 @@ class MCPClient:
     
     示例：
     ```python
-    client = MCPClient(base_url="http://prod-mcp:8100")
+    client = MCPClient(base_url="http://prod-mcp:8888")
     
     # 方式 1: 直接调用
     result = client.call("tools/list", {})
@@ -536,7 +536,7 @@ def create_mcp_client(
     示例：
     ```python
     client = create_mcp_client()
-    client = create_mcp_client(base_url="http://prod:8100", timeout=60)
+    client = create_mcp_client(base_url="http://prod:8888", timeout=60)
     client = create_mcp_client(config={"base_url": "...", "timeout": 45})
     ```
     """

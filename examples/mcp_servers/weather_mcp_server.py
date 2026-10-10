@@ -10,7 +10,7 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 
 # Create an MCP server
-mcp = FastMCP("RealWeatherService", json_response=True, port=8000)
+mcp = FastMCP("RealWeatherService", json_response=True, port=8888)
 
 # Get API key from environment variable
 OPENWEATHER_API_KEY = os.environ.get("OPENWEATHER_API_KEY", "")
