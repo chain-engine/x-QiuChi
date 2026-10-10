@@ -206,11 +206,7 @@ def main_async():
     update_settings_from_args(args)
 
     # 设置日志
-    setup_logging(
-        level=settings.logging.level,
-        output=settings.logging.output,
-        file_path=settings.logging.file_path,
-    )
+    setup_logging()
 
     # 创建服务器（插件将通过自动发现机制加载）
     server = create_server(
