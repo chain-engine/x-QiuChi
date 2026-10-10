@@ -7,7 +7,7 @@
 配置优先级：环境变量 > YAML 配置文件 > 代码默认值。
 
 Usage:
-    from src.core.config import settings
+    from core.config import settings
     port = settings.mcp.port
 """
 
@@ -21,7 +21,7 @@ from typing import Any, Final
 
 import yaml
 
-from src.constants.enums import LogLevel, LogOutput, TransportType
+from constants.enums import LogLevel, LogOutput, TransportType
 
 # 常量内联（避免跨包循环导入）
 DEFAULT_CONFIG_FILE: str = "config.yaml"
@@ -34,7 +34,7 @@ ENV_TESTING: str = "testing"
 # 项目根目录
 # ============================================================
 
-PROJECT_ROOT: Path = Path(__file__).resolve().parents[3]
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
 
 
 # ============================================================
@@ -80,15 +80,15 @@ class MCPConfig:
     version: str = "1.0.0"
     transport: str = TransportType.STREAMABLE_HTTP.value
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = 8888
     json_response: bool = True
 
 
 @dataclass
 class LoggingConfig:
     """日志配置。"""
-    level: str = LogLevel.INFO.value
-    output: str = LogOutput.BOTH.value
+    level: LogLevel = LogLevel.INFO
+    output: LogOutput = LogOutput.BOTH
     file_path: str = "logs/x-QiuChi_{time:YYYY-MM-DD-HH}.log"
     rotation: str = "1 hour"
     retention: str = "7 days"
@@ -146,6 +146,7 @@ class CacheConfig:
     enabled: bool = False
     default_ttl: int = 300
     max_size: int = 1000
+    cacheable_methods: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -217,7 +218,7 @@ class Settings:
                 "version": "1.0.0",
                 "transport": TransportType.STREAMABLE_HTTP.value,
                 "host": "0.0.0.0",
-                "port": 8000,
+                "port": 8888,
                 "json_response": True,
             },
             "logging": {
@@ -263,6 +264,7 @@ class Settings:
                     "enabled": False,
                     "default_ttl": 300,
                     "max_size": 1000,
+                    "cacheable_methods": [],
                 },
             },
         }

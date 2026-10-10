@@ -19,7 +19,7 @@ def test_configuration():
     from core.config import settings
 
     assert settings.mcp.server_name == 'QiuChi'
-    assert settings.mcp.transport.value in ['stdio', 'sse', 'streamable-http']
+    assert settings.mcp.transport in ['stdio', 'sse', 'streamable-http']
     assert settings.mcp.port > 0
 
     print("    [OK] Configuration loaded successfully")

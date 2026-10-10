@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """通用全局常量。
 
-集中定义应用信息、环境标识、响应消息、
-用户字段约束等全局常量。禁止在业务代码中硬编码这些值。
+集中定义应用信息、环境标识、配置文件等全局常量。禁止在业务代码中硬编码这些值。
 """
 
 # -- 应用信息 -----------------------------------------------------------
@@ -19,17 +18,3 @@ ENV_PRODUCTION: str = "production"
 # -- 配置文件 -----------------------------------------------------------
 DEFAULT_CONFIG_DIR: str = "."
 DEFAULT_CONFIG_FILE: str = "config.yaml"
-
-# -- 用户字段约束 -------------------------------------------------------
-USERNAME_MIN_LENGTH: int = 3
-USERNAME_MAX_LENGTH: int = 50
-
-# -- 响应消息 -----------------------------------------------------------
-MSG_SUCCESS: str = "success"
-MSG_INTERNAL_ERROR: str = "Internal server error"
-MSG_NOT_FOUND: str = "Resource not found"
-MSG_VALIDATION_ERROR: str = "Validation error"
-MSG_AUTHENTICATION_FAILED: str = "Authentication failed"
-MSG_AUTHORIZATION_DENIED: str = "Permission denied"
-
-

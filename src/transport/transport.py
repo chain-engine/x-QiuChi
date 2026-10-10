@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel, Field
 
 # 从共享类型模块导入
-from src.constants.enums import TransportType
+from constants.enums import TransportType
 from core.config import settings
 
 
@@ -53,7 +53,7 @@ class TransportConfig:
 
     transport: TransportType = TransportType.STREAMABLE_HTTP
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = 8888
     sse_config: Optional[SSEConfig] = None
     http_config: Optional[HTTPConfig] = None
     tls_config: Optional[TLSConfig] = None
@@ -136,7 +136,7 @@ class TransportConfig:
         cls,
         transport_str: str,
         host: str = "0.0.0.0",
-        port: int = 8000,
+        port: int = 8888,
         **kwargs,
     ) -> "TransportConfig":
         """
@@ -219,7 +219,7 @@ TRANSPORT_PRESETS: Dict[str, TransportConfig] = {
 def get_transport_config(
     transport: Union[str, TransportType],
     host: str = "0.0.0.0",
-    port: int = 8000,
+    port: int = 8888,
     preset: Optional[str] = None,
 ) -> TransportConfig:
     """

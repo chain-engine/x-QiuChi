@@ -6,12 +6,12 @@
 
 ## 项目简介
 
-**秋池（QiuChi）** 是一个**生产级 MCP（Model Context Protocol）服务器框架**，基于 [FastMCP](https://github.com/modelcontextprotocol/python-sdk) 构建。通过六层清晰架构、插件化设计、中间件管道和统一配置管理，为企业提供开箱即用的 MCP 服务器开发体验。
+**秋池（QiuChi）** 是一个**生产级 MCP（Model Context Protocol）服务器框架**，基于 [FastMCP](https://github.com/modelcontextprotocol/python-sdk) 构建。通过分层清晰架构、插件化设计、中间件管道和统一配置管理，为企业提供开箱即用的 MCP 服务器开发体验。
 
 **核心价值**：
 
 - **协议合规** —— 完整实现 MCP 协议 Tools、Resources、Prompts 三大原语
-- **架构清晰** —— Core / Plugins / Runtime / Transport / Utils / Examples 六层职责分明
+- **架构清晰** —— Constants / Core / Plugins / Server / Runtime / Transport / Utils / Examples 八层职责分明
 - **开箱即用** —— 装饰器一键注册、插件自动发现、中间件即插即用
 - **生产就绪** —— 结构化日志、健康检查、容器化部署、TLS 支持
 
@@ -99,11 +99,11 @@ cp config.yaml.example config.yaml
 | `mcp.version` | `1.0.0` | 服务器版本号 |
 | `mcp.transport` | `streamable-http` | 传输层类型：`stdio` / `sse` / `streamable-http` |
 | `mcp.host` | `0.0.0.0` | HTTP 监听地址 |
-| `mcp.port` | `8000` | HTTP 监听端口 |
+| `mcp.port` | `8888` | HTTP 监听端口 |
 | `mcp.json_response` | `true` | 是否启用 JSON 响应模式 |
 | `logging.level` | `INFO` | 日志级别：`DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
 | `logging.output` | `both` | 日志输出目标：`stderr` / `file` / `both` |
-| `logging.file_path` | `logs/x-QiuChi_{time}.log` | 日志文件路径（支持时间模板） |
+| `logging.file_path` | `logs/x-QiuChi_{time:YYYY-MM-DD-HH}.log` | 日志文件路径（支持时间模板） |
 | `logging.rotation` | `1 hour` | 日志轮转周期 |
 | `logging.retention` | `7 days` | 日志保留时长 |
 | `features.tools` | `true` | 是否启用工具原语 |
@@ -112,7 +112,7 @@ cp config.yaml.example config.yaml
 | `features.middleware` | `true` | 是否启用中间件管道 |
 | `features.cache` | `false` | 是否启用缓存中间件 |
 | `plugins.auto_discovery` | `true` | 是否自动发现插件 |
-| `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | 插件扫描路径 |
+| `plugins.discovery_paths` | `["plugins", "examples"]` | 插件扫描路径 |
 | `middleware.auth.enabled` | `false` | 是否启用 Token 认证 |
 | `middleware.cache.enabled` | `false` | 是否启用内存缓存 |
 | `middleware.cache.default_ttl` | `300` | 缓存默认 TTL（秒） |
@@ -125,15 +125,15 @@ cp config.yaml.example config.yaml
 | `MCP_TRANSPORT` | 传输层类型 |
 | `MCP_HOST` | 监听地址 |
 | `MCP_PORT` | 监听端口 |
-| `MCP_LOG_LEVEL` | 日志级别 |
-| `MCP_LOG_OUTPUT` | 日志输出目标 |
+| `LOGGING_LEVEL` | 日志级别 |
+| `LOGGING_OUTPUT` | 日志输出目标 |
 
 ### 5. 启动服务
 
 #### 方式一：CLI 启动（推荐）
 
 ```bash
-# HTTP 模式（默认，端口 8000）
+# HTTP 模式（默认，端口 8888）
 uv run x-QiuChi
 
 # Stdio 模式（兼容 Claude Desktop）
@@ -149,7 +149,7 @@ uv run x-QiuChi --help
 #### 方式二：uv run 直接启动
 
 ```bash
-# HTTP 模式（默认，端口 8000）
+# HTTP 模式（默认，端口 8888）
 uv run python src/main.py
 
 # Stdio 模式（兼容 Claude Desktop）
@@ -198,7 +198,7 @@ uv run mypy src/
 
 # MCP Inspector 验证
 npx @anthropic-ai/mcp-inspector
-# 连接地址: http://localhost:8000/mcp
+# 连接地址: http://localhost:8888/mcp
 ```
 
 ### 7. 使用方法示例
@@ -237,13 +237,13 @@ server.run()
 import httpx
 
 # 获取 Session ID
-resp = httpx.get("http://localhost:8000/mcp",
+resp = httpx.get("http://localhost:8888/mcp",
                  headers={"Accept": "text/event-stream"})
 session_id = resp.headers.get("mcp-session-id")
 
 # 调用工具
 resp = httpx.post(
-    "http://localhost:8000/mcp",
+    "http://localhost:8888/mcp",
     json={"jsonrpc": "2.0", "method": "tools/call",
           "params": {"name": "add", "arguments": {"a": 10, "b": 20}},
           "id": 1},
@@ -263,7 +263,7 @@ from langgraph.prebuilt import create_react_agent
 client = MultiServerMCPClient({
     "qiuchi_mcp": {
         "transport": "http",
-        "url": "http://localhost:8000/mcp",
+        "url": "http://localhost:8888/mcp",
     }
 })
 
@@ -292,19 +292,17 @@ x-QiuChi/
 │   ├── main.py                      # 主入口：CLI 参数解析与服务器启动
 │   │
 │   ├── constants/                   # 常量定义层
-│   │   ├── base.py                  # 基础常量
-│   │   ├── constants.py             # 业务常量
-│   │   └── enums.py                 # 枚举类型定义
+│   │   ├── constants.py             # 全局常量（应用信息、环境标识、配置文件）
+│   │   └── enums.py                 # MCP 枚举（TransportType、LogLevel、LogOutput）
 │   │
 │   ├── core/                        # 核心层：框架基础设施
-│   │   ├── config.py                # Pydantic Settings 配置管理（多源优先级、热重载）
-│   │   ├── exceptions.py            # 自定义异常体系
+│   │   ├── config.py                # Settings 配置管理（dataclass 分节，环境变量 > YAML > 默认值，validate/reload）
 │   │   ├── logger.py                # loguru 结构化日志封装（文件轮转、敏感信息过滤）
 │   │   └── middleware.py            # 中间件管道（ErrorHandler / Logging / Auth / Cache）
 │   │
 │   ├── plugins/                     # 插件层：插件系统核心
 │   │   ├── base.py                  # 插件抽象基类与元数据定义（PluginType / PluginMetadata）
-│   │   ├── registry.py              # UnifiedRegistry 统一注册表（线程安全）
+│   │   ├── registry.py              # PluginRegistry 统一注册表（RLock 线程安全）
 │   │   ├── manager.py               # PluginManager 插件管理器（自动发现、依赖解析、生命周期）
 │   │   ├── discovery.py             # 插件发现扫描器
 │   │   ├── loader.py                # 插件加载器
@@ -321,8 +319,7 @@ x-QiuChi/
 │   ├── transport/                   # 传输层：多协议传输抽象
 │   │   └── transport.py             # 传输层配置（Stdio / SSE / Streamable-HTTP / TLS）
 │   │
-│   ├── utils/                       # 工具层：通用辅助函数
-│   │   └── helpers.py               # 工具函数集合
+│   ├── utils/                       # 工具层（当前为空，预留通用辅助函数位）
 │   │
 │   └── examples/                    # 示例层：内置示例插件
 │       ├── tools/
@@ -367,9 +364,9 @@ flowchart TD
         D3["Prompts（提示词原语）"]
     end
     E["插件系统<br/>Discovery → Load → Register → Enable → Serve"]
-    F["统一注册表（线程安全）"]
+    F["PluginRegistry<br/>统一注册表（RLock 线程安全）"]
     G["核心服务器<br/>MCPServer（封装 FastMCP）+ 生命周期管理"]
-    H["配置管理<br/>Pydantic Settings（环境变量 > YAML > 默认值）"]
+    H["配置管理<br/>Settings（dataclass，环境变量 > YAML > 默认值）"]
     I["结构化日志<br/>loguru（stderr + 文件轮转）"]
 
     A -->|"MCP 协议（JSON-RPC）"| B
@@ -389,7 +386,7 @@ flowchart TD
     S1["解析 CLI 参数 / 加载配置"] --> S2["创建 MCPServer 实例"]
     S2 --> S3["注册默认中间件管道<br/>ErrorHandler / Logging / Auth（可选） / Cache（可选）"]
     S3 --> S4["扫描 discovery_paths<br/>自动发现并加载插件"]
-    S4 --> S5["注册到 UnifiedRegistry<br/>（Tools / Resources / Prompts）"]
+    S4 --> S5["注册到 PluginRegistry<br/>（Tools / Resources / Prompts）"]
     S5 --> S6["启动传输层监听<br/>（Stdio / SSE / HTTP）"]
     S6 --> S7["状态：RUNNING"]
 ```
@@ -421,7 +418,7 @@ flowchart TD
     B --> F["src/transport/transport.py<br/>传输层"]
 
     D --> D1["src/plugins/base.py<br/>插件基类"]
-    D --> D2["src/plugins/registry.py<br/>统一注册表"]
+    D --> D2["src/plugins/registry.py<br/>PluginRegistry"]
     D --> D3["src/plugins/discovery.py<br/>插件发现"]
 
     E --> E1["ErrorHandler 中间件"]
@@ -431,7 +428,7 @@ flowchart TD
 
     B --> G["src/runtime/<br/>上下文与会话"]
     B --> H["src/core/config.py<br/>配置管理"]
-    H --> H1["Pydantic Settings（外部依赖）"]
+    H --> H1["dataclass + PyYAML（外部依赖）"]
 ```
 
 ---
@@ -441,8 +438,8 @@ flowchart TD
 | 分类 | 技术 | 版本 | 说明 |
 |------|------|------|------|
 | **开发语言** | [Python](https://www.python.org/) | >= 3.11 | 主开发语言 |
-| **MCP 框架** | [FastMCP (mcp)](https://github.com/modelcontextprotocol/python-sdk) | >= 1.0.0 | MCP 协议 Python SDK，服务器核心 |
-| **数据验证** | [Pydantic](https://docs.pydantic.dev/) / pydantic-settings | >= 2.0.0 | 类型安全配置管理与数据验证 |
+| **MCP 框架** | [FastMCP (mcp)](https://github.com/modelcontextprotocol/python-sdk) | >= 1.0.0, < 2.0.0 | MCP 协议 Python SDK，服务器核心 |
+| **数据验证** | [Pydantic](https://docs.pydantic.dev/) | >= 2.0.0 | 传输层配置模型（SSEConfig / HTTPConfig / TLSConfig）与数据验证 |
 | **HTTP 客户端** | [httpx](https://www.python-httpx.org/) | >= 0.27.0 | 异步 HTTP 客户端 |
 | **HTTP 工具** | [Requests](https://requests.readthedocs.io/) | >= 2.28.0 | 同步 HTTP 请求库 |
 | **配置解析** | [PyYAML](https://pyyaml.org/) | >= 6.0 | YAML 配置文件解析 |
@@ -514,7 +511,7 @@ flowchart TD
 |---------|---------|---------|------|
 | 会话存储 | 内存字典 | `src/runtime/session.py` | SessionManager，支持 TTL 和自动清理 |
 | 缓存存储 | 内存字典 | `src/core/middleware.py` | CacheMiddleware，支持 TTL、SHA-256 Key 生成 |
-| 插件注册表 | 内存字典 | `src/plugins/registry.py` | UnifiedRegistry，线程安全（RLock） |
+| 插件注册表 | 内存字典 | `src/plugins/registry.py` | PluginRegistry，线程安全（RLock） |
 
 ### 日志文件存储
 
@@ -543,7 +540,6 @@ flowchart TD
 | FastMCP SDK | https://github.com/modelcontextprotocol/python-sdk |
 | Python 官方文档 | https://docs.python.org/3.11/ |
 | Pydantic 文档 | https://docs.pydantic.dev/ |
-| Pydantic Settings 文档 | https://docs.pydantic.dev/latest/concepts/pydantic_settings/ |
 | uv 包管理器 | https://docs.astral.sh/uv/ |
 | loguru 日志库 | https://loguru.readthedocs.io/ |
 | httpx 文档 | https://www.python-httpx.org/ |

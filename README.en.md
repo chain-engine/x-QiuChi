@@ -6,12 +6,12 @@
 
 ## Project Introduction
 
-**QiuChi** is a **production-grade MCP (Model Context Protocol) server framework** built on [FastMCP](https://github.com/modelcontextprotocol/python-sdk). It delivers an out-of-the-box MCP server development experience for enterprises through a six-layer architecture, plugin-based design, middleware pipeline, and unified configuration management.
+**QiuChi** is a **production-grade MCP (Model Context Protocol) server framework** built on [FastMCP](https://github.com/modelcontextprotocol/python-sdk). It delivers an out-of-the-box MCP server development experience for enterprises through a layered architecture, plugin-based design, middleware pipeline, and unified configuration management.
 
 **Core Value**:
 
 - **Protocol Compliant** — Full implementation of MCP protocol's three primitives: Tools, Resources, and Prompts
-- **Clean Architecture** — Six distinct layers: Core / Plugins / Runtime / Transport / Utils / Examples
+- **Clean Architecture** — Eight distinct layers: Constants / Core / Plugins / Server / Runtime / Transport / Utils / Examples
 - **Out of the Box** — One-line decorator registration, automatic plugin discovery, plug-and-play middleware
 - **Production Ready** — Structured logging, health checks, containerized deployment, TLS support
 
@@ -99,7 +99,7 @@ cp config.yaml.example config.yaml
 | `mcp.version` | `1.0.0` | Server version |
 | `mcp.transport` | `streamable-http` | Transport type: `stdio` / `sse` / `streamable-http` |
 | `mcp.host` | `0.0.0.0` | HTTP listen address |
-| `mcp.port` | `8000` | HTTP listen port |
+| `mcp.port` | `8888` | HTTP listen port |
 | `mcp.json_response` | `true` | Enable JSON response mode |
 | `logging.level` | `INFO` | Log level: `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
 | `logging.output` | `both` | Log output target: `stderr` / `file` / `both` |
@@ -112,7 +112,7 @@ cp config.yaml.example config.yaml
 | `features.middleware` | `true` | Enable middleware pipeline |
 | `features.cache` | `false` | Enable cache middleware |
 | `plugins.auto_discovery` | `true` | Enable automatic plugin discovery |
-| `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | Plugin scan paths |
+| `plugins.discovery_paths` | `["plugins", "examples"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable token authentication |
 | `middleware.cache.enabled` | `false` | Enable in-memory cache |
 | `middleware.cache.default_ttl` | `300` | Cache default TTL (seconds) |
@@ -125,15 +125,15 @@ cp config.yaml.example config.yaml
 | `MCP_TRANSPORT` | Transport type |
 | `MCP_HOST` | Listen address |
 | `MCP_PORT` | Listen port |
-| `MCP_LOG_LEVEL` | Log level |
-| `MCP_LOG_OUTPUT` | Log output target |
+| `LOGGING_LEVEL` | Log level |
+| `LOGGING_OUTPUT` | Log output target |
 
 ### 5. Start the Server
 
 #### Local Development with Hot Reload
 
 ```bash
-# HTTP mode (default, port 8000)
+# HTTP mode (default, port 8888)
 uv run python src/main.py
 
 # Using the project script entry
@@ -159,7 +159,7 @@ docker compose up -d
 docker compose logs -f qiuchi-mcp
 
 # Start with custom environment variables
-MCP_PORT=9000 MCP_LOG_LEVEL=DEBUG docker compose up -d
+MCP_PORT=9000 LOGGING_LEVEL=DEBUG docker compose up -d
 
 # Stop and remove container
 docker compose down
@@ -172,9 +172,9 @@ docker compose down
 | `MCP_SERVER_NAME` | `QiuChi` | Server name |
 | `MCP_TRANSPORT` | `streamable-http` | Transport type |
 | `MCP_HOST` | `0.0.0.0` | Listen address |
-| `MCP_PORT` | `8000` | Listen port |
-| `MCP_LOG_LEVEL` | `INFO` | Log level |
-| `MCP_LOG_OUTPUT` | `both` | Log output target |
+| `MCP_PORT` | `8888` | Listen port |
+| `LOGGING_LEVEL` | `INFO` | Log level |
+| `LOGGING_OUTPUT` | `both` | Log output target |
 | `OPENWEATHER_API_KEY` | - | OpenWeatherMap API key (optional) |
 
 **Health Check**: The container includes a built-in health check mechanism (every 30 seconds by default):
@@ -184,7 +184,7 @@ docker compose down
 docker inspect --format='{{.State.Health.Status}}' qiuchi-mcp
 
 # Directly access the health endpoint
-curl -f http://localhost:8000/mcp
+curl -f http://localhost:8888/mcp
 ```
 
 ### 6. Common Engineering Commands
@@ -213,7 +213,7 @@ uv run mypy src/
 
 # MCP Inspector validation
 npx @anthropic-ai/mcp-inspector
-# Connect to: http://localhost:8000/mcp
+# Connect to: http://localhost:8888/mcp
 ```
 
 ### 7. Usage Examples
@@ -252,13 +252,13 @@ server.run()
 import httpx
 
 # Get Session ID
-resp = httpx.get("http://localhost:8000/mcp",
+resp = httpx.get("http://localhost:8888/mcp",
                  headers={"Accept": "text/event-stream"})
 session_id = resp.headers.get("mcp-session-id")
 
 # Call a tool
 resp = httpx.post(
-    "http://localhost:8000/mcp",
+    "http://localhost:8888/mcp",
     json={"jsonrpc": "2.0", "method": "tools/call",
           "params": {"name": "add", "arguments": {"a": 10, "b": 20}},
           "id": 1},
@@ -278,7 +278,7 @@ from langgraph.prebuilt import create_react_agent
 client = MultiServerMCPClient({
     "qiuchi_mcp": {
         "transport": "http",
-        "url": "http://localhost:8000/mcp",
+        "url": "http://localhost:8888/mcp",
     }
 })
 
@@ -307,19 +307,17 @@ x-QiuChi/
 │   ├── main.py                      # Main entry: CLI argument parsing and server startup
 │   │
 │   ├── constants/                   # Constants layer
-│   │   ├── base.py                  # Base constants
-│   │   ├── constants.py             # Business constants
-│   │   └── enums.py                 # Enum type definitions
+│   │   ├── constants.py             # Global constants (app info, env flags, config files)
+│   │   └── enums.py                 # MCP enums (TransportType, LogLevel, LogOutput)
 │   │
 │   ├── core/                        # Core layer: framework infrastructure
-│   │   ├── config.py                # Pydantic Settings config management (multi-source priority, hot reload)
-│   │   ├── exceptions.py            # Custom exception hierarchy
+│   │   ├── config.py                # Settings config management (dataclass sections, Env > YAML > Defaults, validate/reload)
 │   │   ├── logger.py                # loguru structured logging (file rotation, sensitive info filtering)
 │   │   └── middleware.py            # Middleware pipeline (ErrorHandler / Logging / Auth / Cache)
 │   │
 │   ├── plugins/                     # Plugin layer: plugin system core
 │   │   ├── base.py                  # Plugin abstract base class and metadata (PluginType / PluginMetadata)
-│   │   ├── registry.py              # UnifiedRegistry (thread-safe)
+│   │   ├── registry.py              # PluginRegistry (thread-safe, RLock)
 │   │   ├── manager.py               # PluginManager (auto-discovery, dependency resolution, lifecycle)
 │   │   ├── discovery.py             # Plugin discovery scanner
 │   │   ├── loader.py                # Plugin loader
@@ -336,8 +334,7 @@ x-QiuChi/
 │   ├── transport/                   # Transport layer: multi-protocol transport abstraction
 │   │   └── transport.py             # Transport config (Stdio / SSE / Streamable-HTTP / TLS)
 │   │
-│   ├── utils/                       # Utils layer: general-purpose helper functions
-│   │   └── helpers.py               # Utility function collection
+│   ├── utils/                       # Utils layer (currently empty, reserved for helper functions)
 │   │
 │   └── examples/                    # Examples layer: built-in example plugins
 │       ├── tools/
@@ -382,9 +379,9 @@ flowchart TD
         D3["Prompts Primitive"]
     end
     E["Plugin System<br/>Discovery → Load → Register → Enable → Serve"]
-    F["Unified Registry (Thread-Safe)"]
+    F["PluginRegistry (Thread-Safe, RLock)"]
     G["Core Server<br/>MCPServer (Wraps FastMCP) + Lifecycle Management"]
-    H["Configuration Management<br/>Pydantic Settings (Env > YAML > Defaults)"]
+    H["Configuration Management<br/>Settings (dataclass, Env > YAML > Defaults)"]
     I["Structured Logging<br/>loguru (stderr + File Rotation)"]
 
     A -->|"MCP Protocol (JSON-RPC)"| B
@@ -404,7 +401,7 @@ flowchart TD
     S1["Parse CLI Arguments / Load Config"] --> S2["Create MCPServer Instance"]
     S2 --> S3["Register Default Middleware Pipeline<br/>ErrorHandler / Logging / Auth (Optional) / Cache (Optional)"]
     S3 --> S4["Scan discovery_paths<br/>Auto-Discover and Load Plugins"]
-    S4 --> S5["Register to UnifiedRegistry<br/>(Tools / Resources / Prompts)"]
+    S4 --> S5["Register to PluginRegistry<br/>(Tools / Resources / Prompts)"]
     S5 --> S6["Start Transport Layer Listener<br/>(Stdio / SSE / HTTP)"]
     S6 --> S7["State: RUNNING"]
 ```
@@ -436,7 +433,7 @@ flowchart TD
     B --> F["src/transport/transport.py<br/>Transport Layer"]
 
     D --> D1["src/plugins/base.py<br/>Plugin Base"]
-    D --> D2["src/plugins/registry.py<br/>Unified Registry"]
+    D --> D2["src/plugins/registry.py<br/>PluginRegistry"]
     D --> D3["src/plugins/discovery.py<br/>Plugin Discovery"]
 
     E --> E1["ErrorHandler Middleware"]
@@ -446,7 +443,7 @@ flowchart TD
 
     B --> G["src/runtime/<br/>Context & Session"]
     B --> H["src/core/config.py<br/>Config Management"]
-    H --> H1["Pydantic Settings (External)"]
+    H --> H1["dataclass + PyYAML (External)"]
 ```
 
 ---
@@ -456,8 +453,8 @@ flowchart TD
 | Category | Technology | Version | Description |
 |----------|-----------|---------|-------------|
 | **Language** | [Python](https://www.python.org/) | >= 3.11 | Primary development language |
-| **MCP Framework** | [FastMCP (mcp)](https://github.com/modelcontextprotocol/python-sdk) | >= 1.0.0 | MCP protocol Python SDK, server core |
-| **Data Validation** | [Pydantic](https://docs.pydantic.dev/) / pydantic-settings | >= 2.0.0 | Type-safe config management and data validation |
+| **MCP Framework** | [FastMCP (mcp)](https://github.com/modelcontextprotocol/python-sdk) | >= 1.0.0, < 2.0.0 | MCP protocol Python SDK, server core |
+| **Data Validation** | [Pydantic](https://docs.pydantic.dev/) | >= 2.0.0 | Transport config models (SSEConfig / HTTPConfig / TLSConfig) and data validation |
 | **HTTP Client** | [httpx](https://www.python-httpx.org/) | >= 0.27.0 | Async HTTP client |
 | **HTTP Utility** | [Requests](https://requests.readthedocs.io/) | >= 2.28.0 | Synchronous HTTP request library |
 | **Config Parsing** | [PyYAML](https://pyyaml.org/) | >= 6.0 | YAML config file parsing |
@@ -529,7 +526,7 @@ QiuChi, as an MCP server framework, does not provide traditional REST APIs. Inst
 |-------------|---------------|-----------------|-------------|
 | Session Storage | In-memory dict | `src/runtime/session.py` | SessionManager with TTL and auto-cleanup |
 | Cache Storage | In-memory dict | `src/core/middleware.py` | CacheMiddleware with TTL, SHA-256 key generation |
-| Plugin Registry | In-memory dict | `src/plugins/registry.py` | UnifiedRegistry, thread-safe (RLock) |
+| Plugin Registry | In-memory dict | `src/plugins/registry.py` | PluginRegistry, thread-safe (RLock) |
 
 ### Log File Storage
 
@@ -558,7 +555,6 @@ This project is licensed under the [MIT](LICENSE) License.
 | FastMCP SDK | https://github.com/modelcontextprotocol/python-sdk |
 | Python Official Documentation | https://docs.python.org/3.11/ |
 | Pydantic Documentation | https://docs.pydantic.dev/ |
-| Pydantic Settings Documentation | https://docs.pydantic.dev/latest/concepts/pydantic_settings/ |
 | uv Package Manager | https://docs.astral.sh/uv/ |
 | loguru Logging Library | https://loguru.readthedocs.io/ |
 | httpx Documentation | https://www.python-httpx.org/ |

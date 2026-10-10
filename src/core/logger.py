@@ -11,7 +11,7 @@
     - 日志轮转和自动清理
 
 Usage:
-    from src.core.logger import logger, setup_logging, get_logger
+    from core.logger import logger, setup_logging, get_logger
 
     # 在应用启动时调用一次
     setup_logging()
@@ -197,7 +197,7 @@ def setup_logging(
     if _configured:
         return
 
-    from core.config import settings
+    from core.config import settings, PROJECT_ROOT
 
     config = settings.logging
 
@@ -208,6 +208,10 @@ def setup_logging(
     log_retention: str = retention or config.retention
     fmt: str = (log_format or config.format).lower()
     use_json_console: bool = fmt == "json"
+
+    # 锚定到项目根目录：无论工作目录在哪，日志统一写入 <PROJECT_ROOT>/logs 下
+    if not os.path.isabs(log_file_path):
+        log_file_path = str(PROJECT_ROOT / log_file_path)
 
     # 确保日志目录存在
     log_dir: str = os.path.dirname(log_file_path)

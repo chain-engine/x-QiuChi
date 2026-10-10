@@ -20,7 +20,7 @@ def get_server_config() -> str:
         "name": "QiuChi Server",
         "version": "1.0.0",
         "transport": "streamable-http",
-        "port": 8000,
+        "port": 8888,
         "features": {
             "tools": True,
             "resources": True,

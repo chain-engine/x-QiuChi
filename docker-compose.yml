@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   qiuchi-mcp:
     build:
@@ -7,19 +5,18 @@ services:
       dockerfile: Dockerfile
     container_name: qiuchi-mcp
     ports:
-      - "8000:8000"
+      - "${MCP_PORT:-8888}:${MCP_PORT:-8888}"
     environment:
       # 服务器配置
       - MCP_SERVER_NAME=${MCP_SERVER_NAME:-QiuChi}
       - MCP_VERSION=${MCP_VERSION:-1.0.0}
       - MCP_TRANSPORT=${MCP_TRANSPORT:-streamable-http}
       - MCP_HOST=${MCP_HOST:-0.0.0.0}
-      - MCP_PORT=${MCP_PORT:-8000}
+      - MCP_PORT=${MCP_PORT:-8888}
 
       # 日志配置
-      - MCP_LOG_LEVEL=${MCP_LOG_LEVEL:-INFO}
-      - MCP_LOG_OUTPUT=${MCP_LOG_OUTPUT:-both}
-      - MCP_LOG_FILE=${MCP_LOG_FILE:-1}
+      - LOGGING_LEVEL=${LOGGING_LEVEL:-INFO}
+      - LOGGING_OUTPUT=${LOGGING_OUTPUT:-both}
 
       # 天气 API 密钥（可选）
       - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY:-}
@@ -33,7 +30,7 @@ services:
       # - ./config.yaml:/app/config.yaml:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/mcp', headers={'Accept': 'text/event-stream'}, timeout=5)"]
+      test: ["CMD", "python", "-c", "import httpx, os, sys; r = httpx.post('http://localhost:' + os.environ.get('MCP_PORT', '8888') + '/mcp', json={'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'healthcheck','version':'1.0'}}}, headers={'Accept':'application/json, text/event-stream'}, timeout=5); sys.exit(0 if r.status_code == 200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3

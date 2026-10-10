@@ -84,7 +84,7 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s                    # 启动 HTTP 服务器（默认端口 8000）
+  %(prog)s                    # 启动 HTTP 服务器（默认端口 8888）
   %(prog)s --transport stdio  # 启动 Stdio 服务器
   %(prog)s --port 8080        # 在端口 8080 上启动
   %(prog)s --config custom.yaml  # 使用自定义配置文件

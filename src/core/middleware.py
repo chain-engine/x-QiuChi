@@ -8,7 +8,7 @@
     - ``RequestContext`` / ``ResponseContext`` — 请求/响应上下文数据类
     - ``ErrorHandlerMiddleware`` — MCP 请求错误处理（JSON-RPC 标准错误码）
     - ``LoggingMiddleware`` — MCP 请求/响应日志与性能告警
-    - ``MCPAuthMiddleware`` / ``RoleBasedAuthMiddleware`` — MCP 认证与角色鉴权
+    - ``MCPAuthMiddleware`` / ``SimpleTokenAuthProvider`` — MCP 认证与令牌鉴权
     - ``CacheMiddleware`` — MCP 请求缓存（内存后端，可扩展）
 
 Usage:
@@ -988,9 +988,7 @@ __all__ = [
     # --- MCP 协议中间件：功能 ---
     "ErrorHandlerMiddleware",
     "LoggingMiddleware",
-    "enable_performance_logging",
     "MCPAuthMiddleware",
-    "RoleBasedAuthMiddleware",
     "AuthProvider",
     "SimpleTokenAuthProvider",
     "CacheBackend",
