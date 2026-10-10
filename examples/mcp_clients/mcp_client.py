@@ -592,7 +592,7 @@ if __name__ == "__main__":
     try:
         result = default_mcp_client.call(
             "tools/call",
-            {"name": "get_weather", "arguments": {"city": "Beijing"}},
+            {"name": "add", "arguments": {"a": 1, "b": 2}},
             return_dict=True
         )
         print(f"响应：{json.dumps(result, ensure_ascii=False, indent=2)[:300]}...")
