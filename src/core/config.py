@@ -236,7 +236,17 @@ class Settings:
         features: 功能开关配置
         plugins: 插件配置
         middleware: 中间件配置
+        telemetry: OpenTelemetry 可观测性配置
     """
+
+    # 配置段实例在 _parse_config() 中完成解析与赋值，此处显式声明类型
+    app_env: str
+    mcp: MCPConfig
+    logging: LoggingConfig
+    features: FeaturesConfig
+    plugins: PluginConfig
+    middleware: MiddlewareConfig
+    telemetry: OpenTelemetryConfig
 
     def __init__(self, config_file: str | None = None) -> None:
         """初始化配置。"""
