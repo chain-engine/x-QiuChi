@@ -30,6 +30,26 @@ from requests.exceptions import HTTPError, RequestException, Timeout
 
 # ==================== 配置管理 ====================
 
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _load_env_file(path: str = ".env") -> None:
+    """极简 .env 加载（零依赖）：仅填充 os.environ 中尚未设置的键，不覆盖真实环境变量。"""
+    env_path = os.path.join(_PROJECT_ROOT, path)
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, encoding="utf-8") as fh:
+        for raw in fh:
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip())
+
+
+_load_env_file()
+
+
 @dataclass
 class MCPConfig:
     """MCP 客户端配置（支持环境变量覆盖）"""
@@ -39,6 +59,7 @@ class MCPConfig:
     timeout: int = field(default_factory=lambda: int(os.getenv("MCP_TIMEOUT", "30")))
     max_retries: int = field(default_factory=lambda: int(os.getenv("MCP_MAX_RETRIES", "3")))
     retry_delay: float = field(default_factory=lambda: float(os.getenv("MCP_RETRY_DELAY", "1.0")))
+    bearer_token: str = field(default_factory=lambda: os.getenv("MCP_BEARER_TOKEN", ""))
     protocol_version: str = field(default="2024-11-05")
     client_name: str = field(default="x-mcp-client")
     client_version: str = field(default="1.0.0")
@@ -294,6 +315,8 @@ class MCPClient:
         }
         if session_id:
             headers["mcp-session-id"] = session_id
+        if self.config.bearer_token:
+            headers["Authorization"] = f"Bearer {self.config.bearer_token}"
 
         try:
             response = requests.post(

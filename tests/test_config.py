@@ -22,11 +22,14 @@ def test_mcp_version_uses_package_version() -> None:
     assert settings.mcp.version == PACKAGE_VERSION
 
 
-def test_default_auth_disabled_and_tokens_empty() -> None:
-    from src.core.config import settings
+def test_default_auth_disabled_and_tokens_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """代码默认值：认证关闭、无 token（排除本机 config.yaml 与 .env 的干扰）。"""
+    monkeypatch.delenv("AUTH_ENABLED", raising=False)
+    monkeypatch.delenv("AUTH_TOKENS", raising=False)
 
-    assert settings.middleware.auth.enabled is False
-    assert settings.middleware.auth.tokens == []
+    s = Settings(config_file="nonexistent-config.yaml")
+    assert s.middleware.auth.enabled is False
+    assert s.middleware.auth.tokens == []
 
 
 def test_default_telemetry_enabled_console() -> None:

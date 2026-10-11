@@ -29,6 +29,14 @@ from src.constants.enums import Environment, LogLevel, LogOutput, TransportType
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
 
+# 加载项目根目录 .env（密钥/Token 等敏感配置不入库，仅供环境变量读取）
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(PROJECT_ROOT / ".env")
+except ImportError:  # python-dotenv 未安装时跳过，仅支持真实环境变量
+    pass
+
 
 # ============================================================
 # 版本号（唯一事实源：pyproject.toml）

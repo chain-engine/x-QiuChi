@@ -30,6 +30,7 @@ from src.plugins.collector import (
     register_server_collectors,
     unregister_server_collectors,
 )
+from src.plugins.registry import PluginRegistry
 from src.server.lifecycle import LifecycleManager, ServerState
 from src.transport.transport import TransportType
 
@@ -91,15 +92,13 @@ class MCPServer:
         )
 
         # 握手 serverInfo.version 对齐 pyproject 单一事实源
-        # （mcp SDK 的 FastMCP 未暴露 version 参数，需设置底层 Server.version，
-        #  否则回退到 mcp 包版本号）
         try:
             self.mcp._mcp_server.version = self.version
         except Exception:
             logger.debug("Could not set server version (mcp SDK internal API)")
 
         # 组件
-        self.registry = _make_registry()  # 延迟创建以避免循环
+        self.registry = PluginRegistry("ServerRegistry")
         self.middleware_chain = MiddlewareChain()
         self.plugin_manager = PluginManager(self)
         self.lifecycle = LifecycleManager()
@@ -129,9 +128,6 @@ class MCPServer:
         # 日志
         if settings.features.middleware:
             self.add_middleware(LoggingMiddleware())
-
-        # 认证已迁移到 HTTP 传输层（FastMCP RequireAuthMiddleware，
-        # 能读取真实 Authorization 头）；tool 层不再注册认证中间件。
 
         # 缓存
         if settings.features.cache:
@@ -591,10 +587,3 @@ def create_server(
     **kwargs: Any,
 ) -> MCPServer:
     return MCPServer(name, version, **kwargs)
-
-
-def _make_registry():
-    """延迟创建 PluginRegistry 以避免循环导入"""
-    from src.plugins.registry import PluginRegistry
-
-    return PluginRegistry("ServerRegistry")

@@ -55,6 +55,9 @@ async def create_http_client():
             "qiuchi_mcp": {
                 "transport": "http",
                 "url": "http://localhost:8888/mcp",
+                "headers": {
+                    "Authorization": f"Bearer {os.getenv('MCP_BEARER_TOKEN', '')}",
+                },
             }
         }
     )
