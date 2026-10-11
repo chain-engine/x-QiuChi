@@ -6,21 +6,26 @@
 - 依赖解析（按拓扑排序加载）
 - 生命周期管理（load → enable → disable → unload）
 - 启用/禁用配置（结合 settings.plugins.enabled_plugins / disabled_plugins）
+- 装饰器函数注册（@tool/@resource/@prompt 收集结果统一注册到 registry + FastMCP）
 
-注意：基于装饰器（@tool/@resource/@prompt）的轻量级插件由 plugins.collector 处理，
-本管理器主要管理基于 Plugin 类的重型插件，同时也提供 disable/enable 列表的统一处理。
+插件形态分两类：基于 Plugin 类的重型插件走 loader 全生命周期管理；
+基于装饰器的轻量级函数由 collector 收集，本管理器在 initialize 时统一注册。
 """
 
 from __future__ import annotations
 
+import asyncio
 import importlib
+from collections.abc import Callable
+from functools import wraps
 from pathlib import Path
 from typing import Any
 
 from src.core.config import settings
 from src.core.logger import get_logger
+from src.core.middleware import RequestContext, ResponseContext
 
-from .base import PluginStatus, PluginType
+from .base import PluginMetadata, PluginStatus, PluginType
 from .loader import Plugin, PluginLoader
 
 logger = get_logger(__name__)
@@ -105,6 +110,168 @@ class PluginManager:
                         self._discovered.add(attr.name)
             except ImportError as e:
                 logger.debug(f"无法导入子模块 {module_name}: {e}")
+
+    # ------------------------------------------------------------------
+    # 初始化与装饰器函数注册（轻量级插件）
+    # ------------------------------------------------------------------
+    async def initialize(self) -> None:
+        """初始化插件系统：发现 → 加载 → 启用 → 注册装饰器函数到 registry + FastMCP。"""
+        logger.info("Initializing plugin system...")
+
+        if settings.plugins.auto_discovery:
+            # Plugin 类发现（import 模块时装饰器函数一并收集进全局收集器）
+            self.discover()
+            self._discover_decorator_modules()
+
+        await self.load_all()
+        await self.enable_all()
+        self._register_decorator_functions()
+
+    def _discover_decorator_modules(self) -> None:
+        """扫描发现路径 import 模块，触发 @tool/@resource/@prompt 收集。"""
+        from .discovery import discover_plugins
+
+        discover_plugins()
+
+    def _should_register_func(self, name: str) -> bool:
+        """装饰器函数注册过滤：未被禁用，且（白名单为空或已命中）。"""
+        return not self._is_disabled(name) and self._is_enabled(name)
+
+    def _register_decorator_functions(self) -> None:
+        """将全局收集器中的装饰器函数统一注册到 registry + FastMCP。"""
+        from .collector import get_prompt_collector, get_resource_collector, get_tool_collector
+
+        for tool_name, info in get_tool_collector().get_items().items():
+            if not self._should_register_func(tool_name):
+                continue
+            self._register_tool(tool_name, info)
+
+        for resource_name, info in get_resource_collector().get_items().items():
+            if not self._should_register_func(resource_name):
+                continue
+            self._register_resource(resource_name, info)
+
+        for prompt_name, info in get_prompt_collector().get_items().items():
+            if not self._should_register_func(prompt_name):
+                continue
+            self._register_prompt(prompt_name, info)
+
+    def _build_middleware_wrapper(
+        self,
+        func: Callable,
+        func_kind: str,
+        func_id: str,
+    ) -> Callable:
+        """为 func 包裹中间件管道。
+
+        中间件在原函数执行前后插入。返回的 wrapper 既能被 MCP 直接调用
+        （保持原签名），又能被外部代码通过 __wrapped__ 访问原函数。
+        """
+        import inspect
+
+        is_coro = inspect.iscoroutinefunction(func)
+
+        @wraps(func)
+        async def wrapped(*args, **kwargs):
+            from src.core.opentelemetry import get_request_id
+
+            req = RequestContext(
+                request={
+                    "method": f"{func_kind}:{func_id}",
+                    "id": get_request_id(),  # 传输层注入的真实 request_id
+                    "params": kwargs,
+                    "_args": args,
+                    "_kwargs": kwargs,
+                },
+                server=self.server,
+            )
+            try:
+                from src.runtime.context import get_current_context
+
+                current = get_current_context()
+                if current is not None:
+                    req.metadata = dict(current.metadata)
+            except Exception:
+                pass
+
+            async def _final_handler(req: RequestContext):
+                if is_coro:
+                    result = await func(
+                        *req.request.get("_args", ()), **req.request.get("_kwargs", {})
+                    )
+                else:
+                    result = func(*req.request.get("_args", ()), **req.request.get("_kwargs", {}))
+                if asyncio.iscoroutine(result):
+                    result = await result
+                return ResponseContext(response={"result": result})
+
+            response = await self.server.middleware_chain.execute(req, _final_handler)
+            return response.response.get("result")
+
+        # 保持可被外部识别为已包装函数
+        wrapped.__wrapped__ = func
+        return wrapped
+
+    def _register_tool(self, name: str, info: dict[str, Any]) -> None:
+        wrapper = self._build_middleware_wrapper(info["func"], "tool", name)
+        metadata = PluginMetadata(
+            name=name,
+            description=info["doc"],
+            category=info["category"],
+            subcategory=info["subcategory"],
+            tags=info["tags"],
+        )
+        self.server.registry.register_tool(
+            name=name,
+            tool=wrapper,
+            metadata=metadata,
+            category=info["category"],
+            subcategory=info["subcategory"],
+            tags=info["tags"],
+        )
+        # 注册到 FastMCP：由 wrapper 承载中间件管道，schema 由 FastMCP 分析
+        self.server.mcp.tool(name=name, description=info["doc"])(wrapper)
+        logger.debug(f"Registered tool: {name}")
+
+    def _register_resource(self, uri: str, info: dict[str, Any]) -> None:
+        wrapper = self._build_middleware_wrapper(info["func"], "resource", uri)
+        metadata = PluginMetadata(
+            name=uri,
+            description=info["doc"],
+            category=info["category"],
+            subcategory=info["subcategory"],
+            tags=info["tags"],
+        )
+        self.server.registry.register_resource(
+            name=uri,
+            resource=wrapper,
+            metadata=metadata,
+            category=info["category"],
+            subcategory=info["subcategory"],
+            tags=info["tags"],
+        )
+        self.server.mcp.resource(uri, name=uri, description=info["doc"])(wrapper)
+        logger.debug(f"Registered resource: {uri}")
+
+    def _register_prompt(self, name: str, info: dict[str, Any]) -> None:
+        wrapper = self._build_middleware_wrapper(info["func"], "prompt", name)
+        metadata = PluginMetadata(
+            name=name,
+            description=info["doc"],
+            category=info["category"],
+            subcategory=info["subcategory"],
+            tags=info["tags"],
+        )
+        self.server.registry.register_prompt(
+            name=name,
+            prompt=wrapper,
+            metadata=metadata,
+            category=info["category"],
+            subcategory=info["subcategory"],
+            tags=info["tags"],
+        )
+        self.server.mcp.prompt(name=name, description=info["doc"])(wrapper)
+        logger.debug(f"Registered prompt: {name}")
 
     # ------------------------------------------------------------------
     # 生命周期

@@ -7,11 +7,18 @@
 - streamable-http: 可流式 HTTP（FastMCP 默认）
 """
 
-from .transport import TRANSPORT_PRESETS, TransportConfig, TransportType, get_transport_config
+from .transport import (
+    TRANSPORT_PRESETS,
+    TransportConfig,
+    TransportType,
+    get_transport_config,
+    serve_mcp,
+)
 
 __all__ = [
     "TransportType",
     "TransportConfig",
     "get_transport_config",
     "TRANSPORT_PRESETS",
+    "serve_mcp",
 ]

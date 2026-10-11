@@ -4,8 +4,6 @@
 管理服务器的启动、关闭和状态转换。
 """
 
-import asyncio
-from collections.abc import Callable
 from enum import StrEnum
 
 from src.core.logger import get_logger
@@ -30,31 +28,12 @@ class LifecycleManager:
     """
     服务器生命周期管理器
 
-    管理服务器的完整生命周期，包括：
-    - 初始化
-    - 启动
-    - 运行
-    - 停止
-    - 清理
+    显式状态机：管理服务器的初始化、启动、运行、停止，
+    支持状态查询与非法转换保护。
     """
 
     def __init__(self):
         self.state = ServerState.UNINITIALIZED
-        self._startup_hooks: list[Callable] = []
-        self._shutdown_hooks: list[Callable] = []
-        self._error_hooks: list[Callable] = []
-
-    def add_startup_hook(self, hook: Callable) -> None:
-        """添加启动钩子"""
-        self._startup_hooks.append(hook)
-
-    def add_shutdown_hook(self, hook: Callable) -> None:
-        """添加关闭钩子"""
-        self._shutdown_hooks.append(hook)
-
-    def add_error_hook(self, hook: Callable) -> None:
-        """添加错误钩子"""
-        self._error_hooks.append(hook)
 
     async def initialize(self) -> bool:
         """
@@ -67,20 +46,11 @@ class LifecycleManager:
             logger.warning(f"Cannot initialize from state: {self.state}")
             return False
 
-        try:
-            self.state = ServerState.INITIALIZING
-            logger.info("Initializing server...")
-
-            # 执行初始化逻辑
-            self.state = ServerState.READY
-            logger.info("Server initialized successfully")
-            return True
-
-        except Exception as e:
-            self.state = ServerState.ERROR
-            logger.error(f"Failed to initialize server: {e}")
-            await self._run_error_hooks(e)
-            return False
+        self.state = ServerState.INITIALIZING
+        logger.info("Initializing server...")
+        self.state = ServerState.READY
+        logger.info("Server initialized successfully")
+        return True
 
     async def startup(self) -> bool:
         """
@@ -93,30 +63,11 @@ class LifecycleManager:
             logger.warning(f"Cannot startup from state: {self.state}")
             return False
 
-        try:
-            self.state = ServerState.STARTING
-            logger.info("Starting server...")
-
-            # 运行启动钩子
-            for hook in self._startup_hooks:
-                try:
-                    if asyncio.iscoroutinefunction(hook):
-                        await hook()
-                    else:
-                        hook()
-                except Exception as e:
-                    logger.error(f"Startup hook failed: {e}")
-                    raise
-
-            self.state = ServerState.RUNNING
-            logger.info("Server started successfully")
-            return True
-
-        except Exception as e:
-            self.state = ServerState.ERROR
-            logger.error(f"Failed to start server: {e}")
-            await self._run_error_hooks(e)
-            return False
+        self.state = ServerState.STARTING
+        logger.info("Starting server...")
+        self.state = ServerState.RUNNING
+        logger.info("Server started successfully")
+        return True
 
     async def shutdown(self) -> bool:
         """
@@ -129,40 +80,11 @@ class LifecycleManager:
             logger.warning(f"Cannot shutdown from state: {self.state}")
             return False
 
-        try:
-            self.state = ServerState.STOPPING
-            logger.info("Stopping server...")
-
-            # 运行关闭钩子
-            for hook in self._shutdown_hooks:
-                try:
-                    if asyncio.iscoroutinefunction(hook):
-                        await hook()
-                    else:
-                        hook()
-                except Exception as e:
-                    logger.error(f"Shutdown hook failed: {e}")
-
-            self.state = ServerState.STOPPED
-            logger.info("Server stopped successfully")
-            return True
-
-        except Exception as e:
-            self.state = ServerState.ERROR
-            logger.error(f"Failed to stop server: {e}")
-            await self._run_error_hooks(e)
-            return False
-
-    async def _run_error_hooks(self, error: Exception) -> None:
-        """运行错误钩子"""
-        for hook in self._error_hooks:
-            try:
-                if asyncio.iscoroutinefunction(hook):
-                    await hook(error)
-                else:
-                    hook(error)
-            except Exception as e:
-                logger.error(f"Error hook failed: {e}")
+        self.state = ServerState.STOPPING
+        logger.info("Stopping server...")
+        self.state = ServerState.STOPPED
+        logger.info("Server stopped successfully")
+        return True
 
     def is_running(self) -> bool:
         """检查服务器是否正在运行"""

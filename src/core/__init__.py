@@ -10,7 +10,6 @@ from src.core.middleware import (
     CacheMiddleware,
     ErrorHandlerMiddleware,
     LoggingMiddleware,
-    MCPAuthMiddleware,
     Middleware,
     MiddlewareChain,
 )
@@ -23,7 +22,6 @@ __all__ = [
     "MiddlewareChain",
     "ErrorHandlerMiddleware",
     "LoggingMiddleware",
-    "MCPAuthMiddleware",
     "CacheMiddleware",
     "get_logger",
     "setup_logging",

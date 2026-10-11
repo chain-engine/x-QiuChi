@@ -63,7 +63,6 @@ def test_env_override_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_auth_config_dataclass_defaults() -> None:
     cfg = AuthConfig()
     assert cfg.enabled is False
-    assert cfg.required is True
     assert cfg.tokens == []
 
 

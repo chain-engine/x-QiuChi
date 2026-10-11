@@ -1,54 +1,44 @@
 """
 核心服务器类
 
-企业级 MCP 服务器封装，提供插件化、中间件等高级特性。
+企业级 MCP 服务器编排层：组装配置、认证、中间件、插件与传输各组件，
+对外暴露统一的 MCPServer 门面。本层不承载具体业务逻辑，
+注册流程委托 plugins 层，传输承载委托 transport 层，认证装配委托 core 层。
 """
 
 from __future__ import annotations
 
 import asyncio
-import inspect
-from collections.abc import Callable
-from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from src.core.auth import build_auth_from_settings
 from src.core.config import settings
 from src.core.logger import get_logger
 from src.core.middleware import (
     CacheMiddleware,
     ErrorHandlerMiddleware,
     LoggingMiddleware,
-    Middleware,
     MiddlewareChain,
-    RequestContext,
-    ResponseContext,
 )
 from src.plugins import PluginManager
-from src.plugins.collector import (
-    register_server_collectors,
-    unregister_server_collectors,
-)
 from src.plugins.registry import PluginRegistry
 from src.server.lifecycle import LifecycleManager, ServerState
-from src.transport.transport import TransportType
-
-if TYPE_CHECKING:
-    from src.runtime.context import ContextManager
+from src.transport import get_transport_config, serve_mcp
 
 logger = get_logger(__name__)
 
 
 class MCPServer:
     """
-    企业级 MCP 服务器
+    企业级 MCP 服务器（编排门面）
 
-    封装 FastMCP，提供：
-    - 装饰器注册 Tools / Resources / Prompts
-    - 中间件管道（ErrorHandler / Logging / Auth / Cache）
-    - 插件自动发现与生命周期管理
-    - 多传输层（Stdio / SSE / Streamable-HTTP）
+    组装并调度各层组件：
+    - 插件注册与发现（委托 PluginManager）
+    - 中间件管道（ErrorHandler / Logging / Cache）
+    - 传输层认证（委托 core.auth，走 mcp SDK 官方 RequireAuthMiddleware）
+    - 多传输层承载（Stdio / SSE / Streamable-HTTP，委托 transport 层）
     """
 
     def __init__(
@@ -61,24 +51,7 @@ class MCPServer:
         self.version = version or settings.mcp.version
 
         # 认证（传输层 Bearer Token，走 mcp SDK 官方 RequireAuthMiddleware）
-        auth_settings = None
-        token_verifier = None
-        if settings.middleware.auth.enabled:
-            from mcp.server.auth.settings import AuthSettings
-            from pydantic import AnyHttpUrl
-
-            from src.core.auth import SimpleTokenVerifier
-
-            token_verifier = SimpleTokenVerifier(valid_tokens=set(settings.middleware.auth.tokens))
-            if not token_verifier.valid_tokens:
-                logger.warning(
-                    "Authentication enabled but no tokens configured (AUTH_TOKENS). "
-                    "All MCP requests will be rejected."
-                )
-            auth_settings = AuthSettings(
-                issuer_url=AnyHttpUrl("https://qiuchi.local"),
-                resource_server_url=AnyHttpUrl(f"http://{settings.mcp.host}:{settings.mcp.port}"),
-            )
+        auth_settings, token_verifier = build_auth_from_settings()
 
         # 创建底层 FastMCP 实例
         self.mcp = FastMCP(
@@ -91,298 +64,20 @@ class MCPServer:
             **kwargs,
         )
 
-        # 握手 serverInfo.version 对齐 pyproject 单一事实源
-        try:
-            self.mcp._mcp_server.version = self.version
-        except Exception:
-            logger.debug("Could not set server version (mcp SDK internal API)")
-
         # 组件
         self.registry = PluginRegistry("ServerRegistry")
         self.middleware_chain = MiddlewareChain()
         self.plugin_manager = PluginManager(self)
         self.lifecycle = LifecycleManager()
 
-        # 注册当前 server 的隔离收集器
-        register_server_collectors(self)
-
-        # 注册默认中间件
-        self._setup_default_middleware()
-
-        # 状态
-        self._startup_tasks: list[Callable] = []
-        self._shutdown_tasks: list[Callable] = []
-
-        # 记录已用中间件包装过的 FastMCP handler（防双重包装）
-        self._wrapped_handlers: set = set()
+        # 默认中间件：错误处理（最外层）；日志/缓存按功能开关挂载
+        self.middleware_chain.add(ErrorHandlerMiddleware())
+        if settings.features.middleware:
+            self.middleware_chain.add(LoggingMiddleware())
+        if settings.features.cache:
+            self.middleware_chain.add(CacheMiddleware())
 
         logger.info(f"MCP Server '{self.name}' v{self.version} initialized")
-
-    # ------------------------------------------------------------------
-    # 中间件设置
-    # ------------------------------------------------------------------
-    def _setup_default_middleware(self) -> None:
-        # 错误处理（最外层）
-        self.add_middleware(ErrorHandlerMiddleware(), index=0)
-
-        # 日志
-        if settings.features.middleware:
-            self.add_middleware(LoggingMiddleware())
-
-        # 缓存
-        if settings.features.cache:
-            self.add_middleware(CacheMiddleware())
-
-        logger.debug(
-            f"Setup {len(self.middleware_chain)} middlewares: {', '.join(self.middleware_chain.names())}"
-        )
-
-    def add_middleware(self, middleware: Middleware, index: int | None = None) -> MCPServer:
-        if index is None:
-            self.middleware_chain.add(middleware)
-        else:
-            self.middleware_chain.insert(index, middleware)
-        logger.debug(f"Added middleware: {type(middleware).__name__}")
-        return self
-
-    def remove_middleware(self, middleware: Middleware) -> bool:
-        return self.middleware_chain.remove(middleware)
-
-    def remove_middleware_by_name(self, name: str) -> bool:
-        return self.middleware_chain.remove_by_name(name)
-
-    # ------------------------------------------------------------------
-    # 插件管理
-    # ------------------------------------------------------------------
-    async def initialize_plugins(self) -> None:
-        logger.info("Initializing plugin system...")
-
-        # 装饰器收集的函数（轻量级插件）
-        # 关键：在导入示例模块之前，激活当前 server，
-        # 这样装饰器收集到的函数会进入 server 隔离的桶
-        if settings.plugins.auto_discovery:
-            import src.plugins.collector as collector_module
-
-            logger.debug(f"Setting active server: {id(self)}")
-            collector_module.set_active_server(self)
-            try:
-                # 先发现 Plugin 类（基于类的重型插件）
-                self.plugin_manager.discover()
-                # 再触发装饰器收集（lightweight plugins）
-                self._discover_decorator_modules()
-            finally:
-                collector_module.set_active_server(None)
-
-        # 加载所有 Plugin 类实例
-        await self.plugin_manager.load_all()
-        await self.plugin_manager.enable_all()
-
-        # 注册到 registry + FastMCP
-        self._register_decorator_functions()
-
-    def _discover_decorator_modules(self) -> None:
-        """触发装饰器收集
-
-        关键：examples 模块可能在 create_server 之前就被 import（通过
-        `from main import create_server` 间接触发），装饰器已经执行过一次。
-        这里清除 sys.modules 中的缓存，强制重新 import。
-        """
-        import sys
-
-        from src.plugins import discover_plugins
-
-        # 清除 examples 模块缓存，强制重新 import 以触发装饰器
-        modules_to_remove = [name for name in sys.modules if name.startswith("examples.")]
-        for name in modules_to_remove:
-            sys.modules.pop(name, None)
-
-        discover_plugins()
-
-    def _should_register_func(self, name: str) -> bool:
-        enabled = settings.plugins.enabled_plugins
-        disabled = settings.plugins.disabled_plugins
-        # 未被禁用，且（未启用白名单或已命中白名单）时注册
-        return not (disabled and name in disabled) and not (enabled and name not in enabled)
-
-    def _register_decorator_functions(self) -> None:
-        # 装饰器在模块 import 时收集。set_active_server(self) 已在
-        # initialize_plugins 中调用过，所以使用 server 隔离的 collector。
-        import src.plugins.collector as collector_module
-        from src.plugins.base import PluginType
-
-        bucket = collector_module._collectors_by_server.get(id(self), {})
-        if bucket:
-            tool_collector = bucket[PluginType.TOOL]
-            resource_collector = bucket[PluginType.RESOURCE]
-            prompt_collector = bucket[PluginType.PROMPT]
-        else:
-            # 兜底：使用全局
-            tool_collector = collector_module._tool_collector
-            resource_collector = collector_module._resource_collector
-            prompt_collector = collector_module._prompt_collector
-
-        for tool_name, info in tool_collector.get_items().items():
-            if not self._should_register_func(tool_name):
-                continue
-            self._register_tool(tool_name, info)
-
-        for resource_name, info in resource_collector.get_items().items():
-            if not self._should_register_func(resource_name):
-                continue
-            self._register_resource(resource_name, info)
-
-        for prompt_name, info in prompt_collector.get_items().items():
-            if not self._should_register_func(prompt_name):
-                continue
-            self._register_prompt(prompt_name, info)
-
-    def _build_middleware_wrapper(
-        self,
-        func: Callable,
-        func_kind: str,
-        func_id: str,
-    ) -> Callable:
-        """为 func 包裹中间件管道
-
-        中间件在原函数执行前后插入。返回的 wrapper 既能被 MCP 直接调用
-        （保持原签名），又能被外部代码通过 __wrapped__ 访问原函数。
-        """
-        import inspect
-
-        is_coro = inspect.iscoroutinefunction(func)
-
-        @wraps(func)
-        async def wrapped(*args, **kwargs):
-            from src.core.opentelemetry import get_request_id
-
-            req = RequestContext(
-                request={
-                    "method": f"{func_kind}:{func_id}",
-                    "id": get_request_id(),  # 传输层注入的真实 request_id
-                    "params": kwargs,
-                    "_args": args,
-                    "_kwargs": kwargs,
-                },
-                server=self,
-            )
-            try:
-                from src.runtime.context import get_current_context
-
-                current = get_current_context()
-                if current is not None:
-                    req.metadata = dict(current.metadata)
-            except Exception:
-                pass
-
-            async def _final_handler(req: RequestContext):
-                try:
-                    if is_coro:
-                        result = await func(
-                            *req.request.get("_args", ()), **req.request.get("_kwargs", {})
-                        )
-                    else:
-                        result = func(
-                            *req.request.get("_args", ()), **req.request.get("_kwargs", {})
-                        )
-                    if asyncio.iscoroutine(result):
-                        result = await result
-                    return ResponseContext(response={"result": result})
-                except Exception:
-                    raise
-
-            response = await self.middleware_chain.execute(req, _final_handler)
-            return response.response.get("result")
-
-        # 保持可被外部识别为已包装函数
-        wrapped.__wrapped__ = func
-        return wrapped
-
-    def _register_tool(self, name: str, info: dict[str, Any]) -> None:
-        from src.plugins import PluginMetadata
-
-        wrapper = self._build_middleware_wrapper(info["func"], "tool", name)
-        metadata = PluginMetadata(
-            name=name,
-            description=info["doc"],
-            category=info["category"],
-            subcategory=info["subcategory"],
-            tags=info["tags"],
-        )
-        self.registry.register_tool(
-            name=name,
-            tool=wrapper,
-            metadata=metadata,
-            category=info["category"],
-            subcategory=info["subcategory"],
-            tags=info["tags"],
-        )
-        # FastMCP 1.x：直接传入原函数，让 FastMCP 自己分析 schema。
-        # 由于 wrapper 不暴露给 FastMCP，中间件管道通过我们包装的入口触发。
-        self.mcp.tool(name=name, description=info["doc"])(wrapper)
-        logger.debug(f"Registered tool: {name}")
-
-    def _register_resource(self, uri: str, info: dict[str, Any]) -> None:
-        from src.plugins import PluginMetadata
-
-        wrapper = self._build_middleware_wrapper(info["func"], "resource", uri)
-        metadata = PluginMetadata(
-            name=uri,
-            description=info["doc"],
-            category=info["category"],
-            subcategory=info["subcategory"],
-            tags=info["tags"],
-        )
-        self.registry.register_resource(
-            name=uri,
-            resource=wrapper,
-            metadata=metadata,
-            category=info["category"],
-            subcategory=info["subcategory"],
-            tags=info["tags"],
-        )
-        self.mcp.resource(uri, name=uri, description=info["doc"])(wrapper)
-        logger.debug(f"Registered resource: {uri}")
-
-    def _register_prompt(self, name: str, info: dict[str, Any]) -> None:
-        from src.plugins import PluginMetadata
-
-        wrapper = self._build_middleware_wrapper(info["func"], "prompt", name)
-        metadata = PluginMetadata(
-            name=name,
-            description=info["doc"],
-            category=info["category"],
-            subcategory=info["subcategory"],
-            tags=info["tags"],
-        )
-        self.registry.register_prompt(
-            name=name,
-            prompt=wrapper,
-            metadata=metadata,
-            category=info["category"],
-            subcategory=info["subcategory"],
-            tags=info["tags"],
-        )
-        self.mcp.prompt(name=name, description=info["doc"])(wrapper)
-        logger.debug(f"Registered prompt: {name}")
-
-    # ------------------------------------------------------------------
-    # 便捷装饰器（@server.tool(...) 等价于 @tool(...)）
-    # 这些走装饰器收集器流程，最终也会经过 _register_decorator_functions
-    # ------------------------------------------------------------------
-    def tool(self, name: str | None = None, **metadata):
-        from src.plugins import tool as tool_decorator
-
-        return tool_decorator(name=name, **metadata)
-
-    def resource(self, name: str | None = None, **metadata):
-        from src.plugins import resource as resource_decorator
-
-        return resource_decorator(name=name, **metadata)
-
-    def prompt(self, name: str | None = None, **metadata):
-        from src.plugins import prompt as prompt_decorator
-
-        return prompt_decorator(name=name, **metadata)
 
     # ------------------------------------------------------------------
     # 生命周期
@@ -396,16 +91,7 @@ class MCPServer:
         await self.lifecycle.initialize()
         await self.lifecycle.startup()
 
-        for task in self._startup_tasks:
-            try:
-                if inspect.iscoroutinefunction(task):
-                    await task()
-                else:
-                    task()
-            except Exception as e:
-                logger.error(f"Startup task failed: {e}")
-
-        await self.initialize_plugins()
+        await self.plugin_manager.initialize()
 
         logger.info(f"MCP Server '{self.name}' started")
 
@@ -414,27 +100,9 @@ class MCPServer:
             return
 
         logger.info(f"Stopping MCP Server '{self.name}'...")
-        for task in self._shutdown_tasks:
-            try:
-                if inspect.iscoroutinefunction(task):
-                    await task()
-                else:
-                    task()
-            except Exception as e:
-                logger.error(f"Shutdown task failed: {e}")
-
         await self.plugin_manager.shutdown()
-        unregister_server_collectors(self)
         await self.lifecycle.shutdown()
         logger.info(f"MCP Server '{self.name}' stopped")
-
-    def add_startup_task(self, task: Callable) -> MCPServer:
-        self._startup_tasks.append(task)
-        return self
-
-    def add_shutdown_task(self, task: Callable) -> MCPServer:
-        self._shutdown_tasks.append(task)
-        return self
 
     # ------------------------------------------------------------------
     # 运行入口
@@ -447,8 +115,6 @@ class MCPServer:
     ) -> None:
         async def async_run():
             await self.start()
-            from src.transport.transport import get_transport_config
-
             transport_config = get_transport_config(
                 transport or settings.mcp.transport,
                 host or settings.mcp.host,
@@ -456,29 +122,7 @@ class MCPServer:
             )
 
             try:
-                logger.info(
-                    f"Starting MCP Server with transport: {transport_config.transport.value}"
-                )
-                if transport_config.transport == TransportType.STDIO:
-                    await self.mcp.run_stdio_async()
-                elif transport_config.transport == TransportType.SSE:
-                    logger.info(f"Listening on {transport_config.host}:{transport_config.port}")
-                    await self._serve_http_app(
-                        self.mcp.sse_app(),
-                        transport_config.host,
-                        transport_config.port,
-                    )
-                elif transport_config.transport == TransportType.STREAMABLE_HTTP:
-                    logger.info(f"Listening on {transport_config.host}:{transport_config.port}")
-                    await self._serve_http_app(
-                        self.mcp.streamable_http_app(),
-                        transport_config.host,
-                        transport_config.port,
-                    )
-                else:
-                    raise ValueError(
-                        f"Unsupported transport type: {transport_config.transport.value}"
-                    )
+                await serve_mcp(self.mcp, transport_config)
             except KeyboardInterrupt:
                 logger.info("Server stopped by user")
             except Exception as e:
@@ -492,90 +136,21 @@ class MCPServer:
         except KeyboardInterrupt:
             logger.info("Server shutdown complete")
 
-    async def _serve_http_app(
-        self,
-        app,
-        host: str,
-        port: int,
-    ) -> None:
-        """以 uvicorn 运行 MCP HTTP app，外层挂载 QiuChiHTTPMiddleware。
-
-        中间件负责：真实 request_id 注入 + OpenTelemetry 埋点。
-        认证由 FastMCP 官方 RequireAuthMiddleware 在 app 内部处理。
-        """
-        from src.core.opentelemetry import QiuChiHTTPMiddleware, setup_telemetry
-
-        setup_telemetry()
-        app.add_middleware(QiuChiHTTPMiddleware)
-
-        import uvicorn
-
-        config = uvicorn.Config(
-            app,
-            host=host,
-            port=port,
-            log_level="info",
-        )
-        server = uvicorn.Server(config)
-        await server.serve()
-
     # ------------------------------------------------------------------
     # 查询接口
     # ------------------------------------------------------------------
-    def get_tools(self) -> list[dict[str, Any]]:
-        return [
-            {
-                "name": item.name,
-                "description": item.metadata.description,
-                "category": item.category,
-                "subcategory": item.subcategory,
-                "tags": list(item.tags),
-            }
-            for item in self.registry.get_all_items_by_str_type("tool")
-        ]
-
-    def get_resources(self) -> list[dict[str, Any]]:
-        return [
-            {
-                "uri": item.name,
-                "description": item.metadata.description,
-                "category": item.category,
-                "subcategory": item.subcategory,
-                "tags": list(item.tags),
-            }
-            for item in self.registry.get_all_items_by_str_type("resource")
-        ]
-
-    def get_prompts(self) -> list[dict[str, Any]]:
-        return [
-            {
-                "name": item.name,
-                "description": item.metadata.description,
-                "category": item.category,
-                "subcategory": item.subcategory,
-                "tags": list(item.tags),
-            }
-            for item in self.registry.get_all_items_by_str_type("prompt")
-        ]
-
     def get_stats(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "version": self.version,
             "running": self.lifecycle.is_running(),
             "state": self.lifecycle.get_state().value,
-            "tools": len(self.get_tools()),
-            "resources": len(self.get_resources()),
-            "prompts": len(self.get_prompts()),
+            "tools": len(self.registry.get_all_items_by_str_type("tool")),
+            "resources": len(self.registry.get_all_items_by_str_type("resource")),
+            "prompts": len(self.registry.get_all_items_by_str_type("prompt")),
             "middlewares": len(self.middleware_chain),
             "plugins": self.plugin_manager.stats(),
         }
-
-    def context(self) -> ContextManager:
-        """获取上下文管理器（用于 with 语句）"""
-        from src.runtime.context import ContextManager
-
-        return ContextManager(self)
 
     def __repr__(self) -> str:
         return f"MCPServer(name='{self.name}', version='{self.version}', state={self.lifecycle.get_state().value})"

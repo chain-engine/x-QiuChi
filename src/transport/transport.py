@@ -1,50 +1,20 @@
 """
 传输层实现
 
-增强的传输配置系统，支持：
-- 多种传输方式
-- 连接池配置
-- 超时设置
-- TLS/SSL 支持
+传输配置解析与 MCP 服务承载：
+- 传输类型解析（stdio / SSE / streamable-http）
+- 传输配置构造（TransportConfig / get_transport_config）
+- 服务承载（serve_mcp：stdio 直连或 uvicorn 运行 HTTP app）
 """
 
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic import BaseModel, Field
-
 # 从共享类型模块导入
 from src.constants.enums import TransportType
-from src.core.config import settings
+from src.core.logger import get_logger
 
-
-class SSEConfig(BaseModel):
-    """SSE 传输配置"""
-
-    ping_interval: int = Field(default=30, description="心跳间隔（秒）")
-    max_connections: int = Field(default=100, description="最大连接数")
-    retry_timeout: int = Field(default=3000, description="重连超时时间（毫秒）")
-
-
-class HTTPConfig(BaseModel):
-    """HTTP 传输配置"""
-
-    max_body_size: int = Field(default=10 * 1024 * 1024, description="最大请求体大小（字节）")
-    request_timeout: int = Field(default=30, description="请求超时时间（秒）")
-    keepalive_timeout: int = Field(default=5, description="Keep-Alive 超时时间（秒）")
-    cors_enabled: bool = Field(default=True, description="是否启用 CORS")
-    cors_origins: list[str] = Field(default_factory=lambda: ["*"], description="CORS 允许的源")
-    compression_enabled: bool = Field(default=True, description="是否启用压缩")
-
-
-class TLSConfig(BaseModel):
-    """TLS/SSL 配置"""
-
-    enabled: bool = Field(default=False, description="是否启用 TLS")
-    cert_file: str | None = Field(default=None, description="证书文件路径")
-    key_file: str | None = Field(default=None, description="私钥文件路径")
-    ca_file: str | None = Field(default=None, description="CA 证书文件路径")
-    verify_client: bool = Field(default=False, description="是否验证客户端证书")
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -52,100 +22,12 @@ class TransportConfig:
     """
     传输层配置
 
-    根据传输类型生成 FastMCP.run() 所需的参数，支持高级配置。
+    描述一次服务承载所需的传输类型与监听地址。
     """
 
     transport: TransportType = TransportType.STREAMABLE_HTTP
     host: str = "0.0.0.0"
     port: int = 8888
-    sse_config: SSEConfig | None = None
-    http_config: HTTPConfig | None = None
-    tls_config: TLSConfig | None = None
-
-    def __post_init__(self):
-        """初始化后处理"""
-        if self.sse_config is None:
-            self.sse_config = SSEConfig()
-        if self.http_config is None:
-            self.http_config = HTTPConfig()
-        if self.tls_config is None:
-            self.tls_config = TLSConfig()
-
-    def get_run_kwargs(self) -> dict[str, Any]:
-        """
-        获取 FastMCP.run() 所需的参数。
-
-        Returns:
-            dict: 传递给 FastMCP.run() 的关键字参数
-
-        Note:
-            FastMCP 目前只接受 transport 参数，其他配置需要通过其他方式设置。
-        """
-        kwargs: dict[str, Any] = {
-            "transport": self.transport.value,
-        }
-
-        # 为 HTTP/SSE 传输添加额外配置
-        if self.transport in [TransportType.SSE, TransportType.STREAMABLE_HTTP]:
-            kwargs.update(
-                {
-                    "host": self.host,
-                    "port": self.port,
-                }
-            )
-
-            # 添加 HTTP 配置
-            if self.http_config:
-                kwargs.update(
-                    {
-                        "max_body_size": self.http_config.max_body_size,
-                        "request_timeout": self.http_config.request_timeout,
-                    }
-                )
-
-            # 添加 TLS 配置
-            if self.tls_config and self.tls_config.enabled:
-                kwargs.update(
-                    {
-                        "ssl_certfile": self.tls_config.cert_file,
-                        "ssl_keyfile": self.tls_config.key_file,
-                    }
-                )
-
-        return kwargs
-
-    def get_connection_string(self) -> str:
-        """
-        获取连接字符串
-
-        Returns:
-            连接字符串
-        """
-        if self.transport == TransportType.STDIO:
-            return "stdio"
-
-        protocol = "https" if self.tls_config and self.tls_config.enabled else "http"
-        return f"{protocol}://{self.host}:{self.port}"
-
-    @classmethod
-    def from_settings(cls) -> "TransportConfig":
-        """
-        从全局配置创建传输配置
-
-        Returns:
-            TransportConfig 实例
-        """
-        # StrBaseEnum 按 (mark, desc) 定义，需用 mark 反查成员
-        transport_mark = settings.mcp.transport
-        try:
-            transport_enum = next(t for t in TransportType if t.mark == transport_mark)
-        except StopIteration:
-            transport_enum = TransportType.STREAMABLE_HTTP
-        return cls(
-            transport=transport_enum,
-            host=settings.mcp.host,
-            port=settings.mcp.port,
-        )
 
     @classmethod
     def from_string(
@@ -153,7 +35,6 @@ class TransportConfig:
         transport_str: str,
         host: str = "0.0.0.0",
         port: int = 8888,
-        **kwargs,
     ) -> "TransportConfig":
         """
         从字符串创建传输配置
@@ -162,7 +43,6 @@ class TransportConfig:
             transport_str: 传输类型字符串 (stdio, sse, streamable-http)
             host: HTTP 模式监听地址
             port: HTTP 模式监听端口
-            **kwargs: 其他配置参数
 
         Returns:
             TransportConfig: 传输配置实例
@@ -186,7 +66,6 @@ class TransportConfig:
             transport=transport_map[transport_str],
             host=host,
             port=port,
-            **kwargs,
         )
 
     def validate(self) -> bool:
@@ -197,27 +76,7 @@ class TransportConfig:
             配置是否有效
         """
         # 检查端口范围
-        if not (1 <= self.port <= 65535):
-            return False
-
-        # 检查 TLS 配置：启用时证书与密钥必须齐全
-        return not (
-            self.tls_config
-            and self.tls_config.enabled
-            and (not self.tls_config.cert_file or not self.tls_config.key_file)
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        """转换为字典"""
-        return {
-            "transport": self.transport.value,
-            "host": self.host,
-            "port": self.port,
-            "sse_config": self.sse_config.dict() if self.sse_config else None,
-            "http_config": self.http_config.dict() if self.http_config else None,
-            "tls_config": self.tls_config.dict() if self.tls_config else None,
-            "connection_string": self.get_connection_string(),
-        }
+        return 1 <= self.port <= 65535
 
 
 # 预定义的传输配置
@@ -225,10 +84,6 @@ TRANSPORT_PRESETS: dict[str, TransportConfig] = {
     "stdio": TransportConfig(transport=TransportType.STDIO),
     "sse": TransportConfig(transport=TransportType.SSE),
     "http": TransportConfig(transport=TransportType.STREAMABLE_HTTP),
-    "https": TransportConfig(
-        transport=TransportType.STREAMABLE_HTTP,
-        tls_config=TLSConfig(enabled=True),
-    ),
 }
 
 
@@ -268,3 +123,46 @@ def get_transport_config(
 
     # 直接使用枚举
     return TransportConfig(transport=transport, host=host, port=port)
+
+
+async def serve_mcp(mcp: Any, config: TransportConfig) -> None:
+    """以指定传输方式承载 FastMCP 实例。
+
+    stdio 直接走 SDK 的 run_stdio_async；SSE / streamable-http 构建 ASGI app
+    后以 uvicorn 运行，外层挂载 QiuChiHTTPMiddleware（真实 request_id 注入 +
+    OpenTelemetry 埋点）。认证由 FastMCP 官方 RequireAuthMiddleware 在 app 内部处理。
+
+    Args:
+        mcp: FastMCP 实例
+        config: 传输配置
+    """
+    logger.info(f"Starting MCP transport: {config.transport.value}")
+    if config.transport == TransportType.STDIO:
+        await mcp.run_stdio_async()
+    elif config.transport == TransportType.SSE:
+        logger.info(f"Listening on {config.host}:{config.port}")
+        await _serve_http_app(mcp.sse_app(), config)
+    elif config.transport == TransportType.STREAMABLE_HTTP:
+        logger.info(f"Listening on {config.host}:{config.port}")
+        await _serve_http_app(mcp.streamable_http_app(), config)
+    else:
+        raise ValueError(f"Unsupported transport type: {config.transport.value}")
+
+
+async def _serve_http_app(app: Any, config: TransportConfig) -> None:
+    """以 uvicorn 运行 MCP HTTP ASGI app。"""
+    from src.core.opentelemetry import QiuChiHTTPMiddleware, setup_telemetry
+
+    setup_telemetry()
+    app.add_middleware(QiuChiHTTPMiddleware)
+
+    import uvicorn
+
+    uvicorn_config = uvicorn.Config(
+        app,
+        host=config.host,
+        port=config.port,
+        log_level="info",
+    )
+    server = uvicorn.Server(uvicorn_config)
+    await server.serve()

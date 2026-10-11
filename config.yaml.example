@@ -44,8 +44,6 @@ middleware:
     log_response: true
   auth:
     enabled: false
-    required: true
-    exempt_methods: []
     tokens: []  # 有效 Bearer Token 列表（enabled: true 时必填，如 ["dev-token"]）
   cache:
     enabled: false

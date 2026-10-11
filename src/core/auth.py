@@ -15,9 +15,16 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from mcp.server.auth.provider import AccessToken
 
-__all__ = ["SimpleTokenVerifier", "AccessToken"]
+from src.core.config import settings
+from src.core.logger import get_logger
+
+logger = get_logger(__name__)
+
+__all__ = ["SimpleTokenVerifier", "AccessToken", "build_auth_from_settings"]
 
 
 class SimpleTokenVerifier:
@@ -57,3 +64,28 @@ class SimpleTokenVerifier:
                 expires_at=None,
             )
         return None
+
+
+def build_auth_from_settings() -> tuple[Any | None, Any | None]:
+    """从全局配置装配传输层认证（Bearer Token，走 mcp SDK 官方 RequireAuthMiddleware）。
+
+    Returns:
+        (auth_settings, token_verifier)；认证未启用时返回 (None, None)。
+    """
+    if not settings.middleware.auth.enabled:
+        return None, None
+
+    from mcp.server.auth.settings import AuthSettings
+    from pydantic import AnyHttpUrl
+
+    token_verifier = SimpleTokenVerifier(valid_tokens=set(settings.middleware.auth.tokens))
+    if not token_verifier.valid_tokens:
+        logger.warning(
+            "Authentication enabled but no tokens configured (AUTH_TOKENS). "
+            "All MCP requests will be rejected."
+        )
+    auth_settings = AuthSettings(
+        issuer_url=AnyHttpUrl("https://qiuchi.local"),
+        resource_server_url=AnyHttpUrl(f"http://{settings.mcp.host}:{settings.mcp.port}"),
+    )
+    return auth_settings, token_verifier

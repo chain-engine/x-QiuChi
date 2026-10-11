@@ -154,8 +154,6 @@ class AuthConfig:
     """认证配置（传输层 Bearer Token）。"""
 
     enabled: bool = False
-    required: bool = True
-    exempt_methods: list[str] = field(default_factory=list)
     tokens: list[str] = field(default_factory=list)
 
 
@@ -213,7 +211,7 @@ _ENV_SECTION_MAP: dict[str, tuple[str, list[str]]] = {
     "logging": ("LOGGING_", ["level", "output", "file_path", "rotation", "retention", "format"]),
     "features": ("FEATURES_", ["tools", "resources", "prompts", "middleware", "cache"]),
     "plugins": ("PLUGIN_", ["auto_discovery"]),
-    "middleware.auth": ("AUTH_", ["enabled", "required", "tokens"]),
+    "middleware.auth": ("AUTH_", ["enabled", "tokens"]),
     "opentelemetry": ("TELEMETRY_", ["enabled", "service_name", "exporter", "otlp_endpoint"]),
 }
 
@@ -248,7 +246,7 @@ class Settings:
 
         # 以默认实例直接赋值，保证 IDE/类型检查器可静态推断属性类型；
         # 随后 _parse_config 按 YAML / 环境变量覆盖后的配置重新解析。
-        self.app_env = self._config.get("app_env", Environment.DEVELOPMENT.value)
+        self.app_env: str = self._config.get("app_env", Environment.DEVELOPMENT.value)
         self.mcp = MCPConfig()
         self.logging = LoggingConfig()
         self.features = FeaturesConfig()
@@ -317,8 +315,6 @@ class Settings:
                 },
                 "auth": {
                     "enabled": False,
-                    "required": True,
-                    "exempt_methods": [],
                     "tokens": [],
                 },
                 "cache": {
@@ -547,8 +543,6 @@ class Settings:
                 },
                 "auth": {
                     "enabled": self.middleware.auth.enabled,
-                    "required": self.middleware.auth.required,
-                    "exempt_methods": self.middleware.auth.exempt_methods,
                     "tokens": self.middleware.auth.tokens,
                 },
                 "cache": {
@@ -591,7 +585,7 @@ settings.validate()
 
 
 # ============================================================
-# 向后兼容导出
+# 模块公开导出
 # ============================================================
 
 __all__ = [

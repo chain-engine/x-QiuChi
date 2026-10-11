@@ -177,7 +177,7 @@ class PluginRegistry:
         tags: list[str] | None = None,
         enabled_only: bool = True,
     ) -> list[RegistryItem]:
-        """通过字符串类型查询（兼容没有导入 RegistryItemType 的场景）"""
+        """通过字符串类型名查询（"tool" / "resource" / "prompt"）。"""
         with self._lock:
             items = []
             for item in self._items.values():

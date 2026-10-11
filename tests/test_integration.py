@@ -92,9 +92,9 @@ def test_middleware():
     server = create_server("MiddlewareTest")
 
     # Add middlewares
-    server.add_middleware(ErrorHandlerMiddleware())
-    server.add_middleware(LoggingMiddleware())
-    server.add_middleware(CacheMiddleware())
+    server.middleware_chain.add(ErrorHandlerMiddleware())
+    server.middleware_chain.add(LoggingMiddleware())
+    server.middleware_chain.add(CacheMiddleware())
 
     # Check middleware chain
     assert len(server.middleware_chain) >= 3
