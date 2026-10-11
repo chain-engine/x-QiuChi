@@ -4,7 +4,7 @@ MCP 客户端
 
 提供通用的 MCP (Model Context Protocol) 服务器客户端，支持 JSON-RPC 2.0 协议。
 特性：
-- 纯 Python 实现，零框架依赖（仅需 requests）
+- 纯 Python 实现，零框架依赖（仅需 httpx）
 - 类封装 + 实例隔离，支持多 MCP 服务端并行
 - 纯字典参数校验 + 类型提示
 - 自增请求 ID（JSON-RPC 合规）
@@ -25,8 +25,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Union
 
-import requests
-from requests.exceptions import HTTPError, RequestException, Timeout
+import httpx
 
 # ==================== 配置管理 ====================
 
@@ -319,7 +318,7 @@ class MCPClient:
             headers["Authorization"] = f"Bearer {self.config.bearer_token}"
 
         try:
-            response = requests.post(
+            response = httpx.post(
                 self._url,
                 json=payload,
                 headers=headers,
@@ -351,9 +350,9 @@ class MCPClient:
                 )
             return data
             
-        except Timeout as e:
+        except httpx.TimeoutException as e:
             raise MCPConnectionError(f"请求超时 ({self.config.timeout}s)", details={"url": self._url}) from e
-        except HTTPError as e:
+        except httpx.HTTPStatusError as e:
             status = e.response.status_code
             raise MCPConnectionError(
                 f"HTTP {status}", 
@@ -362,7 +361,7 @@ class MCPClient:
             ) from e
         except json.JSONDecodeError as e:
             raise MCPProtocolError(f"响应解析失败：{e}", details={"raw": response.text[:200]}) from e
-        except RequestException as e:
+        except httpx.RequestError as e:
             raise MCPConnectionError(f"网络请求失败：{e}") from e
 
     def _handshake_session(self) -> str:
