@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT))
 
 def test_configuration():
     """测试配置系统"""
-    print("[1/7] Testing configuration...")
+    print("[1/6] Testing configuration...")
     from src.core.config import settings
 
     assert settings.mcp.server_name == "QiuChi"
@@ -27,22 +27,20 @@ def test_configuration():
 
 def test_server_creation():
     """测试服务器创建"""
-    print("[2/7] Testing server creation...")
+    print("[2/6] Testing server creation...")
     from src.main import create_server
 
     server = create_server("TestServer", "1.0.0")
     assert server.name == "TestServer"
     assert server.version == "1.0.0"
-
-    stats = server.get_stats()
-    assert stats["running"] is False
+    assert not server.lifecycle.is_running()
 
     print("    [OK] Server created successfully")
 
 
 def test_decorators():
     """测试装饰器"""
-    print("[3/7] Testing decorators...")
+    print("[3/6] Testing decorators...")
     from src.main import prompt, resource, tool
 
     @tool(category="test")
@@ -70,7 +68,7 @@ def test_decorators():
 
 def test_plugin_system():
     """测试插件系统"""
-    print("[4/7] Testing plugin system...")
+    print("[4/6] Testing plugin system...")
     from src.main import create_server
     from src.plugins import PluginManager
 
@@ -85,7 +83,7 @@ def test_plugin_system():
 
 def test_middleware():
     """测试中间件"""
-    print("[5/7] Testing middleware...")
+    print("[5/6] Testing middleware...")
     from src.core.middleware import CacheMiddleware, ErrorHandlerMiddleware, LoggingMiddleware
     from src.main import create_server
 
@@ -104,7 +102,7 @@ def test_middleware():
 
 def test_examples():
     """测试示例插件"""
-    print("[6/7] Testing example plugins...")
+    print("[6/6] Testing example plugins...")
 
     try:
         # Test math tools
@@ -137,29 +135,6 @@ def test_examples():
         print(f"    [WARN] Failed to import examples: {e}")
 
 
-def test_server_stats():
-    """测试服务器统计"""
-    print("[7/7] Testing server statistics...")
-    from src.main import create_server
-
-    server = create_server("StatsTest")
-    stats = server.get_stats()
-
-    assert "name" in stats
-    assert "version" in stats
-    assert "running" in stats
-    assert "tools" in stats
-    assert "resources" in stats
-    assert "prompts" in stats
-    assert "middlewares" in stats
-
-    assert stats["name"] == "StatsTest"
-    assert stats["running"] is False
-    assert stats["middlewares"] >= 0
-
-    print("    [OK] Server statistics working")
-
-
 def main():
     """运行所有测试"""
     print("\n" + "=" * 60)
@@ -173,7 +148,6 @@ def main():
         test_plugin_system,
         test_middleware,
         test_examples,
-        test_server_stats,
     ]
 
     failed = 0

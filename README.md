@@ -444,7 +444,7 @@ x-QiuChi/
 │       └── weather_mcp_server.py    # OpenWeatherMap 天气 MCP 服务示例
 │
 ├── tests/                           # 测试目录
-│   ├── test_integration.py          # 7 步集成测试套件
+│   ├── test_integration.py          # 6 步集成测试套件
 │   ├── test_protocol.py             # 真实 MCP 协议测试（官方 client）与传输层认证测试
 │   ├── test_config.py               # 配置单测（版本单一源 / 环境变量覆盖）
 │   ├── test_auth.py                 # 认证单测

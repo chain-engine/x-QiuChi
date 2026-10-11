@@ -381,20 +381,5 @@ class PluginManager:
     def _is_disabled(self, name: str) -> bool:
         return name in settings.plugins.disabled_plugins
 
-    # ------------------------------------------------------------------
-    # 统计
-    # ------------------------------------------------------------------
-    def stats(self) -> dict[str, Any]:
-        type_counts: dict[str, int] = {}
-        status_counts: dict[str, int] = {}
-        for plugin in self.loader.get_all():
-            type_counts[plugin.type.value] = type_counts.get(plugin.type.value, 0) + 1
-            status_counts[plugin.status.value] = status_counts.get(plugin.status.value, 0) + 1
-        return {
-            "total": len(self.loader.get_all()),
-            "by_type": type_counts,
-            "by_status": status_counts,
-        }
-
 
 __all__ = ["PluginManager"]

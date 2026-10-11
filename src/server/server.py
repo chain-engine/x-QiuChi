@@ -151,22 +151,6 @@ class MCPServer:
         except KeyboardInterrupt:
             logger.info("Server shutdown complete")
 
-    # ------------------------------------------------------------------
-    # 查询接口
-    # ------------------------------------------------------------------
-    def get_stats(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-            "version": self.version,
-            "running": self.lifecycle.is_running(),
-            "state": self.lifecycle.get_state().value,
-            "tools": len(self.registry.get_all_items_by_str_type("tool")),
-            "resources": len(self.registry.get_all_items_by_str_type("resource")),
-            "prompts": len(self.registry.get_all_items_by_str_type("prompt")),
-            "middlewares": len(self.middleware_chain),
-            "plugins": self.plugin_manager.stats(),
-        }
-
     def __repr__(self) -> str:
         return f"MCPServer(name='{self.name}', version='{self.version}', state={self.lifecycle.get_state().value})"
 

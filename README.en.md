@@ -366,7 +366,7 @@ x-QiuChi/
 │       └── weather_mcp_server.py    # OpenWeatherMap MCP service example
 │
 ├── tests/                           # Test directory
-│   └── test_integration.py          # 7-step integration test suite
+│   └── test_integration.py          # 6-step integration test suite
 │
 ├── docs/                            # Documentation directory
 ├── scripts/                         # Script tools directory
