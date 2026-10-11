@@ -117,10 +117,10 @@ cp config.yaml.example config.yaml
 | `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
 | `middleware.cache.enabled` | `false` | 是否启用内存缓存 |
 | `middleware.cache.default_ttl` | `300` | 缓存默认 TTL（秒） |
-| `telemetry.enabled` | `true` | 是否启用 OpenTelemetry |
-| `telemetry.service_name` | `x-QiuChi` | 服务名（trace/metric 资源属性） |
-| `telemetry.exporter` | `console` | 导出方式：`console` / `otlp` |
-| `telemetry.otlp_endpoint` | `""` | OTLP 端点（exporter=otlp 时必填） |
+| `opentelemetry.enabled` | `true` | 是否启用 OpenTelemetry |
+| `opentelemetry.service_name` | `x-QiuChi` | 服务名（trace/metric 资源属性） |
+| `opentelemetry.exporter` | `console` | 导出方式：`console` / `otlp` |
+| `opentelemetry.otlp_endpoint` | `""` | OTLP 端点（exporter=otlp 时必填） |
 
 **环境变量覆盖**：所有配置均可通过环境变量覆盖，优先级为 **环境变量 > YAML > 默认值**。常用环境变量：
 
@@ -405,7 +405,7 @@ x-QiuChi/
 │   │   ├── logger.py                # loguru 结构化日志封装（文件轮转、敏感信息过滤）
 │   │   ├── middleware.py            # 中间件管道（ErrorHandler / Logging / Cache）
 │   │   ├── auth.py                  # 传输层认证（SimpleTokenVerifier，mcp TokenVerifier Protocol）
-│   │   └── telemetry.py             # OpenTelemetry（request_id 注入、HTTP span/metrics，console/otlp）
+│   │   └── opentelemetry.py         # OpenTelemetry（request_id 注入、HTTP span/metrics，console/otlp）
 │   │
 │   ├── plugins/                     # 插件层：插件系统核心
 │   │   ├── base.py                  # 插件抽象基类与元数据定义（PluginType / PluginMetadata）

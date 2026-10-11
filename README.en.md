@@ -115,10 +115,10 @@ cp config.yaml.example config.yaml
 | `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable transport-layer Bearer Token auth |
 | `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
-| `telemetry.enabled` | `true` | Enable OpenTelemetry |
-| `telemetry.service_name` | `x-QiuChi` | Service name for traces/metrics |
-| `telemetry.exporter` | `console` | Exporter: `console` / `otlp` |
-| `telemetry.otlp_endpoint` | `""` | OTLP endpoint (required when exporter=otlp) |
+| `opentelemetry.enabled` | `true` | Enable OpenTelemetry |
+| `opentelemetry.service_name` | `x-QiuChi` | Service name for traces/metrics |
+| `opentelemetry.exporter` | `console` | Exporter: `console` / `otlp` |
+| `opentelemetry.otlp_endpoint` | `""` | OTLP endpoint (required when exporter=otlp) |
 | `middleware.cache.enabled` | `false` | Enable in-memory cache |
 | `middleware.cache.default_ttl` | `300` | Cache default TTL (seconds) |
 
