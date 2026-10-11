@@ -40,7 +40,7 @@ from src.core.middleware import (
     Middleware,
     MiddlewareChain,
 )
-from src.plugins import PluginMetadata, PluginType, prompt, resource, tool
+from src.plugins import PluginMetadata, prompt, resource, tool
 from src.server import MCPServer, create_server
 from src.transport import TransportConfig, TransportType
 
@@ -51,7 +51,6 @@ __all__ = [
     "settings",
     # 插件系统
     "PluginMetadata",
-    "PluginType",
     # 中间件
     "Middleware",
     "MiddlewareChain",

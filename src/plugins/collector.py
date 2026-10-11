@@ -18,7 +18,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypeVar, cast
 
-from .base import PluginType
+from src.constants import PluginType
 
 T = TypeVar("T")
 FuncType = Callable[..., Any]

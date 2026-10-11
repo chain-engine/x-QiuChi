@@ -21,11 +21,12 @@ from functools import wraps
 from pathlib import Path
 from typing import Any
 
+from src.constants import PluginType
 from src.core.config import settings
 from src.core.logger import get_logger
 from src.core.middleware import RequestContext, ResponseContext
 
-from .base import PluginMetadata, PluginStatus, PluginType
+from .base import PluginMetadata, PluginStatus
 from .loader import Plugin, PluginLoader
 
 logger = get_logger(__name__)

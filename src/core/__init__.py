@@ -13,7 +13,7 @@ from src.core.middleware import (
     Middleware,
     MiddlewareChain,
 )
-from src.plugins import PluginManager, PluginMetadata, PluginStatus, PluginType
+from src.plugins import PluginManager, PluginMetadata, PluginStatus
 
 __all__ = [
     "settings",
@@ -26,7 +26,6 @@ __all__ = [
     "get_logger",
     "setup_logging",
     "PluginManager",
-    "PluginType",
     "PluginMetadata",
     "PluginStatus",
 ]

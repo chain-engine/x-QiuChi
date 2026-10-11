@@ -8,7 +8,9 @@
 - 多种传输方式
 """
 
-from .lifecycle import LifecycleManager, ServerState
+from src.constants import ServerState
+
+from .lifecycle import LifecycleManager
 from .server import MCPServer, create_server
 
 __all__ = ["MCPServer", "create_server", "LifecycleManager", "ServerState"]

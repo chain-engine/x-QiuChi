@@ -1,30 +1,13 @@
 """
 插件基础定义（plugins 包）
 
-包含插件系统的核心枚举和元数据定义。
+包含插件系统的核心元数据定义（枚举统一定义在 src/constants/enums.py）。
 """
 
 from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Any
 
-
-class PluginType(StrEnum):
-    """插件类型枚举"""
-
-    TOOL = "tool"
-    RESOURCE = "resource"
-    PROMPT = "prompt"
-
-
-class PluginStatus(StrEnum):
-    """插件状态枚举"""
-
-    UNLOADED = "unloaded"
-    LOADED = "loaded"
-    ENABLED = "enabled"
-    DISABLED = "disabled"
-    ERROR = "error"
+from src.constants import PluginStatus, PluginType
 
 
 @dataclass
@@ -53,4 +36,4 @@ class PluginDependency:
     optional: bool = False
 
 
-__all__ = ["PluginType", "PluginStatus", "PluginMetadata", "PluginDependency"]
+__all__ = ["PluginStatus", "PluginType", "PluginMetadata", "PluginDependency"]

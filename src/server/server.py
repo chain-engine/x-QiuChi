@@ -14,6 +14,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from src.constants import ServerState
 from src.core.auth import build_auth_from_settings
 from src.core.config import settings
 from src.core.logger import get_logger
@@ -25,7 +26,7 @@ from src.core.middleware import (
 )
 from src.plugins import PluginManager
 from src.plugins.registry import PluginRegistry
-from src.server.lifecycle import LifecycleManager, ServerState
+from src.server.lifecycle import LifecycleManager
 from src.transport import get_transport_config, serve_mcp
 
 logger = get_logger(__name__)

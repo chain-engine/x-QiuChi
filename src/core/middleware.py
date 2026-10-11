@@ -475,10 +475,10 @@ class LoggingMiddleware(Middleware):
         if not server or not hasattr(server, "registry"):
             return None
         try:
-            from src.plugins.registry import RegistryItemType
+            from src.constants import PluginType
 
             item = server.registry.get_item(method_name)
-            if item and item.type == RegistryItemType.TOOL:
+            if item and item.type == PluginType.TOOL:
                 return self._get_function_source(item.item)
         except Exception:
             return None

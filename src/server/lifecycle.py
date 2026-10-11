@@ -4,24 +4,10 @@
 管理服务器的启动、关闭和状态转换。
 """
 
-from enum import StrEnum
-
+from src.constants import ServerState
 from src.core.logger import get_logger
 
 logger = get_logger(__name__)
-
-
-class ServerState(StrEnum):
-    """服务器状态枚举"""
-
-    UNINITIALIZED = "uninitialized"
-    INITIALIZING = "initializing"
-    READY = "ready"
-    STARTING = "starting"
-    RUNNING = "running"
-    STOPPING = "stopping"
-    STOPPED = "stopped"
-    ERROR = "error"
 
 
 class LifecycleManager:
@@ -99,4 +85,4 @@ class LifecycleManager:
         return self.state
 
 
-__all__ = ["ServerState", "LifecycleManager"]
+__all__ = ["LifecycleManager"]

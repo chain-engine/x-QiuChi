@@ -408,7 +408,7 @@ x-QiuChi/
 │   │   └── opentelemetry.py         # OpenTelemetry（request_id 注入、HTTP span/metrics，console/otlp）
 │   │
 │   ├── plugins/                     # 插件层：插件系统核心
-│   │   ├── base.py                  # 插件抽象基类与元数据定义（PluginType / PluginMetadata）
+│   │   ├── base.py                  # 插件抽象基类与元数据定义（PluginMetadata）
 │   │   ├── registry.py              # PluginRegistry 统一注册表（RLock 线程安全）
 │   │   ├── manager.py               # PluginManager 插件管理器（自动发现、依赖解析、生命周期）
 │   │   ├── discovery.py             # 插件发现扫描器

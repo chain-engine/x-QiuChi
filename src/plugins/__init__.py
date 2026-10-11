@@ -12,7 +12,7 @@
     3. 从 Collector 读取并注册到 PluginRegistry
 """
 
-from .base import PluginDependency, PluginMetadata, PluginStatus, PluginType
+from .base import PluginDependency, PluginMetadata, PluginStatus
 from .collector import (
     PluginCollector,
     get_prompt_collector,
@@ -25,11 +25,10 @@ from .collector import (
 from .discovery import PluginDiscovery, create_discovery, discover_plugins
 from .loader import Plugin, PluginLoader
 from .manager import PluginManager
-from .registry import PluginRegistry, RegistryItemType, global_registry
+from .registry import PluginRegistry, PluginType, global_registry
 
 __all__ = [
     # 基础类型
-    "PluginType",
     "PluginStatus",
     "PluginMetadata",
     "PluginDependency",
@@ -43,7 +42,7 @@ __all__ = [
     "PluginCollector",
     # 注册表
     "PluginRegistry",
-    "RegistryItemType",
+    "PluginType",
     "global_registry",
     # 发现
     "PluginDiscovery",

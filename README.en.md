@@ -330,7 +330,7 @@ x-QiuChi/
 │   │   └── middleware.py            # Middleware pipeline (ErrorHandler / Logging / Auth / Cache)
 │   │
 │   ├── plugins/                     # Plugin layer: plugin system core
-│   │   ├── base.py                  # Plugin abstract base class and metadata (PluginType / PluginMetadata)
+│   │   ├── base.py                  # Plugin abstract base class and metadata (PluginMetadata)
 │   │   ├── registry.py              # PluginRegistry (thread-safe, RLock)
 │   │   ├── manager.py               # PluginManager (auto-discovery, dependency resolution, lifecycle)
 │   │   ├── discovery.py             # Plugin discovery scanner

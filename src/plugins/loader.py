@@ -9,9 +9,10 @@ from __future__ import annotations
 import abc
 from typing import Any
 
+from src.constants import PluginType
 from src.core.logger import get_logger
 
-from .base import PluginMetadata, PluginStatus, PluginType
+from .base import PluginMetadata, PluginStatus
 
 logger = get_logger(__name__)
 
