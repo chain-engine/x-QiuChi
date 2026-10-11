@@ -96,6 +96,9 @@ class StrBaseEnum(str, BaseEnum):
     def __new__(cls, mark: str, desc: str) -> Self:
         return cast(Self, _new_native_member(cls, str, mark))
 
+    def __str__(self) -> str:
+        return str.__str__(self)
+
     @property
     def mark(self) -> str:
         """存储值（str）。"""

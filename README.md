@@ -398,7 +398,7 @@ x-QiuChi/
 │   │
 │   ├── constants/                   # 常量定义层
 │   │   ├── constants.py             # 全局常量（应用信息、环境标识、配置文件）
-│   │   └── enums.py                 # MCP 枚举（TransportType、LogLevel、LogOutput）
+│   │   └── enums.py                 # 全局枚举（Environment、LogLevel、TransportType、LogOutput、ServerState、PluginType、PluginStatus）
 │   │
 │   ├── core/                        # 核心层：框架基础设施
 │   │   ├── config.py                # Settings 配置管理（dataclass 分节，环境变量 > YAML > 默认值，validate/reload）
@@ -416,7 +416,7 @@ x-QiuChi/
 │   │   └── collector.py             # 插件收集器（装饰器注册入口）
 │   │
 │   ├── server/                      # 服务层：MCP 服务器核心
-│   │   ├── server.py                # MCPServer 类（封装 FastMCP，装饰器注册，中间件集成）
+│   │   ├── server.py                # MCPServer 编排门面（组装 FastMCP / 认证 / 中间件 / 插件 / 生命周期）
 │   │   └── lifecycle.py             # 服务器生命周期状态机（UNINITIALIZED → RUNNING → STOPPED）
 │   │
 │   ├── runtime/                     # 运行时层：请求上下文与会话管理
@@ -424,7 +424,7 @@ x-QiuChi/
 │   │   └── session.py               # SessionManager 会话管理器
 │   │
 │   ├── transport/                   # 传输层：多协议传输抽象
-│   │   └── transport.py             # 传输层配置（Stdio / SSE / Streamable-HTTP / TLS）
+│   │   └── transport.py             # 传输配置与服务承载（Stdio / SSE / Streamable-HTTP，默认 streamable-http）
 │   │
 │   ├── utils/                       # 工具层（当前为空，预留通用辅助函数位）
 │   │
@@ -470,26 +470,28 @@ x-QiuChi/
 ```mermaid
 flowchart TD
     A["MCP 客户端<br/>(Claude Desktop / LangChain / 自定义客户端)"]
-    B["传输层<br/>Stdio / SSE / Streamable-HTTP"]
-    C["中间件管道<br/>ErrorHandler → Logging → Auth → Cache → Handler"]
-    subgraph D["MCP 三大原语"]
+    B["传输层 transport<br/>Stdio / SSE / Streamable-HTTP（默认）"]
+    B1["传输层加固（HTTP 模式）<br/>Bearer Token 认证（RequireAuthMiddleware）+ OpenTelemetry 遥测"]
+    C["中间件管道 core.middleware<br/>ErrorHandler → Logging → Cache → 业务处理器"]
+    subgraph D["MCP 三大原语（PluginType）"]
         direction LR
-        D1["Tools（工具原语）"]
-        D2["Resources（资源原语）"]
-        D3["Prompts（提示词原语）"]
+        D1["Tools（工具）"]
+        D2["Resources（资源）"]
+        D3["Prompts（提示词）"]
     end
-    E["插件系统<br/>Discovery → Load → Register → Enable → Serve"]
-    F["PluginRegistry<br/>统一注册表（RLock 线程安全）"]
-    G["核心服务器<br/>MCPServer（封装 FastMCP）+ 生命周期管理"]
-    H["配置管理<br/>Settings（dataclass，环境变量 > YAML > 默认值）"]
-    I["结构化日志<br/>loguru（stderr + 文件轮转）"]
+    E["插件系统 plugins<br/>装饰器收集 → 发现 → 加载/启用 → 统一注册"]
+    F["PluginRegistry 统一注册表<br/>(RLock 线程安全)"]
+    G["MCPServer 编排门面 server<br/>组装 FastMCP，LifecycleManager 显式状态机"]
+    H["core 基础设施<br/>Settings 配置 / loguru 日志 / 中间件 / 认证 / 遥测"]
+    I["constants 共享类型<br/>TransportType / ServerState / PluginType 等枚举"]
 
     A -->|"MCP 协议（JSON-RPC）"| B
-    B --> C
+    B --> B1
+    B1 --> C
     C --> D
-    D --> E
+    E -->|"注册"| D
     E --> F
-    F --> G
+    G -->|"编排"| E
     G --> H
     H --> I
 ```
@@ -498,52 +500,59 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    S1["解析 CLI 参数 / 加载配置"] --> S2["创建 MCPServer 实例"]
-    S2 --> S3["注册默认中间件管道<br/>ErrorHandler / Logging / Auth（可选） / Cache（可选）"]
-    S3 --> S4["扫描 discovery_paths<br/>自动发现并加载插件"]
-    S4 --> S5["注册到 PluginRegistry<br/>（Tools / Resources / Prompts）"]
-    S5 --> S6["启动传输层监听<br/>（Stdio / SSE / HTTP）"]
-    S6 --> S7["状态：RUNNING"]
+    S1["解析 CLI 参数 / 加载配置<br/>（main.py + Settings）"] --> S2["创建 MCPServer 实例<br/>装配 FastMCP / 传输层认证 / 默认中间件管道"]
+    S2 --> S3["生命周期状态机<br/>UNINITIALIZED → READY → RUNNING"]
+    S3 --> S4["插件初始化（PluginManager）<br/>发现 → 加载 → 启用"]
+    S4 --> S5["装饰器函数注册<br/>包装中间件管道后写入 PluginRegistry + FastMCP"]
+    S5 --> S6["serve_mcp 阻塞监听<br/>Streamable-HTTP（默认） / SSE / Stdio"]
 ```
 
 ### 请求处理流程
 
 ```mermaid
 flowchart TD
-    R1["接收 MCP 请求"] --> R2["中间件链<br/>ErrorHandler → Logging → Auth → Cache"]
-    R2 --> R3{"缓存命中？"}
-    R3 -->|"是"| R8["直接返回缓存结果"]
-    R3 -->|"否"| R4["路由到对应原语处理器<br/>Tool / Resource / Prompt"]
-    R4 --> R5["执行业务逻辑"]
-    R5 --> R6["写入缓存（可选）"]
-    R6 --> R7["返回 MCP 响应"]
+    R1["接收 MCP 请求（JSON-RPC）"] --> R2["HTTP 传输层<br/>Bearer Token 认证 + OpenTelemetry 埋点（request_id）"]
+    R2 --> R3["FastMCP 按 method 分发<br/>到已注册的工具 / 资源 / 提示词"]
+    R3 --> R4["中间件管道<br/>ErrorHandler → Logging → Cache"]
+    R4 --> R5{"缓存命中？"}
+    R5 -->|"是"| R8["直接返回缓存结果"]
+    R5 -->|"否"| R6["执行业务函数<br/>（RequestContext 贯穿管道）"]
+    R6 --> R7["写入缓存（可选）"]
+    R7 --> R9["返回 MCP 响应"]
 ```
 
 ### 模块依赖关系图
 
 ```mermaid
 flowchart TD
-    A["src/main.py<br/>主入口"] --> B["src/server/server.py<br/>MCPServer"]
+    A["src/main.py<br/>主入口"] --> B["src/server/server.py<br/>MCPServer 编排门面"]
     A --> K["src/core/logger.py<br/>日志系统"]
     K --> K1["loguru（外部依赖）"]
 
     B --> C1["FastMCP（外部依赖）"]
     B --> D["src/plugins/manager.py<br/>插件管理器"]
     B --> E["src/core/middleware.py<br/>中间件管道"]
-    B --> F["src/transport/transport.py<br/>传输层"]
+    B --> F["src/transport/transport.py<br/>传输承载"]
+    B --> AUTH["src/core/auth.py<br/>传输层认证装配"]
+    B --> LC["src/server/lifecycle.py<br/>生命周期状态机"]
+    B --> H["src/core/config.py<br/>配置管理"]
+    H --> H1["dataclass + PyYAML（外部依赖）"]
 
     D --> D1["src/plugins/base.py<br/>插件基类"]
     D --> D2["src/plugins/registry.py<br/>PluginRegistry"]
     D --> D3["src/plugins/discovery.py<br/>插件发现"]
+    D --> D4["src/plugins/collector.py<br/>装饰器收集"]
 
     E --> E1["ErrorHandler 中间件"]
     E --> E2["Logging 中间件"]
-    E --> E3["Auth 中间件"]
-    E --> E4["Cache 中间件"]
+    E --> E3["Cache 中间件"]
 
-    B --> G["src/runtime/<br/>上下文与会话"]
-    B --> H["src/core/config.py<br/>配置管理"]
-    H --> H1["dataclass + PyYAML（外部依赖）"]
+    F --> T1["src/constants/enums.py<br/>TransportType 枚举"]
+    F --> T2["uvicorn（外部依赖）"]
+    F -.->|"延迟导入"| OT["src/core/opentelemetry.py<br/>遥测埋点"]
+
+    D4 --> EN["src/constants/<br/>枚举与常量（最底层）"]
+    T1 --> EN
 ```
 
 ---

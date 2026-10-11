@@ -322,7 +322,7 @@ x-QiuChi/
 │   │
 │   ├── constants/                   # Constants layer
 │   │   ├── constants.py             # Global constants (app info, env flags, config files)
-│   │   └── enums.py                 # MCP enums (TransportType, LogLevel, LogOutput)
+│   │   └── enums.py                 # Global enums (Environment, LogLevel, TransportType, LogOutput, ServerState, PluginType, PluginStatus)
 │   │
 │   ├── core/                        # Core layer: framework infrastructure
 │   │   ├── config.py                # Settings config management (dataclass sections, Env > YAML > Defaults, validate/reload)
@@ -338,7 +338,7 @@ x-QiuChi/
 │   │   └── collector.py             # Plugin collector (decorator registration entry)
 │   │
 │   ├── server/                      # Server layer: MCP server core
-│   │   ├── server.py                # MCPServer class (wraps FastMCP, decorator registration, middleware)
+│   │   ├── server.py                # MCPServer facade (assembles FastMCP / auth / middleware / plugins / lifecycle)
 │   │   └── lifecycle.py             # Server lifecycle state machine (UNINITIALIZED → RUNNING → STOPPED)
 │   │
 │   ├── runtime/                     # Runtime layer: request context and session management
@@ -346,7 +346,7 @@ x-QiuChi/
 │   │   └── session.py               # SessionManager
 │   │
 │   ├── transport/                   # Transport layer: multi-protocol transport abstraction
-│   │   └── transport.py             # Transport config (Stdio / SSE / Streamable-HTTP / TLS)
+│   │   └── transport.py             # Transport config & serving (Stdio / SSE / Streamable-HTTP, default streamable-http)
 │   │
 │   ├── utils/                       # Utils layer (currently empty, reserved for helper functions)
 │   │
@@ -384,26 +384,28 @@ x-QiuChi/
 ```mermaid
 flowchart TD
     A["MCP Client<br/>(Claude Desktop / LangChain / Custom Client)"]
-    B["Transport Layer<br/>Stdio / SSE / Streamable-HTTP"]
-    C["Middleware Pipeline<br/>ErrorHandler → Logging → Auth → Cache → Handler"]
-    subgraph D["MCP Three Primitives"]
+    B["Transport Layer (transport)<br/>Stdio / SSE / Streamable-HTTP (Default)"]
+    B1["Transport Hardening (HTTP Mode)<br/>Bearer Token Auth (RequireAuthMiddleware) + OpenTelemetry"]
+    C["Middleware Pipeline (core.middleware)<br/>ErrorHandler → Logging → Cache → Business Handler"]
+    subgraph D["MCP Three Primitives (PluginType)"]
         direction LR
-        D1["Tools Primitive"]
-        D2["Resources Primitive"]
-        D3["Prompts Primitive"]
+        D1["Tools"]
+        D2["Resources"]
+        D3["Prompts"]
     end
-    E["Plugin System<br/>Discovery → Load → Register → Enable → Serve"]
+    E["Plugin System (plugins)<br/>Decorator Collect → Discover → Load/Enable → Register"]
     F["PluginRegistry (Thread-Safe, RLock)"]
-    G["Core Server<br/>MCPServer (Wraps FastMCP) + Lifecycle Management"]
-    H["Configuration Management<br/>Settings (dataclass, Env > YAML > Defaults)"]
-    I["Structured Logging<br/>loguru (stderr + File Rotation)"]
+    G["MCPServer Facade (server)<br/>Assembles FastMCP, LifecycleManager State Machine"]
+    H["core Infrastructure<br/>Settings Config / loguru Logging / Middleware / Auth / Telemetry"]
+    I["constants Shared Types<br/>TransportType / ServerState / PluginType Enums"]
 
     A -->|"MCP Protocol (JSON-RPC)"| B
-    B --> C
+    B --> B1
+    B1 --> C
     C --> D
-    D --> E
+    E -->|"Register"| D
     E --> F
-    F --> G
+    G -->|"Orchestrate"| E
     G --> H
     H --> I
 ```
@@ -412,52 +414,59 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    S1["Parse CLI Arguments / Load Config"] --> S2["Create MCPServer Instance"]
-    S2 --> S3["Register Default Middleware Pipeline<br/>ErrorHandler / Logging / Auth (Optional) / Cache (Optional)"]
-    S3 --> S4["Scan discovery_paths<br/>Auto-Discover and Load Plugins"]
-    S4 --> S5["Register to PluginRegistry<br/>(Tools / Resources / Prompts)"]
-    S5 --> S6["Start Transport Layer Listener<br/>(Stdio / SSE / HTTP)"]
-    S6 --> S7["State: RUNNING"]
+    S1["Parse CLI Arguments / Load Config<br/>(main.py + Settings)"] --> S2["Create MCPServer Instance<br/>Assemble FastMCP / Transport Auth / Default Middleware"]
+    S2 --> S3["Lifecycle State Machine<br/>UNINITIALIZED → READY → RUNNING"]
+    S3 --> S4["Plugin Initialization (PluginManager)<br/>Discover → Load → Enable"]
+    S4 --> S5["Decorator Function Registration<br/>Wrapped with Middleware Pipeline, into PluginRegistry + FastMCP"]
+    S5 --> S6["serve_mcp Blocking Listener<br/>Streamable-HTTP (Default) / SSE / Stdio"]
 ```
 
 ### Request Processing Flow
 
 ```mermaid
 flowchart TD
-    R1["Receive MCP Request"] --> R2["Middleware Chain<br/>ErrorHandler → Logging → Auth → Cache"]
-    R2 --> R3{"Cache Hit?"}
-    R3 -->|"Yes"| R8["Return Cached Result"]
-    R3 -->|"No"| R4["Route to Primitive Handler<br/>Tool / Resource / Prompt"]
-    R4 --> R5["Execute Business Logic"]
-    R5 --> R6["Write to Cache (Optional)"]
-    R6 --> R7["Return MCP Response"]
+    R1["Receive MCP Request (JSON-RPC)"] --> R2["HTTP Transport Layer<br/>Bearer Token Auth + OpenTelemetry (request_id)"]
+    R2 --> R3["FastMCP Dispatches by Method<br/>to Registered Tools / Resources / Prompts"]
+    R3 --> R4["Middleware Pipeline<br/>ErrorHandler → Logging → Cache"]
+    R4 --> R5{"Cache Hit?"}
+    R5 -->|"Yes"| R8["Return Cached Result"]
+    R5 -->|"No"| R6["Execute Business Function<br/>(RequestContext Flows Through Pipeline)"]
+    R6 --> R7["Write to Cache (Optional)"]
+    R7 --> R9["Return MCP Response"]
 ```
 
 ### Module Dependency Graph
 
 ```mermaid
 flowchart TD
-    A["src/main.py<br/>Main Entry"] --> B["src/server/server.py<br/>MCPServer"]
+    A["src/main.py<br/>Main Entry"] --> B["src/server/server.py<br/>MCPServer Facade"]
     A --> K["src/core/logger.py<br/>Logging System"]
     K --> K1["loguru (External)"]
 
     B --> C1["FastMCP (External)"]
     B --> D["src/plugins/manager.py<br/>Plugin Manager"]
     B --> E["src/core/middleware.py<br/>Middleware Pipeline"]
-    B --> F["src/transport/transport.py<br/>Transport Layer"]
+    B --> F["src/transport/transport.py<br/>Transport Serving"]
+    B --> AUTH["src/core/auth.py<br/>Transport Auth Assembly"]
+    B --> LC["src/server/lifecycle.py<br/>Lifecycle State Machine"]
+    B --> H["src/core/config.py<br/>Config Management"]
+    H --> H1["dataclass + PyYAML (External)"]
 
     D --> D1["src/plugins/base.py<br/>Plugin Base"]
     D --> D2["src/plugins/registry.py<br/>PluginRegistry"]
     D --> D3["src/plugins/discovery.py<br/>Plugin Discovery"]
+    D --> D4["src/plugins/collector.py<br/>Decorator Collection"]
 
     E --> E1["ErrorHandler Middleware"]
     E --> E2["Logging Middleware"]
-    E --> E3["Auth Middleware"]
-    E --> E4["Cache Middleware"]
+    E --> E3["Cache Middleware"]
 
-    B --> G["src/runtime/<br/>Context & Session"]
-    B --> H["src/core/config.py<br/>Config Management"]
-    H --> H1["dataclass + PyYAML (External)"]
+    F --> T1["src/constants/enums.py<br/>TransportType Enum"]
+    F --> T2["uvicorn (External)"]
+    F -.->|"Lazy Import"| OT["src/core/opentelemetry.py<br/>Telemetry"]
+
+    D4 --> EN["src/constants/<br/>Enums & Constants (Bottom Layer)"]
+    T1 --> EN
 ```
 
 ---
