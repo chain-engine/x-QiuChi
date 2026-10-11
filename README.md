@@ -112,7 +112,7 @@ cp config.yaml.example config.yaml
 | `features.middleware` | `true` | 是否启用中间件管道 |
 | `features.cache` | `false` | 是否启用缓存中间件 |
 | `plugins.auto_discovery` | `true` | 是否自动发现插件 |
-| `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | 插件扫描路径 |
+| `plugins.discovery_paths` | `["src.examples"]` | 插件扫描路径 |
 | `middleware.auth.enabled` | `false` | 是否启用传输层 Bearer Token 认证 |
 | `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
 | `middleware.cache.enabled` | `false` | 是否启用内存缓存 |

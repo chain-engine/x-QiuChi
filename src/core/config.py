@@ -144,7 +144,7 @@ class PluginConfig:
     """插件配置。"""
 
     auto_discovery: bool = True
-    discovery_paths: list[str] = field(default_factory=lambda: ["src.plugins", "src.examples"])
+    discovery_paths: list[str] = field(default_factory=lambda: ["src.examples"])
     enabled_plugins: list[str] = field(default_factory=list)
     disabled_plugins: list[str] = field(default_factory=list)
 
@@ -301,7 +301,7 @@ class Settings:
             },
             "plugins": {
                 "auto_discovery": True,
-                "discovery_paths": ["src.plugins", "src.examples"],
+                "discovery_paths": ["src.examples"],
                 "enabled_plugins": [],
                 "disabled_plugins": [],
             },

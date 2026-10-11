@@ -112,7 +112,7 @@ cp config.yaml.example config.yaml
 | `features.middleware` | `true` | Enable middleware pipeline |
 | `features.cache` | `false` | Enable cache middleware |
 | `plugins.auto_discovery` | `true` | Enable automatic plugin discovery |
-| `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | Plugin scan paths |
+| `plugins.discovery_paths` | `["src.examples"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable transport-layer Bearer Token auth |
 | `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
 | `opentelemetry.enabled` | `true` | Enable OpenTelemetry |
