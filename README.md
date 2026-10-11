@@ -110,13 +110,10 @@ cp config.yaml.example config.yaml
 | `features.resources` | `true` | 是否启用资源原语 |
 | `features.prompts` | `true` | 是否启用提示词原语 |
 | `features.middleware` | `true` | 是否启用中间件管道 |
-| `features.cache` | `false` | 是否启用缓存中间件 |
 | `plugins.auto_discovery` | `true` | 是否自动发现插件 |
-| `plugins.discovery_paths` | `["src.examples"]` | 插件扫描路径 |
+| `plugins.discovery_paths` | `["src.extensions"]` | 插件扫描路径 |
 | `middleware.auth.enabled` | `false` | 是否启用传输层 Bearer Token 认证 |
 | `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
-| `middleware.cache.enabled` | `false` | 是否启用内存缓存 |
-| `middleware.cache.default_ttl` | `300` | 缓存默认 TTL（秒） |
 | `opentelemetry.enabled` | `true` | 是否启用 OpenTelemetry |
 | `opentelemetry.service_name` | `x-QiuChi` | 服务名（trace/metric 资源属性） |
 | `opentelemetry.exporter` | `console` | 导出方式：`console` / `otlp` |
@@ -403,7 +400,7 @@ x-QiuChi/
 │   ├── core/                        # 核心层：框架基础设施
 │   │   ├── config.py                # Settings 配置管理（dataclass 分节，环境变量 > YAML > 默认值，validate/reload）
 │   │   ├── logger.py                # loguru 结构化日志封装（文件轮转、敏感信息过滤）
-│   │   ├── middleware.py            # 中间件管道（ErrorHandler / Logging / Cache）
+│   │   ├── middleware.py            # 中间件管道（ErrorHandler / Logging）
 │   │   ├── auth.py                  # 传输层认证（SimpleTokenVerifier，mcp TokenVerifier Protocol）
 │   │   └── opentelemetry.py         # OpenTelemetry（request_id 注入、HTTP span/metrics，console/otlp）
 │   │
@@ -428,7 +425,7 @@ x-QiuChi/
 │   │
 │   ├── utils/                       # 工具层（当前为空，预留通用辅助函数位）
 │   │
-│   └── examples/                    # 示例层：内置示例插件
+│   └── extensions/                  # 扩展层：内置扩展插件（tools / resources / prompts）
 │       ├── tools/
 │       │   └── math.py              # 8 个数学工具（加减乘除、幂、开方、温度转换）
 │       ├── resources/
@@ -472,7 +469,7 @@ flowchart TD
     A["MCP 客户端<br/>(Claude Desktop / LangChain / 自定义客户端)"]
     B["传输层 transport<br/>Stdio / SSE / Streamable-HTTP（默认）"]
     B1["传输层加固（HTTP 模式）<br/>Bearer Token 认证（RequireAuthMiddleware）+ OpenTelemetry 遥测"]
-    C["中间件管道 core.middleware<br/>ErrorHandler → Logging → Cache → 业务处理器"]
+    C["中间件管道 core.middleware<br/>ErrorHandler → Logging → 业务处理器"]
     subgraph D["MCP 三大原语（PluginType）"]
         direction LR
         D1["Tools（工具）"]
@@ -513,12 +510,9 @@ flowchart TD
 flowchart TD
     R1["接收 MCP 请求（JSON-RPC）"] --> R2["HTTP 传输层<br/>Bearer Token 认证 + OpenTelemetry 埋点（request_id）"]
     R2 --> R3["FastMCP 按 method 分发<br/>到已注册的工具 / 资源 / 提示词"]
-    R3 --> R4["中间件管道<br/>ErrorHandler → Logging → Cache"]
-    R4 --> R5{"缓存命中？"}
-    R5 -->|"是"| R8["直接返回缓存结果"]
-    R5 -->|"否"| R6["执行业务函数<br/>（RequestContext 贯穿管道）"]
-    R6 --> R7["写入缓存（可选）"]
-    R7 --> R9["返回 MCP 响应"]
+    R3 --> R4["中间件管道<br/>ErrorHandler → Logging"]
+    R4 --> R6["执行业务函数<br/>（RequestContext 贯穿管道）"]
+    R6 --> R9["返回 MCP 响应"]
 ```
 
 ### 模块依赖关系图
@@ -545,7 +539,6 @@ flowchart TD
 
     E --> E1["ErrorHandler 中间件"]
     E --> E2["Logging 中间件"]
-    E --> E3["Cache 中间件"]
 
     F --> T1["src/constants/enums.py<br/>TransportType 枚举"]
     F --> T2["uvicorn（外部依赖）"]
@@ -634,7 +627,6 @@ flowchart TD
 | 存储类型 | 实现方式 | 配置位置 | 说明 |
 |---------|---------|---------|------|
 | 会话存储 | 内存字典 | `src/runtime/session.py` | SessionManager，支持 TTL 和自动清理 |
-| 缓存存储 | 内存字典 | `src/core/middleware.py` | CacheMiddleware，支持 TTL、SHA-256 Key 生成 |
 | 插件注册表 | 内存字典 | `src/plugins/registry.py` | PluginRegistry，线程安全（RLock） |
 
 ### 日志文件存储
@@ -645,8 +637,6 @@ flowchart TD
 | `logging.rotation` | `1 hour` | 日志轮转周期 |
 | `logging.retention` | `7 days` | 日志保留时长 |
 | `logging.output` | `both` | 输出目标：`stderr`（仅标准错误）/ `file`（仅文件）/ `both`（两者） |
-
-> **扩展说明**：缓存中间件设计了抽象后端接口，可扩展为 Redis 等外部存储后端。当前版本暂不提供对象存储集成，预留扩展接口。
 
 ---
 

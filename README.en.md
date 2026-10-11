@@ -110,17 +110,14 @@ cp config.yaml.example config.yaml
 | `features.resources` | `true` | Enable Resources primitive |
 | `features.prompts` | `true` | Enable Prompts primitive |
 | `features.middleware` | `true` | Enable middleware pipeline |
-| `features.cache` | `false` | Enable cache middleware |
 | `plugins.auto_discovery` | `true` | Enable automatic plugin discovery |
-| `plugins.discovery_paths` | `["src.examples"]` | Plugin scan paths |
+| `plugins.discovery_paths` | `["src.extensions"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable transport-layer Bearer Token auth |
 | `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
 | `opentelemetry.enabled` | `true` | Enable OpenTelemetry |
 | `opentelemetry.service_name` | `x-QiuChi` | Service name for traces/metrics |
 | `opentelemetry.exporter` | `console` | Exporter: `console` / `otlp` |
 | `opentelemetry.otlp_endpoint` | `""` | OTLP endpoint (required when exporter=otlp) |
-| `middleware.cache.enabled` | `false` | Enable in-memory cache |
-| `middleware.cache.default_ttl` | `300` | Cache default TTL (seconds) |
 
 **Environment Variable Override**: All configuration can be overridden via environment variables. Priority: **Environment Variables > YAML > Defaults**. Common environment variables:
 
@@ -327,7 +324,7 @@ x-QiuChi/
 │   ├── core/                        # Core layer: framework infrastructure
 │   │   ├── config.py                # Settings config management (dataclass sections, Env > YAML > Defaults, validate/reload)
 │   │   ├── logger.py                # loguru structured logging (file rotation, sensitive info filtering)
-│   │   └── middleware.py            # Middleware pipeline (ErrorHandler / Logging / Auth / Cache)
+│   │   └── middleware.py            # Middleware pipeline (ErrorHandler / Logging / Auth)
 │   │
 │   ├── plugins/                     # Plugin layer: plugin system core
 │   │   ├── base.py                  # Plugin abstract base class and metadata (PluginMetadata)
@@ -350,7 +347,7 @@ x-QiuChi/
 │   │
 │   ├── utils/                       # Utils layer (currently empty, reserved for helper functions)
 │   │
-│   └── examples/                    # Examples layer: built-in example plugins
+│   └── extensions/                  # Extensions layer: built-in extension plugins (tools / resources / prompts)
 │       ├── tools/
 │       │   └── math.py              # 8 math tools (add, subtract, multiply, divide, power, sqrt, temperature)
 │       ├── resources/
@@ -386,7 +383,7 @@ flowchart TD
     A["MCP Client<br/>(Claude Desktop / LangChain / Custom Client)"]
     B["Transport Layer (transport)<br/>Stdio / SSE / Streamable-HTTP (Default)"]
     B1["Transport Hardening (HTTP Mode)<br/>Bearer Token Auth (RequireAuthMiddleware) + OpenTelemetry"]
-    C["Middleware Pipeline (core.middleware)<br/>ErrorHandler → Logging → Cache → Business Handler"]
+    C["Middleware Pipeline (core.middleware)<br/>ErrorHandler → Logging → Business Handler"]
     subgraph D["MCP Three Primitives (PluginType)"]
         direction LR
         D1["Tools"]
@@ -427,12 +424,9 @@ flowchart TD
 flowchart TD
     R1["Receive MCP Request (JSON-RPC)"] --> R2["HTTP Transport Layer<br/>Bearer Token Auth + OpenTelemetry (request_id)"]
     R2 --> R3["FastMCP Dispatches by Method<br/>to Registered Tools / Resources / Prompts"]
-    R3 --> R4["Middleware Pipeline<br/>ErrorHandler → Logging → Cache"]
-    R4 --> R5{"Cache Hit?"}
-    R5 -->|"Yes"| R8["Return Cached Result"]
-    R5 -->|"No"| R6["Execute Business Function<br/>(RequestContext Flows Through Pipeline)"]
-    R6 --> R7["Write to Cache (Optional)"]
-    R7 --> R9["Return MCP Response"]
+    R3 --> R4["Middleware Pipeline<br/>ErrorHandler → Logging"]
+    R4 --> R6["Execute Business Function<br/>(RequestContext Flows Through Pipeline)"]
+    R6 --> R9["Return MCP Response"]
 ```
 
 ### Module Dependency Graph
@@ -459,7 +453,6 @@ flowchart TD
 
     E --> E1["ErrorHandler Middleware"]
     E --> E2["Logging Middleware"]
-    E --> E3["Cache Middleware"]
 
     F --> T1["src/constants/enums.py<br/>TransportType Enum"]
     F --> T2["uvicorn (External)"]
@@ -547,8 +540,7 @@ QiuChi, as an MCP server framework, does not provide traditional REST APIs. Inst
 
 | Storage Type | Implementation | Config Location | Description |
 |-------------|---------------|-----------------|-------------|
-| Session Storage | In-memory dict | `src/runtime/session.py` | SessionManager with TTL and auto-cleanup |
-| Cache Storage | In-memory dict | `src/core/middleware.py` | CacheMiddleware with TTL, SHA-256 key generation |
+| Session Storage | In-memory dict | `src/runtime/session.py` | SessionManager with TTL and auto cleanup |
 | Plugin Registry | In-memory dict | `src/plugins/registry.py` | PluginRegistry, thread-safe (RLock) |
 
 ### Log File Storage

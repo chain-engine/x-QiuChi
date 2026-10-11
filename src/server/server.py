@@ -19,7 +19,6 @@ from src.core.auth import build_auth_from_settings
 from src.core.config import settings
 from src.core.logger import get_logger
 from src.core.middleware import (
-    CacheMiddleware,
     ErrorHandlerMiddleware,
     LoggingMiddleware,
     MiddlewareChain,
@@ -38,7 +37,7 @@ class MCPServer:
 
     组装并调度各层组件：
     - 插件注册与发现（委托 PluginManager）
-    - 中间件管道（ErrorHandler / Logging / Cache）
+    - 中间件管道（ErrorHandler / Logging）
     - 传输层认证（委托 core.auth，走 mcp SDK 官方 RequireAuthMiddleware）
     - 多传输层承载（Stdio / SSE / Streamable-HTTP，委托 transport 层）
     """
@@ -72,12 +71,10 @@ class MCPServer:
         self.plugin_manager = PluginManager(self)
         self.lifecycle = LifecycleManager()
 
-        # 默认中间件：错误处理（最外层）；日志/缓存按功能开关挂载
+        # 默认中间件：错误处理（最外层）；日志按功能开关挂载
         self.middleware_chain.add(ErrorHandlerMiddleware())
         if settings.features.middleware:
             self.middleware_chain.add(LoggingMiddleware())
-        if settings.features.cache:
-            self.middleware_chain.add(CacheMiddleware())
 
         logger.info(f"MCP Server '{self.name}' v{self.version} initialized")
 
@@ -101,7 +98,6 @@ class MCPServer:
             return
 
         logger.info(f"Stopping MCP Server '{self.name}'...")
-        await self.plugin_manager.shutdown()
         await self.lifecycle.shutdown()
         logger.info(f"MCP Server '{self.name}' stopped")
 

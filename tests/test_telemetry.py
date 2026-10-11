@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.core.opentelemetry import (
+from src.infras.opentelemetry import (
     get_request_id,
     get_tracer,
     setup_telemetry,

@@ -76,7 +76,9 @@ def test_plugin_system():
     manager = PluginManager(server)
 
     assert manager.server == server
-    assert len(manager.plugins) == 0  # No plugins loaded yet
+    # 注册表体系：装饰器注册项统一进 server.registry（未 initialize 前为空）
+    assert server.registry.name == "ServerRegistry"
+    assert server.registry.count() == 0
 
     print("    [OK] Plugin system initialized")
 
@@ -84,7 +86,7 @@ def test_plugin_system():
 def test_middleware():
     """测试中间件"""
     print("[5/6] Testing middleware...")
-    from src.core.middleware import CacheMiddleware, ErrorHandlerMiddleware, LoggingMiddleware
+    from src.core.middleware import ErrorHandlerMiddleware, LoggingMiddleware
     from src.main import create_server
 
     server = create_server("MiddlewareTest")
@@ -92,21 +94,20 @@ def test_middleware():
     # Add middlewares
     server.middleware_chain.add(ErrorHandlerMiddleware())
     server.middleware_chain.add(LoggingMiddleware())
-    server.middleware_chain.add(CacheMiddleware())
 
     # Check middleware chain
-    assert len(server.middleware_chain) >= 3
+    assert len(server.middleware_chain) >= 2
 
     print("    [OK] Middleware system working")
 
 
-def test_examples():
-    """测试示例插件"""
-    print("[6/6] Testing example plugins...")
+def test_extensions():
+    """测试扩展插件"""
+    print("[6/6] Testing extension plugins...")
 
     try:
         # Test math tools
-        from src.examples.tools.math import add, divide, multiply, subtract
+        from src.extensions.tools.math import add, divide, multiply, subtract
 
         assert add(10, 5) == 15.0
         assert subtract(10, 5) == 5.0
@@ -116,7 +117,7 @@ def test_examples():
         print("    [OK] Math tools working")
 
         # Test config resources
-        from src.examples.resources.config import get_server_config
+        from src.extensions.resources.config import get_server_config
 
         config = get_server_config()
         assert isinstance(config, str)
@@ -125,7 +126,7 @@ def test_examples():
         print("    [OK] Config resources working")
 
         # Test prompt templates
-        from src.examples.prompts.templates import greeting
+        from src.extensions.prompts.templates import greeting
 
         greeting_text = greeting("Test")
         assert "Test" in greeting_text
@@ -147,7 +148,7 @@ def main():
         test_decorators,
         test_plugin_system,
         test_middleware,
-        test_examples,
+        test_extensions,
     ]
 
     failed = 0

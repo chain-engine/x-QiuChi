@@ -151,7 +151,7 @@ async def serve_mcp(mcp: Any, config: TransportConfig) -> None:
 async def _serve_http_app(app: Any, config: TransportConfig) -> None:
     """以 uvicorn 运行 MCP HTTP ASGI app。"""
     # 遥测埋点：初始化 OpenTelemetry，并把 request_id 注入中间件挂到 app 最外层
-    from src.core.opentelemetry import QiuChiHTTPMiddleware, setup_telemetry
+    from src.infras.opentelemetry import QiuChiHTTPMiddleware, setup_telemetry
 
     setup_telemetry()
     app.add_middleware(QiuChiHTTPMiddleware)

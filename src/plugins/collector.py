@@ -1,14 +1,14 @@
 """
-插件收集器
+插件收集器（收集组件）
 
-提供插件项收集功能，包括：
-- PluginCollector 类：收集器核心
-- @tool, @resource, @prompt 装饰器：触发收集
+负责装饰器函数插件（@tool/@resource/@prompt）的收集，进程级全局单例：
+- PluginCollector：收集器核心（线程安全，按插件类型各持一份）
+- @tool/@resource/@prompt 装饰器：标记函数并写入全局收集器
 
-注册流程：
-    1. 使用 @tool/@resource/@prompt 装饰器标记函数
-    2. 装饰器在模块 import 时将函数收集到全局收集器
-    3. 服务器启动时，从收集器读取并注册到注册表
+与 PluginManager 的关系：本模块是"被动写入、主动读取"的数据源。
+写入发生在模块 import 时（装饰器副作用，无需显式调用）；
+读取发生在 PluginManager.initialize() 注册阶段（get_*_collector().get_items()）。
+收集器不感知 PluginDiscovery / PluginRegistry，三者由 PluginManager 串联。
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ FuncType = Callable[..., Any]
 
 
 class PluginCollector:
-    """插件项收集器"""
+    """插件项收集器（线程安全；单个收集器服务于一种插件类型）"""
 
     def __init__(self, plugin_type: PluginType):
         self.plugin_type = plugin_type
@@ -33,6 +33,11 @@ class PluginCollector:
         self._lock = threading.Lock()
 
     def collect(self, func: FuncType, name: str | None = None, **metadata):
+        """收集一个插件函数：注入插件元数据并存入 _items。
+
+        由装饰器在模块 import 时调用；返回带 _is_plugin_item 标记的
+        wrapper（PluginDiscovery 据此识别装饰器函数插件）。
+        """
         func_name = name or func.__name__
         func_doc = func.__doc__ or ""
 
@@ -73,7 +78,7 @@ class PluginCollector:
             self._items.clear()
 
 
-# 全局收集器：每类型一个实例，进程内唯一
+# 全局收集器：进程内唯一，每插件类型一个实例（第一版不隔离多 server）
 _collectors: dict[PluginType, PluginCollector] = {
     PluginType.TOOL: PluginCollector(PluginType.TOOL),
     PluginType.RESOURCE: PluginCollector(PluginType.RESOURCE),
@@ -94,6 +99,8 @@ def get_prompt_collector() -> PluginCollector:
 
 
 def _make_decorator(plugin_type: PluginType):
+    """构造指定插件类型的装饰器工厂（tool/resource/prompt 共用实现）"""
+
     def factory(
         name: str | None = None,
         category: str = "default",

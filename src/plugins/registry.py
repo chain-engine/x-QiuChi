@@ -1,11 +1,10 @@
 """
-统一注册表
+统一注册表（注册组件）
 
-提供统一的插件注册和发现机制，支持：
-- 工具、资源、提示词统一注册
-- 分类和子分类管理
-- 元数据存储
-- 线程安全
+插件注册中心，负责工具 / 资源 / 提示词的统一注册、分类管理与元数据存储：
+- 实例挂在 server.registry（PluginRegistry("ServerRegistry")），由 PluginManager 写入
+- 进程级默认实例 global_registry 供无 server 场景直接使用
+- RLock 保证线程安全
 """
 
 from collections.abc import Callable
@@ -16,9 +15,18 @@ from typing import Any
 from src.constants import PluginType
 from src.core.logger import get_logger
 
-from .base import PluginMetadata
-
 logger = get_logger(__name__)
+
+
+@dataclass
+class PluginMetadata:
+    """插件元数据（注册表条目元数据，PluginManager._register_item 构造）"""
+
+    name: str
+    description: str = ""
+    category: str = "default"
+    subcategory: str | None = None
+    tags: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -36,7 +44,11 @@ class RegistryItem:
 
 
 class PluginRegistry:
-    """插件注册中心"""
+    """插件注册中心（注册组件）
+
+    由 PluginManager._register_item 写入、MCP 调用方读取；
+    不感知 Discovery / Collector，注册表只负责存储与查询。
+    """
 
     def __init__(self, name: str = "PluginRegistry"):
         self.name = name
@@ -57,6 +69,7 @@ class PluginRegistry:
         enabled: bool = True,
         overwrite: bool = False,
     ) -> bool:
+        """注册一个插件项（同名默认拒绝，overwrite=True 时覆盖）"""
         with self._lock:
             if name in self._items and not overwrite:
                 logger.debug(f"[{self.name}] Item '{name}' already exists, skipping")
@@ -205,6 +218,7 @@ class PluginRegistry:
         return self.get_all(PluginType.PROMPT, category, subcategory, enabled_only=enabled_only)
 
     def enable(self, name: str) -> bool:
+        """启用指定注册项"""
         with self._lock:
             if name in self._items:
                 self._items[name].is_enabled = True
@@ -213,6 +227,7 @@ class PluginRegistry:
             return False
 
     def disable(self, name: str) -> bool:
+        """禁用指定注册项"""
         with self._lock:
             if name in self._items:
                 self._items[name].is_enabled = False
@@ -221,6 +236,7 @@ class PluginRegistry:
             return False
 
     def contains(self, name: str) -> bool:
+        """是否已注册该名称"""
         with self._lock:
             return name in self._items
 
@@ -231,6 +247,7 @@ class PluginRegistry:
         subcategory: str | None = None,
         enabled_only: bool = True,
     ) -> list[str]:
+        """按类型 / 分类 / 子分类列出注册项名称"""
         with self._lock:
             names = []
             for item in self._items.values():
@@ -246,6 +263,7 @@ class PluginRegistry:
             return names
 
     def list_categories(self, item_type: PluginType | None = None) -> list[str]:
+        """列出全部分类（可按类型过滤）"""
         with self._lock:
             categories = set()
             for item in self._items.values():
@@ -261,17 +279,20 @@ class PluginRegistry:
         subcategory: str | None = None,
         enabled_only: bool = True,
     ) -> int:
+        """统计注册项数量（可按类型 / 分类 / 子分类过滤）"""
         with self._lock:
             return len(
                 self.get_all_items(item_type, category, subcategory, enabled_only=enabled_only)
             )
 
     def clear(self) -> None:
+        """清空全部注册项"""
         with self._lock:
             self._items.clear()
             logger.debug(f"[{self.name}] Registry cleared")
 
     def print_info(self) -> None:
+        """打印注册表统计信息（总量 / 启用数 / 按类型与分类分布）"""
         with self._lock:
             total = len(self._items)
             enabled = sum(1 for item in self._items.values() if item.is_enabled)

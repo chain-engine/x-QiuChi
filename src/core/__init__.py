@@ -7,13 +7,12 @@
 from src.core.config import Settings, settings
 from src.core.logger import get_logger, setup_logging
 from src.core.middleware import (
-    CacheMiddleware,
     ErrorHandlerMiddleware,
     LoggingMiddleware,
     Middleware,
     MiddlewareChain,
 )
-from src.plugins import PluginManager, PluginMetadata, PluginStatus
+from src.plugins import PluginManager, PluginMetadata
 
 __all__ = [
     "settings",
@@ -22,10 +21,8 @@ __all__ = [
     "MiddlewareChain",
     "ErrorHandlerMiddleware",
     "LoggingMiddleware",
-    "CacheMiddleware",
     "get_logger",
     "setup_logging",
     "PluginManager",
     "PluginMetadata",
-    "PluginStatus",
 ]

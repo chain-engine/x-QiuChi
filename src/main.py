@@ -34,7 +34,6 @@ import sys
 from src.core.config import PACKAGE_VERSION, settings
 from src.core.logger import setup_logging
 from src.core.middleware import (
-    CacheMiddleware,
     ErrorHandlerMiddleware,
     LoggingMiddleware,
     Middleware,
@@ -56,7 +55,6 @@ __all__ = [
     "MiddlewareChain",
     "ErrorHandlerMiddleware",
     "LoggingMiddleware",
-    "CacheMiddleware",
     # 传输层
     "TransportType",
     "TransportConfig",

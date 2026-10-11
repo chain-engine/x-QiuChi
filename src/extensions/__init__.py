@@ -1,5 +1,6 @@
 """
-示例插件包
+内置扩展插件包
 
-提供各种示例插件，展示如何使用 QiuChi 框架。
+提供框架自带的扩展插件（tools / resources / prompts），
+通过 discovery_paths 被插件系统自动发现并注册。
 """

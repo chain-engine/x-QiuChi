@@ -61,13 +61,3 @@ class PluginType(StrBaseEnum):
     TOOL = ("tool", "工具")
     RESOURCE = ("resource", "资源")
     PROMPT = ("prompt", "提示词")
-
-
-class PluginStatus(StrBaseEnum):
-    """插件状态枚举"""
-
-    UNLOADED = ("unloaded", "未加载")
-    LOADED = ("loaded", "已加载")
-    ENABLED = ("enabled", "已启用")
-    DISABLED = ("disabled", "已禁用")
-    ERROR = ("error", "错误")

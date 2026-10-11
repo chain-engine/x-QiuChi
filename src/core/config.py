@@ -22,12 +22,14 @@ import yaml
 
 from src.constants.constants import APP_NAME, DEFAULT_CONFIG_FILE
 from src.constants.enums import Environment, LogLevel, LogOutput, TransportType
-
-# ============================================================
-# 项目根目录
-# ============================================================
-
-PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
+from src.utils.helpers import (
+    PROJECT_ROOT,
+    find_project_root,
+    get_package_version,
+    to_bool,
+    to_float,
+    to_int,
+)
 
 # 加载项目根目录 .env（密钥/Token 等敏感配置不入库，仅供环境变量读取）
 try:
@@ -42,56 +44,7 @@ except ImportError:  # python-dotenv 未安装时跳过，仅支持真实环境�
 # 版本号（唯一事实源：pyproject.toml）
 # ============================================================
 
-
-def _get_package_version() -> str:
-    """从 pyproject.toml 读取版本号（唯一事实源）。
-
-    项目由 uv 管理，自身会被安装为可编辑包，因此
-    ``importlib.metadata.version("x-QiuChi")`` 返回 pyproject.toml 的 version；
-    未安装时回退到与 pyproject 一致的 0.1.0。
-    """
-    try:
-        from importlib.metadata import version
-
-        return version("x-QiuChi")
-    except Exception:
-        return "0.1.0"
-
-
-PACKAGE_VERSION: Final[str] = _get_package_version()
-
-
-# ============================================================
-# 辅助函数
-# ============================================================
-
-
-def _to_bool(value: Any) -> bool:
-    """将值转换为布尔类型。"""
-    if isinstance(value, bool):
-        return value
-    return str(value).lower() in ("true", "1", "yes", "on")
-
-
-def _to_int(value: Any, default: int = 0) -> int:
-    """将值转换为整数类型。"""
-    try:
-        return int(value)
-    except (ValueError, TypeError):
-        return default
-
-
-def _to_float(value: Any, default: float = 0.0) -> float:
-    """将值转换为浮点类型。"""
-    try:
-        return float(value)
-    except (ValueError, TypeError):
-        return default
-
-
-def _find_project_root() -> Path:
-    """查找项目根目录。"""
-    return PROJECT_ROOT
+PACKAGE_VERSION: Final[str] = get_package_version()
 
 
 # ============================================================
@@ -144,7 +97,7 @@ class PluginConfig:
     """插件配置。"""
 
     auto_discovery: bool = True
-    discovery_paths: list[str] = field(default_factory=lambda: ["src.examples"])
+    discovery_paths: list[str] = field(default_factory=lambda: ["src.extensions"])
     enabled_plugins: list[str] = field(default_factory=list)
     disabled_plugins: list[str] = field(default_factory=list)
 
@@ -183,23 +136,12 @@ class LoggingMiddlewareConfig:
 
 
 @dataclass
-class CacheConfig:
-    """缓存配置。"""
-
-    enabled: bool = False
-    default_ttl: int = 300
-    max_size: int = 1000
-    cacheable_methods: list[str] = field(default_factory=list)
-
-
-@dataclass
 class MiddlewareConfig:
     """中间件配置。"""
 
     error_handler: ErrorHandlerConfig = field(default_factory=ErrorHandlerConfig)
     logging: LoggingMiddlewareConfig = field(default_factory=LoggingMiddlewareConfig)
     auth: AuthConfig = field(default_factory=AuthConfig)
-    cache: CacheConfig = field(default_factory=CacheConfig)
 
 
 # ============================================================
@@ -207,10 +149,16 @@ class MiddlewareConfig:
 # ============================================================
 
 _ENV_SECTION_MAP: dict[str, tuple[str, list[str]]] = {
-    "mcp": ("MCP_", ["server_name", "version", "transport", "host", "port", "json_response"]),
+    # 注：mcp.version 不走环境变量——版本唯一事实源是 pyproject.toml（PACKAGE_VERSION）
+    "mcp": ("MCP_", ["server_name", "transport", "host", "port", "json_response"]),
     "logging": ("LOGGING_", ["level", "output", "file_path", "rotation", "retention", "format"]),
-    "features": ("FEATURES_", ["tools", "resources", "prompts", "middleware", "cache"]),
-    "plugins": ("PLUGIN_", ["auto_discovery"]),
+    "features": ("FEATURES_", ["tools", "resources", "prompts", "middleware"]),
+    "plugins": (
+        "PLUGIN_",
+        ["auto_discovery", "discovery_paths", "enabled_plugins", "disabled_plugins"],
+    ),
+    "middleware.error_handler": ("ERROR_HANDLER_", ["include_traceback"]),
+    "middleware.logging": ("MIDDLEWARE_LOGGING_", ["log_request", "log_response"]),
     "middleware.auth": ("AUTH_", ["enabled", "tokens"]),
     "opentelemetry": ("TELEMETRY_", ["enabled", "service_name", "exporter", "otlp_endpoint"]),
 }
@@ -297,11 +245,10 @@ class Settings:
                 "resources": True,
                 "prompts": True,
                 "middleware": True,
-                "cache": False,
             },
             "plugins": {
                 "auto_discovery": True,
-                "discovery_paths": ["src.examples"],
+                "discovery_paths": ["src.extensions"],
                 "enabled_plugins": [],
                 "disabled_plugins": [],
             },
@@ -316,12 +263,6 @@ class Settings:
                 "auth": {
                     "enabled": False,
                     "tokens": [],
-                },
-                "cache": {
-                    "enabled": False,
-                    "default_ttl": 300,
-                    "max_size": 1000,
-                    "cacheable_methods": [],
                 },
             },
             "opentelemetry": {
@@ -342,7 +283,7 @@ class Settings:
 
     def _load_from_yaml(self, config: dict[str, Any]) -> None:
         """从 YAML 文件加载配置。"""
-        project_root = _find_project_root()
+        project_root = find_project_root()
         config_path = project_root / self._config_file
 
         if not config_path.exists():
@@ -387,13 +328,14 @@ class Settings:
                 # 根据默认值类型进行转换
                 default_val = section.get(key)
                 if isinstance(default_val, bool):
-                    section[key] = _to_bool(value)
+                    section[key] = to_bool(value)
                 elif isinstance(default_val, int):
-                    section[key] = _to_int(value)
+                    section[key] = to_int(value)
                 elif isinstance(default_val, float):
-                    section[key] = _to_float(value)
+                    section[key] = to_float(value)
                 elif isinstance(default_val, list):
-                    section[key] = [v.strip() for v in value.split(",")]
+                    # 空字符串 → 空列表；跳过空白项
+                    section[key] = [v.strip() for v in value.split(",") if v.strip()]
                 else:
                     section[key] = value
 
@@ -426,13 +368,11 @@ class Settings:
         error_handler_raw = middleware_raw.pop("error_handler", {})
         logging_middleware_raw = middleware_raw.pop("logging", {})
         auth_raw = middleware_raw.pop("auth", {})
-        cache_raw = middleware_raw.pop("cache", {})
 
         self.middleware = MiddlewareConfig(
             error_handler=ErrorHandlerConfig(**error_handler_raw),
             logging=LoggingMiddlewareConfig(**logging_middleware_raw),
             auth=AuthConfig(**auth_raw),
-            cache=CacheConfig(**cache_raw),
         )
 
         # 可观测性配置
@@ -525,7 +465,6 @@ class Settings:
                 "resources": self.features.resources,
                 "prompts": self.features.prompts,
                 "middleware": self.features.middleware,
-                "cache": self.features.cache,
             },
             "plugins": {
                 "auto_discovery": self.plugins.auto_discovery,
@@ -544,11 +483,6 @@ class Settings:
                 "auth": {
                     "enabled": self.middleware.auth.enabled,
                     "tokens": self.middleware.auth.tokens,
-                },
-                "cache": {
-                    "enabled": self.middleware.cache.enabled,
-                    "default_ttl": self.middleware.cache.default_ttl,
-                    "max_size": self.middleware.cache.max_size,
                 },
             },
             "opentelemetry": {
@@ -600,7 +534,6 @@ __all__ = [
     "MiddlewareConfig",
     "ErrorHandlerConfig",
     "LoggingMiddlewareConfig",
-    "CacheConfig",
     "LogLevel",
     "LogOutput",
     "TransportType",

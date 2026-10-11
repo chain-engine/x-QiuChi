@@ -7,7 +7,7 @@
 子模块：
     constants.py  — 全局常量（应用信息、配置文件）
     base.py       — 带描述枚举基类族（BaseEnum、StrBaseEnum、IntBaseEnum、FloatBaseEnum）
-    enums.py      — MCP 枚举（Environment、TransportType、LogLevel、LogOutput、ServerState、PluginType、PluginStatus）
+    enums.py      — MCP 枚举（Environment、TransportType、LogLevel、LogOutput、ServerState、PluginType）
 """
 
 from .base import BaseEnum, FloatBaseEnum, IntBaseEnum, StrBaseEnum
@@ -23,7 +23,6 @@ from .enums import (
     Environment,
     LogLevel,
     LogOutput,
-    PluginStatus,
     PluginType,
     ServerState,
     TransportType,
@@ -46,5 +45,4 @@ __all__ = [
     "LogOutput",
     "ServerState",
     "PluginType",
-    "PluginStatus",
 ]
