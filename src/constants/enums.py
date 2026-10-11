@@ -8,6 +8,14 @@
 from .base import StrBaseEnum
 
 
+class Environment(StrBaseEnum):
+    """运行环境（对齐配置 app_env，可直接与裸字符串比较）。"""
+
+    DEVELOPMENT = "development", "开发环境"
+    TESTING = "testing", "测试环境"
+    PRODUCTION = "production", "生产环境"
+
+
 class TransportType(StrBaseEnum):
     """MCP 传输类型枚举"""
 

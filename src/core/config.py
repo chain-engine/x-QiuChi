@@ -20,14 +20,8 @@ from typing import Any, Final
 
 import yaml
 
-from src.constants.enums import LogLevel, LogOutput, TransportType
-
-# 常量内联（避免跨包循环导入）
-DEFAULT_CONFIG_FILE: str = "config.yaml"
-ENV_DEVELOPMENT: str = "development"
-ENV_PRODUCTION: str = "production"
-ENV_TESTING: str = "testing"
-
+from src.constants.constants import APP_NAME, DEFAULT_CONFIG_FILE
+from src.constants.enums import Environment, LogLevel, LogOutput, TransportType
 
 # ============================================================
 # 项目根目录
@@ -101,8 +95,8 @@ def _find_project_root() -> Path:
 class MCPConfig:
     """MCP 服务器配置。"""
 
-    server_name: str = "QiuChi"
-    version: str = PACKAGE_VERSION  # 唯一事实源：pyproject.toml
+    server_name: str = APP_NAME
+    version: str = PACKAGE_VERSION
     transport: str = TransportType.STREAMABLE_HTTP.value
     host: str = "0.0.0.0"
     port: int = 8888
@@ -239,19 +233,21 @@ class Settings:
         telemetry: OpenTelemetry 可观测性配置
     """
 
-    # 配置段实例在 _parse_config() 中完成解析与赋值，此处显式声明类型
-    app_env: str
-    mcp: MCPConfig
-    logging: LoggingConfig
-    features: FeaturesConfig
-    plugins: PluginConfig
-    middleware: MiddlewareConfig
-    telemetry: OpenTelemetryConfig
-
     def __init__(self, config_file: str | None = None) -> None:
         """初始化配置。"""
         self._config_file = config_file or DEFAULT_CONFIG_FILE
         self._config: dict[str, Any] = self._load_config()
+
+        # 以默认实例直接赋值，保证 IDE/类型检查器可静态推断属性类型；
+        # 随后 _parse_config 按 YAML / 环境变量覆盖后的配置重新解析。
+        self.app_env = self._config.get("app_env", Environment.DEVELOPMENT.value)
+        self.mcp = MCPConfig()
+        self.logging = LoggingConfig()
+        self.features = FeaturesConfig()
+        self.plugins = PluginConfig()
+        self.middleware = MiddlewareConfig()
+        self.telemetry = OpenTelemetryConfig()
+
         self._parse_config()
 
     # ----------------------------------------------------------
@@ -268,7 +264,7 @@ class Settings:
     def _get_default_config(self) -> dict[str, Any]:
         """返回所有配置段的代码默认值。"""
         return {
-            "app_env": ENV_DEVELOPMENT,
+            "app_env": Environment.DEVELOPMENT.value,
             "mcp": {
                 "server_name": "QiuChi",
                 "version": PACKAGE_VERSION,
@@ -402,8 +398,8 @@ class Settings:
     # ----------------------------------------------------------
 
     def _parse_config(self) -> None:
-        """将原始配置字典解析为 dataclass 实例。"""
-        self.app_env: str = self._config.get("app_env", ENV_DEVELOPMENT)
+        """将原始配置字典解析为 dataclass 实例（覆盖 __init__ 中的默认实例）。"""
+        self.app_env = self._config.get("app_env", Environment.DEVELOPMENT.value)
 
         # MCP 配置
         mcp_raw = self._config.get("mcp", {})
@@ -446,17 +442,17 @@ class Settings:
     @property
     def is_development(self) -> bool:
         """是否为开发环境。"""
-        return self.app_env == ENV_DEVELOPMENT
+        return self.app_env == Environment.DEVELOPMENT.value
 
     @property
     def is_testing(self) -> bool:
         """是否为测试环境。"""
-        return self.app_env == ENV_TESTING
+        return self.app_env == Environment.TESTING.value
 
     @property
     def is_production(self) -> bool:
         """是否为生产环境。"""
-        return self.app_env == ENV_PRODUCTION
+        return self.app_env == Environment.PRODUCTION.value
 
     # ----------------------------------------------------------
     # 配置校验

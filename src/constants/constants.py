@@ -10,10 +10,6 @@ APP_NAME: str = "秋池（QiuChi）"
 APP_DESCRIPTION: str = "一个生产级 MCP（Model Context Protocol）服务器框架"
 APP_VERSION: str = "0.1.0"
 
-# -- 环境标识 -----------------------------------------------------------
-ENV_DEVELOPMENT: str = "development"
-ENV_TESTING: str = "testing"
-ENV_PRODUCTION: str = "production"
 
 # -- 配置文件 -----------------------------------------------------------
 DEFAULT_CONFIG_DIR: str = "."

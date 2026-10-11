@@ -24,8 +24,8 @@ LangChain MCP 客户端示例
     - https://docs.langchain.com/oss/python/langchain/mcp
 """
 
-import asyncio
 import argparse
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -137,7 +137,7 @@ async def run_langgraph_agent(client, query: str):
         query: 用户查询
     """
     from langchain.chat_models import init_chat_model
-    from langgraph.graph import StateGraph, MessagesState, START
+    from langgraph.graph import START, MessagesState, StateGraph
     from langgraph.prebuilt import ToolNode, tools_condition
 
     # 获取 MCP 工具
