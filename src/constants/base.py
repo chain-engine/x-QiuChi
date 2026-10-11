@@ -8,8 +8,6 @@
 选型：
     BaseEnum      通用基类，成员不具备原生值类型（推荐默认使用）
     StrBaseEnum   成员是 str 子类，可直接当字符串使用（事件类型、状态码等）
-    IntBaseEnum   成员是 int 子类（HTTP 状态码、数值码）
-    FloatBaseEnum 成员是 float 子类（浮点档位，不建议用于精确等值场景）
 
 注：类型混入枚举需在 __new__ 中用原生类型构造并设置 _value_，
 因为 EnumMeta 会把整个 (mark, desc) 二元组传给 __new__，
@@ -108,37 +106,3 @@ class StrBaseEnum(str, BaseEnum):
     def value(self) -> str:
         """同 mark（str）。"""
         return cast(str, self._mark)
-
-
-class IntBaseEnum(int, BaseEnum):
-    """整数型枚举：成员同时是 int，可直接参与数值比较与 JSON 数字序列化。"""
-
-    def __new__(cls, mark: int, desc: str) -> Self:
-        return cast(Self, _new_native_member(cls, int, mark))
-
-    @property
-    def mark(self) -> int:
-        """存储值（int）。"""
-        return cast(int, self._mark)
-
-    @property
-    def value(self) -> int:
-        """同 mark（int）。"""
-        return cast(int, self._mark)
-
-
-class FloatBaseEnum(float, BaseEnum):
-    """浮点型枚举：成员同时是 float。浮点 mark 不适合精确等值场景。"""
-
-    def __new__(cls, mark: float, desc: str) -> Self:
-        return cast(Self, _new_native_member(cls, float, mark))
-
-    @property
-    def mark(self) -> float:  # type: ignore[override]
-        """存储值（float）。"""
-        return cast(float, self._mark)
-
-    @property
-    def value(self) -> float:  # type: ignore[override]
-        """同 mark（float）。"""
-        return cast(float, self._mark)

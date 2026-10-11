@@ -24,7 +24,6 @@ from src.constants.constants import APP_NAME, DEFAULT_CONFIG_FILE
 from src.constants.enums import Environment, LogLevel, LogOutput, TransportType
 from src.utils.helpers import (
     PROJECT_ROOT,
-    find_project_root,
     get_package_version,
     to_bool,
     to_float,
@@ -85,11 +84,7 @@ class LoggingConfig:
 class FeaturesConfig:
     """功能开关配置。"""
 
-    tools: bool = True
-    resources: bool = True
-    prompts: bool = True
     middleware: bool = True
-    cache: bool = False
 
 
 @dataclass
@@ -121,26 +116,9 @@ class OpenTelemetryConfig:
 
 
 @dataclass
-class ErrorHandlerConfig:
-    """错误处理中间件配置。"""
-
-    include_traceback: bool = False
-
-
-@dataclass
-class LoggingMiddlewareConfig:
-    """日志中间件配置。"""
-
-    log_request: bool = True
-    log_response: bool = True
-
-
-@dataclass
 class MiddlewareConfig:
     """中间件配置。"""
 
-    error_handler: ErrorHandlerConfig = field(default_factory=ErrorHandlerConfig)
-    logging: LoggingMiddlewareConfig = field(default_factory=LoggingMiddlewareConfig)
     auth: AuthConfig = field(default_factory=AuthConfig)
 
 
@@ -152,13 +130,11 @@ _ENV_SECTION_MAP: dict[str, tuple[str, list[str]]] = {
     # 注：mcp.version 不走环境变量——版本唯一事实源是 pyproject.toml（PACKAGE_VERSION）
     "mcp": ("MCP_", ["server_name", "transport", "host", "port", "json_response"]),
     "logging": ("LOGGING_", ["level", "output", "file_path", "rotation", "retention", "format"]),
-    "features": ("FEATURES_", ["tools", "resources", "prompts", "middleware"]),
+    "features": ("FEATURES_", ["middleware"]),
     "plugins": (
         "PLUGIN_",
         ["auto_discovery", "discovery_paths", "enabled_plugins", "disabled_plugins"],
     ),
-    "middleware.error_handler": ("ERROR_HANDLER_", ["include_traceback"]),
-    "middleware.logging": ("MIDDLEWARE_LOGGING_", ["log_request", "log_response"]),
     "middleware.auth": ("AUTH_", ["enabled", "tokens"]),
     "opentelemetry": ("TELEMETRY_", ["enabled", "service_name", "exporter", "otlp_endpoint"]),
 }
@@ -241,9 +217,6 @@ class Settings:
                 ),
             },
             "features": {
-                "tools": True,
-                "resources": True,
-                "prompts": True,
                 "middleware": True,
             },
             "plugins": {
@@ -253,13 +226,6 @@ class Settings:
                 "disabled_plugins": [],
             },
             "middleware": {
-                "error_handler": {
-                    "include_traceback": False,
-                },
-                "logging": {
-                    "log_request": True,
-                    "log_response": True,
-                },
                 "auth": {
                     "enabled": False,
                     "tokens": [],
@@ -283,7 +249,7 @@ class Settings:
 
     def _load_from_yaml(self, config: dict[str, Any]) -> None:
         """从 YAML 文件加载配置。"""
-        project_root = find_project_root()
+        project_root = PROJECT_ROOT
         config_path = project_root / self._config_file
 
         if not config_path.exists():
@@ -365,15 +331,9 @@ class Settings:
 
         # 中间件配置（嵌套 dataclass）
         middleware_raw = self._config.get("middleware", {})
-        error_handler_raw = middleware_raw.pop("error_handler", {})
-        logging_middleware_raw = middleware_raw.pop("logging", {})
         auth_raw = middleware_raw.pop("auth", {})
 
-        self.middleware = MiddlewareConfig(
-            error_handler=ErrorHandlerConfig(**error_handler_raw),
-            logging=LoggingMiddlewareConfig(**logging_middleware_raw),
-            auth=AuthConfig(**auth_raw),
-        )
+        self.middleware = MiddlewareConfig(auth=AuthConfig(**auth_raw))
 
         # 可观测性配置
         telemetry_raw = self._config.get("opentelemetry", {})
@@ -461,9 +421,6 @@ class Settings:
                 "format": self.logging.format,
             },
             "features": {
-                "tools": self.features.tools,
-                "resources": self.features.resources,
-                "prompts": self.features.prompts,
                 "middleware": self.features.middleware,
             },
             "plugins": {
@@ -473,13 +430,6 @@ class Settings:
                 "disabled_plugins": self.plugins.disabled_plugins,
             },
             "middleware": {
-                "error_handler": {
-                    "include_traceback": self.middleware.error_handler.include_traceback,
-                },
-                "logging": {
-                    "log_request": self.middleware.logging.log_request,
-                    "log_response": self.middleware.logging.log_response,
-                },
                 "auth": {
                     "enabled": self.middleware.auth.enabled,
                     "tokens": self.middleware.auth.tokens,
@@ -532,8 +482,6 @@ __all__ = [
     "AuthConfig",
     "OpenTelemetryConfig",
     "MiddlewareConfig",
-    "ErrorHandlerConfig",
-    "LoggingMiddlewareConfig",
     "LogLevel",
     "LogOutput",
     "TransportType",

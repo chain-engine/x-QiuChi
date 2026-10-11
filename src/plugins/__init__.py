@@ -53,7 +53,7 @@ from .collector import (
     resource,
     tool,
 )
-from .discovery import PluginDiscovery, create_discovery, discover_plugins
+from .discovery import PluginDiscovery, discover_plugins
 from .manager import PluginManager
 from .registry import PluginMetadata, PluginRegistry, PluginType, global_registry
 
@@ -75,7 +75,6 @@ __all__ = [
     # 发现
     "PluginDiscovery",
     "discover_plugins",
-    "create_discovery",
     # 管理器
     "PluginManager",
 ]

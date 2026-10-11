@@ -73,10 +73,6 @@ class PluginCollector:
         with self._lock:
             return self._items.copy()
 
-    def clear(self) -> None:
-        with self._lock:
-            self._items.clear()
-
 
 # 全局收集器：进程内唯一，每插件类型一个实例（第一版不隔离多 server）
 _collectors: dict[PluginType, PluginCollector] = {

@@ -68,30 +68,11 @@ class TransportConfig:
             port=port,
         )
 
-    def validate(self) -> bool:
-        """
-        验证配置
-
-        Returns:
-            配置是否有效
-        """
-        # 检查端口范围
-        return 1 <= self.port <= 65535
-
-
-# 预定义的传输配置
-TRANSPORT_PRESETS: dict[str, TransportConfig] = {
-    "stdio": TransportConfig(transport=TransportType.STDIO),
-    "sse": TransportConfig(transport=TransportType.SSE),
-    "http": TransportConfig(transport=TransportType.STREAMABLE_HTTP),
-}
-
 
 def get_transport_config(
     transport: str | TransportType,
     host: str = "0.0.0.0",
     port: int = 8888,
-    preset: str | None = None,
 ) -> TransportConfig:
     """
     获取传输配置的便捷函数
@@ -100,7 +81,6 @@ def get_transport_config(
         transport: 传输类型字符串或枚举
         host: HTTP 模式监听地址
         port: HTTP 模式监听端口
-        preset: 预设配置名称
 
     Returns:
         TransportConfig: 传输配置实例
@@ -110,13 +90,6 @@ def get_transport_config(
         >>> config.transport
         <TransportType.STDIO: 'stdio'>
     """
-    # 使用预设配置
-    if preset and preset in TRANSPORT_PRESETS:
-        config = TRANSPORT_PRESETS[preset]
-        config.host = host
-        config.port = port
-        return config
-
     # 从字符串创建
     if isinstance(transport, str):
         return TransportConfig.from_string(transport, host, port)

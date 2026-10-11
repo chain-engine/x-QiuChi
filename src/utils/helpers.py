@@ -5,7 +5,7 @@
 集中放置跨模块复用的公共辅助函数（原位于 src/core/config.py，
 按单一职责抽离至此）：
 
-    - PROJECT_ROOT / find_project_root — 项目根目录定位
+    - PROJECT_ROOT — 项目根目录定位
     - to_bool / to_int / to_float — 宽松类型转换（配置解析用）
     - get_package_version — 包版本读取（唯一事实源 pyproject.toml）
 """
@@ -20,11 +20,6 @@ from typing import Any, Final
 # ============================================================
 
 PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
-
-
-def find_project_root() -> Path:
-    """返回项目根目录。"""
-    return PROJECT_ROOT
 
 
 # ============================================================

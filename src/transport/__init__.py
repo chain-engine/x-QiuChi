@@ -8,7 +8,6 @@
 """
 
 from .transport import (
-    TRANSPORT_PRESETS,
     TransportConfig,
     TransportType,
     get_transport_config,
@@ -19,6 +18,5 @@ __all__ = [
     "TransportType",
     "TransportConfig",
     "get_transport_config",
-    "TRANSPORT_PRESETS",
     "serve_mcp",
 ]

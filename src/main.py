@@ -156,11 +156,7 @@ def print_startup_info(server, args):
     if settings.mcp.transport in ["sse", "streamable-http"]:
         logger.info(f"Listening: http://{settings.mcp.host}:{settings.mcp.port}")
 
-    logger.info(
-        f"Features: Tools={settings.features.tools}, "
-        f"Resources={settings.features.resources}, "
-        f"Prompts={settings.features.prompts}"
-    )
+    logger.info(f"Features: Middleware={settings.features.middleware}")
     logger.info(f"Log level: {settings.logging.level}")
     logger.info(f"Config file: {settings._config_file}")
     logger.info("=" * 60)

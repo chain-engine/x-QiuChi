@@ -6,11 +6,11 @@
 
 子模块：
     constants.py  — 全局常量（应用信息、配置文件）
-    base.py       — 带描述枚举基类族（BaseEnum、StrBaseEnum、IntBaseEnum、FloatBaseEnum）
+    base.py       — 带描述枚举基类族（BaseEnum、StrBaseEnum）
     enums.py      — MCP 枚举（Environment、TransportType、LogLevel、LogOutput、ServerState、PluginType）
 """
 
-from .base import BaseEnum, FloatBaseEnum, IntBaseEnum, StrBaseEnum
+from .base import BaseEnum, StrBaseEnum
 from .constants import (
     APP_DESCRIPTION,
     APP_ID,
@@ -38,8 +38,6 @@ __all__ = [
     "DEFAULT_CONFIG_FILE",
     "BaseEnum",
     "StrBaseEnum",
-    "IntBaseEnum",
-    "FloatBaseEnum",
     "TransportType",
     "LogLevel",
     "LogOutput",

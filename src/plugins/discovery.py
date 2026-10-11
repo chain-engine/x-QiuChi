@@ -86,14 +86,6 @@ class PluginDiscovery:
 
         return discovered
 
-    def get_discovered_items(self) -> list[str]:
-        """获取所有已发现的装饰器函数插件项"""
-        return self._discovered_items.copy()
-
-    def clear(self) -> None:
-        """清空已发现的插件"""
-        self._discovered_items.clear()
-
 
 def discover_plugins() -> list[str]:
     """
@@ -104,8 +96,3 @@ def discover_plugins() -> list[str]:
     """
     discovery = PluginDiscovery()
     return discovery.discover()
-
-
-def create_discovery() -> PluginDiscovery:
-    """创建插件发现器实例"""
-    return PluginDiscovery()
