@@ -37,6 +37,29 @@ PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
 
 
 # ============================================================
+# 版本号（唯一事实源：pyproject.toml）
+# ============================================================
+
+
+def _get_package_version() -> str:
+    """从 pyproject.toml 读取版本号（唯一事实源）。
+
+    项目由 uv 管理，自身会被安装为可编辑包，因此
+    ``importlib.metadata.version("x-QiuChi")`` 返回 pyproject.toml 的 version；
+    未安装时回退到与 pyproject 一致的 0.1.0。
+    """
+    try:
+        from importlib.metadata import version
+
+        return version("x-QiuChi")
+    except Exception:
+        return "0.1.0"
+
+
+PACKAGE_VERSION: Final[str] = _get_package_version()
+
+
+# ============================================================
 # 辅助函数
 # ============================================================
 
@@ -79,7 +102,7 @@ class MCPConfig:
     """MCP 服务器配置。"""
 
     server_name: str = "QiuChi"
-    version: str = "1.0.0"
+    version: str = PACKAGE_VERSION  # 唯一事实源：pyproject.toml
     transport: str = TransportType.STREAMABLE_HTTP.value
     host: str = "0.0.0.0"
     port: int = 8888
@@ -126,11 +149,22 @@ class PluginConfig:
 
 @dataclass
 class AuthConfig:
-    """认证配置。"""
+    """认证配置（传输层 Bearer Token）。"""
 
     enabled: bool = False
     required: bool = True
     exempt_methods: list[str] = field(default_factory=list)
+    tokens: list[str] = field(default_factory=list)
+
+
+@dataclass
+class OpenTelemetryConfig:
+    """OpenTelemetry 可观测性配置。"""
+
+    enabled: bool = True
+    service_name: str = "x-QiuChi"
+    exporter: str = "console"  # console | otlp
+    otlp_endpoint: str = ""  # 例如 http://localhost:4318/v1/traces
 
 
 @dataclass
@@ -177,7 +211,8 @@ _ENV_SECTION_MAP: dict[str, tuple[str, list[str]]] = {
     "logging": ("LOGGING_", ["level", "output", "file_path", "rotation", "retention", "format"]),
     "features": ("FEATURES_", ["tools", "resources", "prompts", "middleware", "cache"]),
     "plugins": ("PLUGIN_", ["auto_discovery"]),
-    "middleware.auth": ("AUTH_", ["enabled", "required"]),
+    "middleware.auth": ("AUTH_", ["enabled", "required", "tokens"]),
+    "opentelemetry": ("TELEMETRY_", ["enabled", "service_name", "exporter", "otlp_endpoint"]),
 }
 
 
@@ -226,7 +261,7 @@ class Settings:
             "app_env": ENV_DEVELOPMENT,
             "mcp": {
                 "server_name": "QiuChi",
-                "version": "1.0.0",
+                "version": PACKAGE_VERSION,
                 "transport": TransportType.STREAMABLE_HTTP.value,
                 "host": "0.0.0.0",
                 "port": 8888,
@@ -270,6 +305,7 @@ class Settings:
                     "enabled": False,
                     "required": True,
                     "exempt_methods": [],
+                    "tokens": [],
                 },
                 "cache": {
                     "enabled": False,
@@ -277,6 +313,12 @@ class Settings:
                     "max_size": 1000,
                     "cacheable_methods": [],
                 },
+            },
+            "opentelemetry": {
+                "enabled": True,
+                "service_name": "x-QiuChi",
+                "exporter": "console",
+                "otlp_endpoint": "",
             },
         }
 
@@ -382,6 +424,10 @@ class Settings:
             auth=AuthConfig(**auth_raw),
             cache=CacheConfig(**cache_raw),
         )
+
+        # 可观测性配置
+        telemetry_raw = self._config.get("opentelemetry", {})
+        self.telemetry = OpenTelemetryConfig(**telemetry_raw)
 
     # ----------------------------------------------------------
     # 环境判断
@@ -489,12 +535,19 @@ class Settings:
                     "enabled": self.middleware.auth.enabled,
                     "required": self.middleware.auth.required,
                     "exempt_methods": self.middleware.auth.exempt_methods,
+                    "tokens": self.middleware.auth.tokens,
                 },
                 "cache": {
                     "enabled": self.middleware.cache.enabled,
                     "default_ttl": self.middleware.cache.default_ttl,
                     "max_size": self.middleware.cache.max_size,
                 },
+            },
+            "opentelemetry": {
+                "enabled": self.telemetry.enabled,
+                "service_name": self.telemetry.service_name,
+                "exporter": self.telemetry.exporter,
+                "otlp_endpoint": self.telemetry.otlp_endpoint,
             },
         }
 
@@ -535,6 +588,7 @@ __all__ = [
     "FeaturesConfig",
     "PluginConfig",
     "AuthConfig",
+    "OpenTelemetryConfig",
     "MiddlewareConfig",
     "ErrorHandlerConfig",
     "LoggingMiddlewareConfig",
@@ -543,4 +597,5 @@ __all__ = [
     "LogOutput",
     "TransportType",
     "PROJECT_ROOT",
+    "PACKAGE_VERSION",
 ]

@@ -19,7 +19,7 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from .base import PluginType
 
@@ -40,9 +40,11 @@ class PluginCollector:
         func_doc = func.__doc__ or ""
 
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def _inner(*args: Any, **kwargs: Any) -> Any:
             return func(*args, **kwargs)
 
+        # 运行时动态注入插件元数据（mypy 无法感知，显式标注为 Any）
+        wrapper: Any = _inner
         wrapper._is_plugin_item = True
         wrapper._plugin_type = self.plugin_type.value
         wrapper._plugin_name = func_name
@@ -173,7 +175,7 @@ def _make_decorator(plugin_type: PluginType):
                 items = collector._items
                 if wrapper.__name__ in items:
                     items[wrapper.__name__]["__source_server__"] = _active_server_id
-            return wrapper
+            return cast(Callable[..., Any], wrapper)
 
         return decorator
 

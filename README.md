@@ -15,7 +15,7 @@
 - **开箱即用** —— 装饰器一键注册、插件自动发现、中间件即插即用
 - **生产就绪** —— 结构化日志、健康检查、容器化部署、TLS 支持
 
-**适配场景**：
+**适用场景**：
 
 - 为 LLM 应用（Claude、GPT 等）快速搭建 MCP 工具服务
 - 构建企业级 AI Agent 工具链平台
@@ -96,7 +96,7 @@ cp config.yaml.example config.yaml
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
 | `mcp.server_name` | `QiuChi` | MCP 服务器名称 |
-| `mcp.version` | `1.0.0` | 服务器版本号 |
+| `mcp.version` | `0.1.0` | 服务器版本号（唯一事实源为 `pyproject.toml`，不建议在 YAML 中覆盖） |
 | `mcp.transport` | `streamable-http` | 传输层类型：`stdio` / `sse` / `streamable-http` |
 | `mcp.host` | `0.0.0.0` | HTTP 监听地址 |
 | `mcp.port` | `8888` | HTTP 监听端口 |
@@ -113,9 +113,14 @@ cp config.yaml.example config.yaml
 | `features.cache` | `false` | 是否启用缓存中间件 |
 | `plugins.auto_discovery` | `true` | 是否自动发现插件 |
 | `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | 插件扫描路径 |
-| `middleware.auth.enabled` | `false` | 是否启用 Token 认证 |
+| `middleware.auth.enabled` | `false` | 是否启用传输层 Bearer Token 认证 |
+| `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
 | `middleware.cache.enabled` | `false` | 是否启用内存缓存 |
 | `middleware.cache.default_ttl` | `300` | 缓存默认 TTL（秒） |
+| `telemetry.enabled` | `true` | 是否启用 OpenTelemetry |
+| `telemetry.service_name` | `x-QiuChi` | 服务名（trace/metric 资源属性） |
+| `telemetry.exporter` | `console` | 导出方式：`console` / `otlp` |
+| `telemetry.otlp_endpoint` | `""` | OTLP 端点（exporter=otlp 时必填） |
 
 **环境变量覆盖**：所有配置均可通过环境变量覆盖，优先级为 **环境变量 > YAML > 默认值**。常用环境变量：
 
@@ -127,6 +132,12 @@ cp config.yaml.example config.yaml
 | `MCP_PORT` | 监听端口 |
 | `LOGGING_LEVEL` | 日志级别 |
 | `LOGGING_OUTPUT` | 日志输出目标 |
+| `AUTH_ENABLED` | 是否启用传输层认证 |
+| `AUTH_TOKENS` | 有效 token 列表（逗号分隔） |
+| `TELEMETRY_ENABLED` | 是否启用 OpenTelemetry |
+| `TELEMETRY_SERVICE_NAME` | 服务名 |
+| `TELEMETRY_EXPORTER` | 导出方式（console / otlp） |
+| `TELEMETRY_OTLP_ENDPOINT` | OTLP 端点 |
 
 ### 5. 启动服务
 
@@ -175,14 +186,14 @@ docker compose down
 ### 6. 常用工程命令
 
 ```bash
-# 运行全部测试
+# 运行全部测试（内置 coverage 门禁：--cov=src --cov-fail-under=45）
 uv run pytest
 
 # 运行指定测试文件（详细输出）
-uv run pytest tests/test_integration.py -v
+uv run pytest tests/test_protocol.py -v
 
 # 测试覆盖率报告
-uv run pytest --cov=src tests/
+uv run pytest --cov=src --cov-report=term-missing tests/
 
 # 代码格式化
 uv run ruff format src/
@@ -191,10 +202,13 @@ uv run ruff format src/
 uv run ruff check src/
 
 # 自动修复可修复的 lint 问题
-uv run ruff check --fix src/
+uv run ruff check --fix src/ tests/
 
 # 类型检查
 uv run mypy src/
+
+# 构建 wheel 与 sdist
+uv build
 
 # MCP Inspector 验证
 npx @anthropic-ai/mcp-inspector
@@ -210,12 +224,94 @@ npx @anthropic-ai/mcp-inspector
 >
 > 能自动修复的问题会被自动修复并重新暂存；无法自动修复的会阻止提交（可用 `git commit --no-verify` 临时跳过）。克隆仓库后首次启用：`git config core.hooksPath hooks`
 
-### 7. 使用方法示例
+### 7. 认证与可观测性
+
+#### 传输层认证（Bearer Token）
+
+认证挂在 MCP **HTTP 传输层**（mcp SDK 官方 `RequireAuthMiddleware`），能读取真实 `Authorization` 请求头，对所有 `/mcp` 请求生效（无 token / 错误 token 返回 `401 invalid_token`）。
+
+```bash
+# 方式一：YAML 配置（config.yaml）
+# middleware:
+#   auth:
+#     enabled: true
+#     tokens: ["my-secret-token"]
+
+# 方式二：环境变量（推荐，避免明文入库）
+AUTH_ENABLED=true AUTH_TOKENS="my-secret-token" uv run python -m src.main
+```
+
+开启认证后所有 MCP 客户端请求需携带：
+
+```http
+Authorization: Bearer my-secret-token
+```
+
+Docker 部署时若开启认证，请同步设置 `MCP_AUTH_TOKEN`（健康检查会自动携带）：
+
+```yaml
+# docker-compose.yml
+environment:
+  AUTH_ENABLED: "true"
+  AUTH_TOKENS: "my-secret-token"
+  MCP_AUTH_TOKEN: "my-secret-token"
+```
+
+#### OpenTelemetry 可观测性
+
+框架内置 OpenTelemetry：每个 HTTP 请求注入真实 `request_id`（`X-Request-ID` 或自动生成），贯穿结构化日志；并记录 HTTP 请求 span 与请求计数/耗时指标。
+
+| exporter | 行为 | 适用场景 |
+|---------|------|---------|
+| `console`（默认） | span 输出到控制台 | 本地开发 |
+| `otlp` | 通过 OTLP/HTTP 导出 trace + metrics | 生产接入 Jaeger / OTel Collector 等 |
+
+```bash
+TELEMETRY_ENABLED=true TELEMETRY_EXPORTER=otlp \
+TELEMETRY_OTLP_ENDPOINT=http://localhost:4318/v1/traces \
+uv run python -m src.main
+```
+
+---
+
+## 工程规范
+
+### 版本管理（单一事实源）
+
+版本号**唯一事实源为 `pyproject.toml` 的 `version` 字段**（当前 `0.1.0`）。启动时通过 `importlib.metadata` 自动读取，MCP 握手 `serverInfo.version`、CLI 输出版本号均与其一致。**不要在 `config.yaml` 中配置 `mcp.version`**（如需临时覆盖可设置 `--version` CLI 参数）。
+
+### 提交规范（Conventional Commits）
+
+提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+```text
+feat: 新增功能
+fix: 修复缺陷
+docs: 文档变更
+refactor: 重构（无行为变化）
+test: 测试变更
+chore: 构建/依赖/工具链变更
+ci: CI 配置变更
+perf: 性能优化
+```
+
+示例：`fix: 修复认证中间件未注入真实 request_id 的问题`
+
+### CI/CD
+
+仓库内置 GitHub Actions（`.github/workflows/ci.yml`），push 到 `main`/`master` 或 PR 时自动执行：
+
+1. **lint** —— `ruff check` + `ruff format --check`（src/ 与 tests/）
+2. **typecheck** —— `mypy src/`
+3. **test** —— `pytest`（内置 coverage 门禁 `--cov-fail-under=45`）
+4. **build** —— `uv build` 产出 wheel 与 sdist，并上传 artifact
+
+### 8. 使用方法示例
 
 #### 装饰器注册工具
 
 ```python
-from main import create_server, tool, resource, prompt
+from src.main import create_server, tool, resource, prompt
 
 server = create_server("MyServer")
 
@@ -307,7 +403,9 @@ x-QiuChi/
 │   ├── core/                        # 核心层：框架基础设施
 │   │   ├── config.py                # Settings 配置管理（dataclass 分节，环境变量 > YAML > 默认值，validate/reload）
 │   │   ├── logger.py                # loguru 结构化日志封装（文件轮转、敏感信息过滤）
-│   │   └── middleware.py            # 中间件管道（ErrorHandler / Logging / Auth / Cache）
+│   │   ├── middleware.py            # 中间件管道（ErrorHandler / Logging / Cache）
+│   │   ├── auth.py                  # 传输层认证（SimpleTokenVerifier，mcp TokenVerifier Protocol）
+│   │   └── telemetry.py             # OpenTelemetry（request_id 注入、HTTP span/metrics，console/otlp）
 │   │
 │   ├── plugins/                     # 插件层：插件系统核心
 │   │   ├── base.py                  # 插件抽象基类与元数据定义（PluginType / PluginMetadata）
@@ -346,7 +444,15 @@ x-QiuChi/
 │       └── weather_mcp_server.py    # OpenWeatherMap 天气 MCP 服务示例
 │
 ├── tests/                           # 测试目录
-│   └── test_integration.py          # 7 步集成测试套件
+│   ├── test_integration.py          # 7 步集成测试套件
+│   ├── test_protocol.py             # 真实 MCP 协议测试（官方 client）与传输层认证测试
+│   ├── test_config.py               # 配置单测（版本单一源 / 环境变量覆盖）
+│   ├── test_auth.py                 # 认证单测
+│   ├── test_telemetry.py            # 可观测性单测
+│   ├── test_runtime.py              # 运行时上下文单测
+│   └── test_main_cli.py             # CLI 入口单测
+│
+├── .github/workflows/ci.yml         # CI：lint + mypy + test（coverage 门禁）+ build
 │
 ├── docs/                            # 文档目录
 ├── scripts/                         # 脚本工具目录

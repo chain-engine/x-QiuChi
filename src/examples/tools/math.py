@@ -84,7 +84,7 @@ def power(base: float, exponent: float) -> float:
     Returns:
         base 的 exponent 次方
     """
-    return base**exponent
+    return float(base**exponent)
 
 
 @tool(category="math", subcategory="advanced", tags=["root"])
@@ -103,7 +103,7 @@ def sqrt(number: float) -> float:
     """
     if number < 0:
         raise ValueError("Cannot calculate square root of negative number")
-    return number**0.5
+    return float(number**0.5)
 
 
 @tool(category="conversion", tags=["temperature"])

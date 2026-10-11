@@ -20,7 +20,6 @@ from src.core.middleware import (
     CacheMiddleware,
     ErrorHandlerMiddleware,
     LoggingMiddleware,
-    MCPAuthMiddleware,
     Middleware,
     MiddlewareChain,
     RequestContext,
@@ -60,14 +59,44 @@ class MCPServer:
         self.name = name or settings.mcp.server_name
         self.version = version or settings.mcp.version
 
+        # 认证（传输层 Bearer Token，走 mcp SDK 官方 RequireAuthMiddleware）
+        auth_settings = None
+        token_verifier = None
+        if settings.middleware.auth.enabled:
+            from mcp.server.auth.settings import AuthSettings
+            from pydantic import AnyHttpUrl
+
+            from src.core.auth import SimpleTokenVerifier
+
+            token_verifier = SimpleTokenVerifier(valid_tokens=set(settings.middleware.auth.tokens))
+            if not token_verifier.valid_tokens:
+                logger.warning(
+                    "Authentication enabled but no tokens configured (AUTH_TOKENS). "
+                    "All MCP requests will be rejected."
+                )
+            auth_settings = AuthSettings(
+                issuer_url=AnyHttpUrl("https://qiuchi.local"),
+                resource_server_url=AnyHttpUrl(f"http://{settings.mcp.host}:{settings.mcp.port}"),
+            )
+
         # 创建底层 FastMCP 实例
         self.mcp = FastMCP(
             self.name,
             json_response=settings.mcp.json_response,
             host=settings.mcp.host,
             port=settings.mcp.port,
+            auth=auth_settings,
+            token_verifier=token_verifier,
             **kwargs,
         )
+
+        # 握手 serverInfo.version 对齐 pyproject 单一事实源
+        # （mcp SDK 的 FastMCP 未暴露 version 参数，需设置底层 Server.version，
+        #  否则回退到 mcp 包版本号）
+        try:
+            self.mcp._mcp_server.version = self.version
+        except Exception:
+            logger.debug("Could not set server version (mcp SDK internal API)")
 
         # 组件
         self.registry = _make_registry()  # 延迟创建以避免循环
@@ -101,14 +130,8 @@ class MCPServer:
         if settings.features.middleware:
             self.add_middleware(LoggingMiddleware())
 
-        # 认证
-        if settings.middleware.auth.enabled:
-            self.add_middleware(
-                MCPAuthMiddleware(
-                    required=settings.middleware.auth.required,
-                    exempt_methods=settings.middleware.auth.exempt_methods,
-                )
-            )
+        # 认证已迁移到 HTTP 传输层（FastMCP RequireAuthMiddleware，
+        # 能读取真实 Authorization 头）；tool 层不再注册认证中间件。
 
         # 缓存
         if settings.features.cache:
@@ -234,10 +257,12 @@ class MCPServer:
 
         @wraps(func)
         async def wrapped(*args, **kwargs):
+            from src.core.opentelemetry import get_request_id
+
             req = RequestContext(
                 request={
                     "method": f"{func_kind}:{func_id}",
-                    "id": str(id(wrapped)),
+                    "id": get_request_id(),  # 传输层注入的真实 request_id
                     "params": kwargs,
                     "_args": args,
                     "_kwargs": kwargs,
@@ -442,10 +467,18 @@ class MCPServer:
                     await self.mcp.run_stdio_async()
                 elif transport_config.transport == TransportType.SSE:
                     logger.info(f"Listening on {transport_config.host}:{transport_config.port}")
-                    await self.mcp.run_sse_async()
+                    await self._serve_http_app(
+                        self.mcp.sse_app(),
+                        transport_config.host,
+                        transport_config.port,
+                    )
                 elif transport_config.transport == TransportType.STREAMABLE_HTTP:
                     logger.info(f"Listening on {transport_config.host}:{transport_config.port}")
-                    await self.mcp.run_streamable_http_async()
+                    await self._serve_http_app(
+                        self.mcp.streamable_http_app(),
+                        transport_config.host,
+                        transport_config.port,
+                    )
                 else:
                     raise ValueError(
                         f"Unsupported transport type: {transport_config.transport.value}"
@@ -462,6 +495,33 @@ class MCPServer:
             asyncio.run(async_run())
         except KeyboardInterrupt:
             logger.info("Server shutdown complete")
+
+    async def _serve_http_app(
+        self,
+        app,
+        host: str,
+        port: int,
+    ) -> None:
+        """以 uvicorn 运行 MCP HTTP app，外层挂载 QiuChiHTTPMiddleware。
+
+        中间件负责：真实 request_id 注入 + OpenTelemetry 埋点。
+        认证由 FastMCP 官方 RequireAuthMiddleware 在 app 内部处理。
+        """
+        from src.core.opentelemetry import QiuChiHTTPMiddleware, setup_telemetry
+
+        setup_telemetry()
+        app.add_middleware(QiuChiHTTPMiddleware)
+
+        import uvicorn
+
+        config = uvicorn.Config(
+            app,
+            host=host,
+            port=port,
+            log_level="info",
+        )
+        server = uvicorn.Server(config)
+        await server.serve()
 
     # ------------------------------------------------------------------
     # 查询接口

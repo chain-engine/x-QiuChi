@@ -81,7 +81,7 @@ class TransportConfig:
         Note:
             FastMCP 目前只接受 transport 参数，其他配置需要通过其他方式设置。
         """
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "transport": self.transport.value,
         }
 
@@ -135,8 +135,14 @@ class TransportConfig:
         Returns:
             TransportConfig 实例
         """
+        # StrBaseEnum 按 (mark, desc) 定义，需用 mark 反查成员
+        transport_mark = settings.mcp.transport
+        try:
+            transport_enum = next(t for t in TransportType if t.mark == transport_mark)
+        except StopIteration:
+            transport_enum = TransportType.STREAMABLE_HTTP
         return cls(
-            transport=settings.mcp.transport,
+            transport=transport_enum,
             host=settings.mcp.host,
             port=settings.mcp.port,
         )

@@ -26,7 +26,7 @@ import json
 import time
 import traceback
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -100,12 +100,12 @@ class RequestContext:
     @property
     def method(self) -> str:
         """JSON-RPC 方法名。"""
-        return self.request.get("method", "")
+        return str(self.request.get("method", ""))
 
     @property
     def request_id(self) -> str:
         """JSON-RPC 请求 ID。"""
-        return self.request.get("id", "")
+        return str(self.request.get("id", ""))
 
 
 @dataclass
@@ -125,8 +125,8 @@ class ResponseContext:
             self.metadata = {}
 
 
-Handler = Callable[[RequestContext], "ResponseContext"]
-"""请求处理函数类型签名。"""
+Handler = Callable[[RequestContext], "Awaitable[ResponseContext]"]
+"""请求处理函数类型签名（异步处理函数）。"""
 
 
 class Middleware(ABC):

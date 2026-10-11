@@ -29,6 +29,7 @@ from __future__ import annotations
 import json as _json
 import os
 import sys
+from typing import Any
 
 from loguru import logger as _logger
 
@@ -99,11 +100,11 @@ def _json_serializer(record: dict) -> str:
     return _json.dumps(log_entry, ensure_ascii=False)
 
 
-def _json_formatter(record: dict) -> str:
+def _json_formatter(record: Any) -> str:
     """loguru format 回调：将日志记录格式化为 JSON 行。
 
     Args:
-        record: loguru 内部日志记录字典
+        record: loguru 内部日志记录（loguru 0.7 未导出公开 Record 类型，用 Any）
 
     Returns:
         loguru 格式字符串

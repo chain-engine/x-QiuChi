@@ -40,6 +40,8 @@ ENV MCP_HOST="0.0.0.0"
 ENV MCP_PORT="8888"
 ENV LOGGING_LEVEL="INFO"
 ENV LOGGING_OUTPUT="both"
+# 开启认证时（AUTH_ENABLED=true）健康检查需携带 Bearer Token
+ENV MCP_AUTH_TOKEN=""
 
 # 创建日志目录并设置权限
 RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
@@ -50,9 +52,12 @@ USER appuser
 # 暴露端口
 EXPOSE 8888
 
-# 健康检查（compose 中可被覆盖；默认做一次真实的 MCP initialize 握手并校验 200）
+# 健康检查（compose 中可被覆盖；默认做一次真实的 MCP initialize 握手并校验 200，
+# 认证开启时自动携带 MCP_AUTH_TOKEN）
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import httpx, sys; r = httpx.post('http://localhost:8888/mcp', json={'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'healthcheck','version':'1.0'}}}, headers={'Accept':'application/json, text/event-stream'}, timeout=5); sys.exit(0 if r.status_code == 200 else 1)"
+    CMD python -c "import httpx, os, sys; h={'Accept':'application/json, text/event-stream'}; t=os.environ.get('MCP_AUTH_TOKEN',''); \
+    (t and h.__setitem__('Authorization','Bearer '+t)); \
+    r=httpx.post('http://localhost:8888/mcp', json={'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'healthcheck','version':'1.0'}}}, headers=h, timeout=5); sys.exit(0 if r.status_code == 200 else 1)"
 
 # 启动命令
 CMD ["python", "-m", "src.main"]

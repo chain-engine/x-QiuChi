@@ -2,15 +2,15 @@
 """
 项目完整性测试脚本
 
-运行此脚本以验证项目是否能正常工作。
+运行此脚本以验证项目是否能正常工作（也兼容 pytest 收集）。
 """
 
 import sys
 from pathlib import Path
 
-# 添加 src 目录到路径（作为导包根目录）
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
+# 确保以项目根目录为导包根（与运行规范一致：工作目录=根目录）
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 
 def test_configuration():
@@ -23,13 +23,12 @@ def test_configuration():
     assert settings.mcp.port > 0
 
     print("    [OK] Configuration loaded successfully")
-    return True
 
 
 def test_server_creation():
     """测试服务器创建"""
     print("[2/7] Testing server creation...")
-    from main import create_server
+    from src.main import create_server
 
     server = create_server("TestServer", "1.0.0")
     assert server.name == "TestServer"
@@ -39,13 +38,12 @@ def test_server_creation():
     assert stats["running"] is False
 
     print("    [OK] Server created successfully")
-    return True
 
 
 def test_decorators():
     """测试装饰器"""
     print("[3/7] Testing decorators...")
-    from main import prompt, resource, tool
+    from src.main import prompt, resource, tool
 
     @tool(category="test")
     def test_tool(x: int) -> int:
@@ -68,13 +66,12 @@ def test_decorators():
     assert test_prompt("World") == "Hello World"
 
     print("    [OK] Decorators working correctly")
-    return True
 
 
 def test_plugin_system():
     """测试插件系统"""
     print("[4/7] Testing plugin system...")
-    from main import create_server
+    from src.main import create_server
     from src.plugins import PluginManager
 
     server = create_server("PluginTest")
@@ -84,14 +81,13 @@ def test_plugin_system():
     assert len(manager.plugins) == 0  # No plugins loaded yet
 
     print("    [OK] Plugin system initialized")
-    return True
 
 
 def test_middleware():
     """测试中间件"""
     print("[5/7] Testing middleware...")
-    from main import create_server
     from src.core.middleware import CacheMiddleware, ErrorHandlerMiddleware, LoggingMiddleware
+    from src.main import create_server
 
     server = create_server("MiddlewareTest")
 
@@ -104,7 +100,6 @@ def test_middleware():
     assert len(server.middleware_chain) >= 3
 
     print("    [OK] Middleware system working")
-    return True
 
 
 def test_examples():
@@ -138,17 +133,14 @@ def test_examples():
         assert "Test" in greeting_text
 
         print("    [OK] Prompt templates working")
-
-        return True
     except ImportError as e:
         print(f"    [WARN] Failed to import examples: {e}")
-        return True  # Examples are optional
 
 
 def test_server_stats():
     """测试服务器统计"""
     print("[7/7] Testing server statistics...")
-    from main import create_server
+    from src.main import create_server
 
     server = create_server("StatsTest")
     stats = server.get_stats()
@@ -166,7 +158,6 @@ def test_server_stats():
     assert stats["middlewares"] >= 0
 
     print("    [OK] Server statistics working")
-    return True
 
 
 def main():
@@ -185,21 +176,17 @@ def main():
         test_server_stats,
     ]
 
-    passed = 0
     failed = 0
 
     for test_func in tests:
         try:
-            if test_func():
-                passed += 1
-            else:
-                failed += 1
+            test_func()
         except Exception as e:
             print(f"    [FAIL] Test failed: {e}")
             failed += 1
 
     print("\n" + "=" * 60)
-    print(f"Test Results: {passed} passed, {failed} failed")
+    print(f"Test Results: {len(tests) - failed} passed, {failed} failed")
     print("=" * 60 + "\n")
 
     if failed == 0:

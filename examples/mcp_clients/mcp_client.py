@@ -565,19 +565,19 @@ if __name__ == "__main__":
     print(f"服务端：{default_mcp_client._url}")
     
     # 测试 1: 参数校验
-    print("\n🔍 测试：参数校验")
-    test_cases = [
-        (None, {}, "method 为空"),
-        (123, {}, "method 非字符串"),
-        ("", {}, "method 空字符串"),
-        ("tools/list", "not-a-dict", "params 非字典"),
-    ]
-    for method, params, desc in test_cases:
-        try:
-            validate_call_args(method, params)
-            print(f"  {desc}: 应失败但未失败")
-        except MCPValidationError as e:
-            print(f"  {desc}: {e}")
+    # print("\n🔍 测试：参数校验")
+    # test_cases = [
+    #     (None, {}, "method 为空"),
+    #     (123, {}, "method 非字符串"),
+    #     ("", {}, "method 空字符串"),
+    #     ("tools/list", "not-a-dict", "params 非字典"),
+    # ]
+    # for method, params, desc in test_cases:
+    #     try:
+    #         validate_call_args(method, params)
+    #         print(f"  {desc}: 应失败但未失败")
+    #     except MCPValidationError as e:
+    #         print(f"  {desc}: {e}")
     
     # 测试 2: tools/list
     print("\n测试：tools/list")

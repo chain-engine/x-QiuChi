@@ -31,13 +31,12 @@
 import argparse
 import sys
 
-from src.core.config import settings
+from src.core.config import PACKAGE_VERSION, settings
 from src.core.logger import setup_logging
 from src.core.middleware import (
     CacheMiddleware,
     ErrorHandlerMiddleware,
     LoggingMiddleware,
-    MCPAuthMiddleware,
     Middleware,
     MiddlewareChain,
 )
@@ -58,7 +57,6 @@ __all__ = [
     "MiddlewareChain",
     "ErrorHandlerMiddleware",
     "LoggingMiddleware",
-    "MCPAuthMiddleware",
     "CacheMiddleware",
     # 传输层
     "TransportType",
@@ -69,7 +67,7 @@ __all__ = [
     "prompt",
 ]
 
-__version__ = "0.1.0"
+__version__ = PACKAGE_VERSION
 __author__ = "John Young <john.young@foxmail.com>"
 __description__ = "QiuChi (秋池) - an enterprise-grade MCP server framework"
 
@@ -84,7 +82,6 @@ Examples:
   %(prog)s                    # 启动 HTTP 服务器（默认端口 8888）
   %(prog)s --transport stdio  # 启动 Stdio 服务器
   %(prog)s --port 8080        # 在端口 8080 上启动
-  %(prog)s --config custom.yaml  # 使用自定义配置文件
         """,
     )
 
@@ -117,9 +114,6 @@ Examples:
         help=f"HTTP 监听端口（默认: {settings.mcp.port}）",
     )
 
-    # 配置文件
-    parser.add_argument("--config", default="config.yaml", help="配置文件路径（默认: config.yaml）")
-
     # 日志配置
     parser.add_argument(
         "--log-level",
@@ -132,11 +126,6 @@ Examples:
         default=settings.logging.file_path,
         help=f"日志文件路径（默认: {settings.logging.file_path}）",
     )
-
-    # 功能开关
-    parser.add_argument("--no-tools", action="store_true", help="禁用 Tools 原语")
-    parser.add_argument("--no-resources", action="store_true", help="禁用 Resources 原语")
-    parser.add_argument("--no-prompts", action="store_true", help="禁用 Prompts 原语")
 
     return parser.parse_args()
 
@@ -153,17 +142,6 @@ def update_settings_from_args(args):
     # 更新日志配置
     settings.logging.level = args.log_level
     settings.logging.file_path = args.log_file
-
-    # 更新功能开关
-    if args.no_tools:
-        settings.features.tools = False
-    if args.no_resources:
-        settings.features.resources = False
-    if args.no_prompts:
-        settings.features.prompts = False
-
-    # 设置配置文件路径
-    settings.config_file = args.config
 
 
 def print_startup_info(server, args):
@@ -187,7 +165,7 @@ def print_startup_info(server, args):
         f"Prompts={settings.features.prompts}"
     )
     logger.info(f"Log level: {settings.logging.level}")
-    logger.info(f"Config file: {settings.config_file}")
+    logger.info(f"Config file: {settings._config_file}")
     logger.info("=" * 60)
 
 

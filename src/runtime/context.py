@@ -121,7 +121,9 @@ class ContextManager:
     # ------------------------------------------------------------------
     def __enter__(self) -> RequestContext:
         self._token = set_current_context(RequestContext(server=self.server))
-        return _current_context.get()
+        ctx = _current_context.get()
+        assert ctx is not None
+        return ctx
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         reset_current_context(self._token)
@@ -129,7 +131,9 @@ class ContextManager:
     async def __aenter__(self) -> RequestContext:
         # 复用同步 token，ContextVar 跨 await 仍然保持
         self._token = set_current_context(RequestContext(server=self.server))
-        return _current_context.get()
+        ctx = _current_context.get()
+        assert ctx is not None
+        return ctx
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         reset_current_context(self._token)

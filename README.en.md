@@ -96,7 +96,7 @@ cp config.yaml.example config.yaml
 | Option | Default | Description |
 |--------|---------|-------------|
 | `mcp.server_name` | `QiuChi` | MCP server name |
-| `mcp.version` | `1.0.0` | Server version |
+| `mcp.version` | `0.1.0` | Server version (single source of truth: `pyproject.toml`) |
 | `mcp.transport` | `streamable-http` | Transport type: `stdio` / `sse` / `streamable-http` |
 | `mcp.host` | `0.0.0.0` | HTTP listen address |
 | `mcp.port` | `8888` | HTTP listen port |
@@ -113,7 +113,12 @@ cp config.yaml.example config.yaml
 | `features.cache` | `false` | Enable cache middleware |
 | `plugins.auto_discovery` | `true` | Enable automatic plugin discovery |
 | `plugins.discovery_paths` | `["src.plugins", "src.examples"]` | Plugin scan paths |
-| `middleware.auth.enabled` | `false` | Enable token authentication |
+| `middleware.auth.enabled` | `false` | Enable transport-layer Bearer Token auth |
+| `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
+| `telemetry.enabled` | `true` | Enable OpenTelemetry |
+| `telemetry.service_name` | `x-QiuChi` | Service name for traces/metrics |
+| `telemetry.exporter` | `console` | Exporter: `console` / `otlp` |
+| `telemetry.otlp_endpoint` | `""` | OTLP endpoint (required when exporter=otlp) |
 | `middleware.cache.enabled` | `false` | Enable in-memory cache |
 | `middleware.cache.default_ttl` | `300` | Cache default TTL (seconds) |
 
@@ -230,7 +235,7 @@ npx @anthropic-ai/mcp-inspector
 #### Register Tools with Decorators
 
 ```python
-from main import create_server, tool, resource, prompt
+from src.main import create_server, tool, resource, prompt
 
 server = create_server("MyServer")
 
