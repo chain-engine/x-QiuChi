@@ -227,6 +227,8 @@ npx @anthropic-ai/mcp-inspector
 >
 > Auto-fixable issues are fixed and re-staged; unfixable ones abort the commit (bypass with `git commit --no-verify`). Enable it once after cloning: `git config core.hooksPath hooks`
 
+> **Commit message enforcement**: `hooks/commit-msg` (same hooksPath) validates the Conventional Commits format `<type>[optional scope]: <subject>` on every commit — types: `feat` / `fix` / `refactor` / `docs` / `style` / `test` / `chore` / `perf` / `build` / `ci` / `revert`, subject ≤ 100 chars. Merge/revert messages (`Merge` / `Revert` / `fixup!` / `squash!` prefixes) are auto-allowed. Validator: `scripts/check_commit_msg.py` (stdlib only).
+
 ### 7. Usage Examples
 
 #### Register Tools with Decorators
@@ -472,7 +474,6 @@ flowchart TD
 | **MCP Framework** | [FastMCP (mcp)](https://github.com/modelcontextprotocol/python-sdk) | >= 1.0.0, < 2.0.0 | MCP protocol Python SDK, server core |
 | **Data Validation** | [Pydantic](https://docs.pydantic.dev/) | >= 2.0.0 | Transport config models (SSEConfig / HTTPConfig / TLSConfig) and data validation |
 | **HTTP Client** | [httpx](https://www.python-httpx.org/) | >= 0.27.0 | Async HTTP client |
-| **HTTP Utility** | [Requests](https://requests.readthedocs.io/) | >= 2.28.0 | Synchronous HTTP request library |
 | **Config Parsing** | [PyYAML](https://pyyaml.org/) | >= 6.0 | YAML config file parsing |
 | **Logging** | [loguru](https://loguru.readthedocs.io/) | >= 0.7.0 | Structured logging, file rotation, sensitive info filtering |
 | **Code Quality** | [Ruff](https://docs.astral.sh/ruff/) | >= 0.6.0 | Code formatting + Linting (replaces Black + Flake8) |

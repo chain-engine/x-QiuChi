@@ -294,6 +294,8 @@ perf: 性能优化
 
 示例：`fix: 修复认证中间件未注入真实 request_id 的问题`
 
+**本地强制校验（commit-msg 钩子）**：仓库自带 `hooks/commit-msg`（经 `core.hooksPath` 生效），每次提交自动校验信息格式——`<type>[optional scope]: <subject>`，type 必须是上述枚举之一，subject 不超过 100 字符。合并/还原提交（`Merge` / `Revert` / `fixup!` / `squash!` 开头）自动放行。校验脚本为 `scripts/check_commit_msg.py`（纯标准库，无需额外安装）。临时跳过：`git commit --no-verify`。
+
 ### CI/CD
 
 仓库内置 GitHub Actions（`.github/workflows/ci.yml`），push 到 `main`/`master` 或 PR 时自动执行：
@@ -558,7 +560,6 @@ flowchart TD
 | **MCP 框架** | [FastMCP (mcp)](https://github.com/modelcontextprotocol/python-sdk) | >= 1.0.0, < 2.0.0 | MCP 协议 Python SDK，服务器核心 |
 | **数据验证** | [Pydantic](https://docs.pydantic.dev/) | >= 2.0.0 | 传输层配置模型（SSEConfig / HTTPConfig / TLSConfig）与数据验证 |
 | **HTTP 客户端** | [httpx](https://www.python-httpx.org/) | >= 0.27.0 | 异步 HTTP 客户端 |
-| **HTTP 工具** | [Requests](https://requests.readthedocs.io/) | >= 2.28.0 | 同步 HTTP 请求库 |
 | **配置解析** | [PyYAML](https://pyyaml.org/) | >= 6.0 | YAML 配置文件解析 |
 | **日志** | [loguru](https://loguru.readthedocs.io/) | >= 0.7.0 | 结构化日志，文件轮转与敏感信息过滤 |
 | **代码质量** | [Ruff](https://docs.astral.sh/ruff/) | >= 0.6.0 | 代码格式化 + Lint（替代 Black + Flake8） |

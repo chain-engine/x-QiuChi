@@ -1,0 +1,22 @@
+#!/bin/sh
+# x-QiuChi commit-msg hook
+# Validates Conventional Commits format before every `git commit`.
+# Commit is aborted when the message does not match:
+#   <type>[optional scope]: <subject>
+# To skip this check temporarily: git commit --no-verify
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+if command -v python >/dev/null 2>&1; then
+    PY=python
+elif [ -x .venv/Scripts/python.exe ]; then
+    PY=.venv/Scripts/python.exe
+else
+    echo "commit-msg: python not found (neither 'python' on PATH nor .venv/Scripts/python.exe)." >&2
+    echo "commit-msg: commit aborted; bypass with 'git commit --no-verify'." >&2
+    exit 1
+fi
+
+"$PY" scripts/check_commit_msg.py "$1"
