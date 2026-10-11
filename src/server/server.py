@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -90,7 +91,6 @@ class MCPServer:
         logger.info(f"Starting MCP Server '{self.name}'...")
         await self.lifecycle.initialize()
         await self.lifecycle.startup()
-
         await self.plugin_manager.initialize()
 
         logger.info(f"MCP Server '{self.name}' started")
@@ -104,6 +104,22 @@ class MCPServer:
         await self.lifecycle.shutdown()
         logger.info(f"MCP Server '{self.name}' stopped")
 
+    @asynccontextmanager
+    async def running(self):
+        """运行上下文：进入时启动服务，退出（含异常/取消）时自动关停。
+
+        与 try/finally 语义等价，但把启动/关停配对封装为可复用的
+        ``async with`` 用法，测试与脚本可精确控制服务生命周期边界。
+
+        Yields:
+            已启动的 MCPServer 实例
+        """
+        await self.start()
+        try:
+            yield self
+        finally:
+            await self.stop()
+
     # ------------------------------------------------------------------
     # 运行入口
     # ------------------------------------------------------------------
@@ -114,22 +130,20 @@ class MCPServer:
         port: int | None = None,
     ) -> None:
         async def async_run():
-            await self.start()
             transport_config = get_transport_config(
                 transport or settings.mcp.transport,
                 host or settings.mcp.host,
                 port or settings.mcp.port,
             )
 
-            try:
-                await serve_mcp(self.mcp, transport_config)
-            except KeyboardInterrupt:
-                logger.info("Server stopped by user")
-            except Exception as e:
-                logger.error(f"Server error: {e}")
-                raise
-            finally:
-                await self.stop()
+            async with self.running():
+                try:
+                    await serve_mcp(self.mcp, transport_config)
+                except KeyboardInterrupt:
+                    logger.info("Server stopped by user")
+                except Exception as e:
+                    logger.error(f"Server error: {e}")
+                    raise
 
         try:
             asyncio.run(async_run())

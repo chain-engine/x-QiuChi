@@ -22,7 +22,7 @@ class TransportConfig:
     """
     传输层配置
 
-    描述一次服务承载所需的传输类型与监听地址。
+    描述一次服务承载所需的传输类型与监听地址，默认 streamable-http。
     """
 
     transport: TransportType = TransportType.STREAMABLE_HTTP
@@ -126,11 +126,7 @@ def get_transport_config(
 
 
 async def serve_mcp(mcp: Any, config: TransportConfig) -> None:
-    """以指定传输方式承载 FastMCP 实例。
-
-    stdio 直接走 SDK 的 run_stdio_async；SSE / streamable-http 构建 ASGI app
-    后以 uvicorn 运行，外层挂载 QiuChiHTTPMiddleware（真实 request_id 注入 +
-    OpenTelemetry 埋点）。认证由 FastMCP 官方 RequireAuthMiddleware 在 app 内部处理。
+    """以指定传输方式承载 FastMCP 实例，阻塞直到服务停止。
 
     Args:
         mcp: FastMCP 实例
@@ -138,12 +134,15 @@ async def serve_mcp(mcp: Any, config: TransportConfig) -> None:
     """
     logger.info(f"Starting MCP transport: {config.transport.value}")
     if config.transport == TransportType.STDIO:
+        # 标准输入输出直连：客户端以子进程方式拉起本服务，通过进程 stdin/stdout 通信
         await mcp.run_stdio_async()
     elif config.transport == TransportType.SSE:
         logger.info(f"Listening on {config.host}:{config.port}")
+        # SSE：构建 ASGI app，GET 建立长连接接收服务端推送，POST 发送请求
         await _serve_http_app(mcp.sse_app(), config)
     elif config.transport == TransportType.STREAMABLE_HTTP:
         logger.info(f"Listening on {config.host}:{config.port}")
+        # Streamable-HTTP（默认传输方式）：单一 HTTP 端点，POST 请求-响应，可选升级为 SSE 流式下行
         await _serve_http_app(mcp.streamable_http_app(), config)
     else:
         raise ValueError(f"Unsupported transport type: {config.transport.value}")
@@ -151,11 +150,13 @@ async def serve_mcp(mcp: Any, config: TransportConfig) -> None:
 
 async def _serve_http_app(app: Any, config: TransportConfig) -> None:
     """以 uvicorn 运行 MCP HTTP ASGI app。"""
+    # 遥测埋点：初始化 OpenTelemetry，并把 request_id 注入中间件挂到 app 最外层
     from src.core.opentelemetry import QiuChiHTTPMiddleware, setup_telemetry
 
     setup_telemetry()
     app.add_middleware(QiuChiHTTPMiddleware)
 
+    # uvicorn 负责 HTTP 协议解析与连接管理；认证由 app 内部的 RequireAuthMiddleware 处理
     import uvicorn
 
     uvicorn_config = uvicorn.Config(
@@ -165,4 +166,5 @@ async def _serve_http_app(app: Any, config: TransportConfig) -> None:
         log_level="info",
     )
     server = uvicorn.Server(uvicorn_config)
+    # 阻塞处理请求，直到收到停止信号（Ctrl+C / SIGTERM）
     await server.serve()
