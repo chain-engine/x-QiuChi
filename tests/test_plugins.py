@@ -163,7 +163,7 @@ class TestPluginCollector:
         tmp = {PluginType.TOOL: PluginCollector(PluginType.TOOL)}
         monkeypatch.setattr(collector_mod, "_collectors", tmp)
 
-        @collector_mod.tool_decorator(category="math", tags=["demo"])
+        @collector_mod.tool(category="math", tags=["demo"])
         def add(a: int, b: int) -> int:
             return a + b
 

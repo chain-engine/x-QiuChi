@@ -41,19 +41,19 @@ def test_server_creation():
 def test_decorators():
     """测试装饰器"""
     print("[3/6] Testing decorators...")
-    from src.main import prompt_decorator, resource_decorator, tool_decorator
+    from src.main import prompt, resource, tool
 
-    @tool_decorator(category="test")
+    @tool(category="test")
     def test_tool(x: int) -> int:
         """Test tool"""
         return x * 2
 
-    @resource_decorator(name="test://resource")
+    @resource(name="test://resource")
     def test_resource() -> str:
         """Test resource"""
         return "test"
 
-    @prompt_decorator(category="test")
+    @prompt(category="test")
     def test_prompt(name: str) -> str:
         """Test prompt"""
         return f"Hello {name}"

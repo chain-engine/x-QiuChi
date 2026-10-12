@@ -4,10 +4,10 @@
 展示如何使用 QiuChi 的装饰器 API 创建工具。
 """
 
-from src.plugins import tool_decorator
+from src.plugins import tool
 
 
-@tool_decorator(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
+@tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
 def add(a: float, b: float) -> float:
     """
     两数相加
@@ -22,7 +22,7 @@ def add(a: float, b: float) -> float:
     return a + b
 
 
-@tool_decorator(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
+@tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
 def subtract(a: float, b: float) -> float:
     """
     两数相减
@@ -37,7 +37,7 @@ def subtract(a: float, b: float) -> float:
     return a - b
 
 
-@tool_decorator(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
+@tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
 def multiply(a: float, b: float) -> float:
     """
     两数相乘
@@ -52,7 +52,7 @@ def multiply(a: float, b: float) -> float:
     return a * b
 
 
-@tool_decorator(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
+@tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
 def divide(a: float, b: float) -> float:
     """
     两数相除
@@ -72,7 +72,7 @@ def divide(a: float, b: float) -> float:
     return a / b
 
 
-@tool_decorator(category="math", subcategory="advanced", tags=["root"])
+@tool(category="math", subcategory="advanced", tags=["root"])
 def sqrt(number: float) -> float:
     """
     平方根

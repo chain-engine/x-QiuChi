@@ -14,7 +14,7 @@ MCPServer 只需与 PluginManager 对话，不直接触碰各组件。
    返回插件名单
 
 ② 收集（模块 import 时，装饰器副作用）
-   业务代码: @tool_decorator / @resource_decorator / @prompt_decorator 标记函数
+   业务代码: @tool / @resource / @prompt 标记函数
        │ 装饰器 collect() 自动写入（无需显式调用）
        ▼
    PluginCollector（全局单例，进程内唯一）
@@ -48,9 +48,9 @@ from .collector import (
     get_prompt_collector,
     get_resource_collector,
     get_tool_collector,
-    prompt_decorator,
-    resource_decorator,
-    tool_decorator,
+    prompt,
+    resource,
+    tool,
 )
 from .discovery import PluginDiscovery, discover_plugins
 from .manager import PluginManager
@@ -60,9 +60,9 @@ __all__ = [
     # 基础类型
     "PluginMetadata",
     # 装饰器 & 收集器
-    "tool_decorator",
-    "resource_decorator",
-    "prompt_decorator",
+    "tool",
+    "resource",
+    "prompt",
     "get_tool_collector",
     "get_resource_collector",
     "get_prompt_collector",

@@ -13,7 +13,7 @@
    返回插件名单
 
 ② 收集（模块 import 时，装饰器副作用）
-   业务代码: @tool_decorator / @resource_decorator / @prompt_decorator 标记函数
+   业务代码: @tool / @resource / @prompt 标记函数
        │ 装饰器 collect() 自动写入（无需显式调用）
        ▼
    PluginCollector（全局单例，进程内唯一）

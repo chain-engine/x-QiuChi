@@ -14,10 +14,10 @@
 - 完整的类型提示和文档
 
 快速开始:
-    >>> from src.main import create_server, tool_decorator, resource_decorator, prompt_decorator
+    >>> from src.main import create_server, tool, resource, prompt
     >>> server = create_server("MyServer")
     >>>
-    >>> @tool_decorator(category="math")
+    >>> @tool(category="math")
     ... def add(a: float, b: float) -> float:
     ...     '''Add two numbers.'''
     ...     return a + b
@@ -39,7 +39,7 @@ from src.core.middleware import (
     Middleware,
     MiddlewareChain,
 )
-from src.plugins import PluginMetadata, prompt_decorator, resource_decorator, tool_decorator
+from src.plugins import PluginMetadata, prompt, resource, tool
 from src.server import MCPServer, create_server
 from src.transport import TransportConfig, TransportType
 
@@ -59,9 +59,9 @@ __all__ = [
     "TransportType",
     "TransportConfig",
     # 装饰器
-    "tool_decorator",
-    "resource_decorator",
-    "prompt_decorator",
+    "tool",
+    "resource",
+    "prompt",
 ]
 
 __version__ = PACKAGE_VERSION
@@ -172,7 +172,7 @@ def main_async():
     # 设置日志
     setup_logging()
 
-    # 装配外部系统适配器（hanjiang 等）：显式 import 触发 @tool_decorator 收集，
+    # 装配外部系统适配器（hanjiang 等）：显式 import 触发 @tool 收集，
     # 由 create_server 后的插件系统统一注册进 registry + FastMCP
     import src.adapters  # noqa: F401
 

@@ -1,71 +1,63 @@
-# 秋池（QiuChi）
-
 [English](README.en.md) | 中文
 
----
+# x-QiuChi（秋池）
 
-## 项目简介
+一个基于 [FastMCP](https://github.com/modelcontextprotocol/python-sdk) 的企业级 MCP（Model Context Protocol）服务器框架——开箱即用，构建生产级 MCP 服务器。
 
-**秋池（QiuChi）** 是一个**生产级 MCP（Model Context Protocol）服务器框架**，基于 [FastMCP](https://github.com/modelcontextprotocol/python-sdk) 构建。通过分层清晰架构、插件化设计、中间件管道和统一配置管理，为企业提供开箱即用的 MCP 服务器开发体验。
+> 面向 AI 应用的「能力中转站」：以声明式装饰器定义工具/资源/提示词，插件化自动发现，中间件横切治理，多传输协议接入，一条命令对接任意 MCP 客户端。
 
-**核心价值**：
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python\&logoColor=white)
+![MCP](https://img.shields.io/badge/MCP-1.0%2B-000000?logo=modelcontextprotocol\&logoColor=white)
+![uv](https://img.shields.io/badge/uv-0.6%2B-946b48?logo=uv\&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker\&logoColor=white)
+![FastMCP](https://img.shields.io/badge/FastMCP-FastMCP-409eff)
+![loguru](https://img.shields.io/badge/loguru-0.7%2B-e8552d)
+![httpx](https://img.shields.io/badge/httpx-0.27%2B-ff6b6b)
+![pycryptodome](https://img.shields.io/badge/pycryptodome-3.24%2B-409eff)
+![pytest](https://img.shields.io/badge/pytest-8%2B-0A9EDC?logo=pytest\&logoColor=white)
+![ruff](https://img.shields.io/badge/ruff-0.6%2B-D7FF64?logo=ruff\&logoColor=black)
+![mypy](https://img.shields.io/badge/mypy-1.0%2B-2A6DB2?logo=mypy\&logoColor=white)
 
-- **协议合规** —— 完整实现 MCP 协议 Tools、Resources、Prompts 三大原语
-- **架构清晰** —— Constants / Core / Plugins / Adapters / Server / Transport / Utils / Examples 八层职责分明
-- **开箱即用** —— 装饰器一键注册、插件自动发现、中间件即插即用
-- **生产就绪** —— 结构化日志、健康检查、容器化部署、TLS 支持
+![Stars](https://img.shields.io/github/stars/chain-engine/x-QiuChi?label=Stars)
+![Forks](https://img.shields.io/github/forks/chain-engine/x-QiuChi?label=Forks)
+![License](https://img.shields.io/github/license/chain-engine/x-QiuChi?label=License)
+![Commits](https://img.shields.io/github/commit-activity/m/chain-engine/x-QiuChi?label=Commits)
 
-**适用场景**：
+***
 
-- 为 LLM 应用（Claude、GPT 等）快速搭建 MCP 工具服务
-- 构建企业级 AI Agent 工具链平台
-- 需要多传输层（Stdio / SSE / HTTP）灵活切换的 MCP 服务
-- 需要插件化扩展和中间件治理的 AI 基础设施
+## 💡 项目介绍
 
----
+**x-QiuChi（秋池）** 是一个面向生产环境的企业级 MCP 服务器框架，在官方 MCP Python SDK（FastMCP）之上补齐了企业应用所需的能力封装，让开发者用最小的成本把业务能力接入 AI 生态。
 
-## 快速开始
+**核心特性：**
+
+- **MCP 三大原语全覆盖**：工具（tools）、资源（resources）、提示词（prompts），统一装饰器声明式定义（`@tool` / `@resource` / `@prompt`），协议层零手工编码
+- **插件化架构**：`发现 → 收集 → 注册` 三段式插件系统，自动扫描内建扩展，业务功能以插件形式即插即用
+- **中间件管道**：洋葱模型执行链，内置错误处理（JSON-RPC 标准错误码）、请求日志（敏感字段自动脱敏）、request\_id 注入，支持自定义中间件扩展
+- **多传输协议**：`stdio`（Claude Desktop 兼容）/ `sse` / `streamable-http`（默认），一条命令切换
+- **统一配置系统**：环境变量 > YAML > 代码默认值 三级优先级，全部配置项三来源对齐
+- **传输层认证**：可选 Bearer Token 认证，挂载于 HTTP 传输层，可拿到真实请求头
+- **生产级质量门禁**：GitHub Actions CI（lint + mypy + 测试覆盖率门禁 + 构建）、Conventional Commits 提交规范、全量类型注解
+- **容器化部署**：多阶段 Dockerfile（非 root 运行、真实 MCP 握手健康检查）+ docker-compose 一键编排
+- **集成三方适配器**：内置汉江管理系统适配器（HTTP 转接代理），演示如何把任意外部 HTTP 系统包装为 MCP 能力
+
+**适用场景：**
+
+- 企业内部系统（认证、用户、数据）快速接入 AI 客户端（Claude Desktop / LangChain / 自研 Agent）
+- 为 LLM 应用构建可发现、可调用的工具/资源/提示词服务
+- 作为 MCP 网关/转接层，统一对外暴露多系统能力
+
+## 🚀 快速开始
 
 ### 1. 环境要求
 
-| 依赖项 | 最低版本 | 说明 |
-|--------|---------|------|
-| Python | >= 3.11 | 类型提示、异常组等特性要求 |
-| uv | >= 0.1 | 推荐包管理器（[安装指南](https://docs.astral.sh/uv/getting-started/installation/)） |
-| Git | >= 2.0 | 项目克隆 |
+| 平台          | 要求                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Windows** | Windows 10/11，PowerShell 5.1+，安装 [uv](https://docs.astral.sh/uv/)：`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
+| **Linux**   | Python 3.11+ 可选（uv 自动管理），安装 uv：`curl -LsSf https://astral.sh/uv/install.sh \| sh`                                                                       |
+| **macOS**   | 同上，安装 uv：`curl -LsSf https://astral.sh/uv/install.sh \| sh`                                                                                             |
 
-**Windows 环境**：
-
-```powershell
-# 安装 uv（PowerShell）
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# 或使用 pip 安装
-pip install uv
-```
-
-**Linux 环境**：
-
-```bash
-# 安装 uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 或使用 pip
-pip install uv
-```
-
-**macOS 环境**：
-
-```bash
-# 使用 Homebrew 安装
-brew install uv
-
-# 或使用官方安装脚本
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 或使用 pip
-pip install uv
-```
+> uv 会自动安装并管理所需的 Python 版本（项目要求 Python ≥ 3.11），无需手动配置解释器。
 
 ### 2. 项目代码克隆
 
@@ -77,102 +69,70 @@ cd x-QiuChi
 ### 3. 依赖同步安装
 
 ```bash
-# 使用 uv 同步依赖（推荐）
-uv sync
-
-# 开发模式（包含测试、格式化、类型检查等工具）
-uv sync --extra dev
+# 安装项目依赖（含开发依赖：pytest/ruff/mypy）
+uv sync --all-extras
 ```
 
 ### 4. 环境配置
 
+项目支持 **环境变量 > YAML > 代码默认值** 三级配置，任选一种或组合使用：
+
 ```bash
-# 复制配置文件
+# 方式一（推荐）：基于 .env.example 创建环境变量文件
+cp .env.example .env
+
+# 方式二：基于 config.yaml.example 创建 YAML 配置文件
 cp config.yaml.example config.yaml
 ```
 
-**核心配置项说明**（`config.yaml`）：
+**核心配置项（前缀即环境变量名规则，如** **`MCP_`、`LOGGING_`、`AUTH_`、`HANJIANG_`）：**
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `mcp.server_name` | `QiuChi` | MCP 服务器名称 |
-| `mcp.version` | `0.1.0` | 服务器版本号（唯一事实源为 `pyproject.toml`，不建议在 YAML 中覆盖） |
-| `mcp.transport` | `streamable-http` | 传输层类型：`stdio` / `sse` / `streamable-http` |
-| `mcp.host` | `0.0.0.0` | HTTP 监听地址 |
-| `mcp.port` | `8888` | HTTP 监听端口 |
-| `mcp.json_response` | `true` | 是否启用 JSON 响应模式 |
-| `logging.level` | `INFO` | 日志级别：`DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
-| `logging.output` | `both` | 日志输出目标：`stderr` / `file` / `both` |
-| `logging.file_path` | `logs/x-QiuChi_{time:YYYY-MM-DD-HH}.log` | 日志文件路径（支持时间模板） |
-| `logging.rotation` | `1 hour` | 日志轮转周期 |
-| `logging.retention` | `7 days` | 日志保留时长 |
-| `features.middleware` | `true` | 是否启用中间件管道 |
-| `plugins.auto_discovery` | `true` | 是否自动发现插件 |
-| `plugins.discovery_paths` | `["src.plugins.builtin"]` | 插件扫描路径 |
-| `middleware.auth.enabled` | `false` | 是否启用传输层 Bearer Token 认证 |
-| `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
-| `hanjiang.base_url` | `http://localhost` | 汉江管理系统后端地址（HTTP 转接代理目标） |
-| `hanjiang.username` | `""` | 汉江服务凭据账号（权限决定 AI 操作边界） |
-| `hanjiang.password` | `""` | 汉江服务凭据密码（敏感，优先 .env） |
-| `hanjiang.encryption_enabled` | `true` | 是否 RSA-OAEP 加密密码（与汉江 AUTH_ENCRYPTION_ENABLED 一致） |
-| `hanjiang.timeout` | `30` | 汉江请求超时（秒） |
+| 配置段                           | 环境变量示例                        | 默认值                       | 说明                                       |
+| ----------------------------- | ----------------------------- | ------------------------- | ---------------------------------------- |
+| `mcp.server_name`             | `MCP_SERVER_NAME`             | `QiuChi`                  | 服务器名称                                    |
+| `mcp.transport`               | `MCP_TRANSPORT`               | `streamable-http`         | 传输类型：`stdio` / `sse` / `streamable-http` |
+| `mcp.host`                    | `MCP_HOST`                    | `0.0.0.0`                 | HTTP 监听地址                                |
+| `mcp.port`                    | `MCP_PORT`                    | `8888`                    | HTTP 监听端口                                |
+| `logging.level`               | `LOGGING_LEVEL`               | `INFO`                    | 日志级别                                     |
+| `logging.file_path`           | `LOGGING_FILE_PATH`           | `logs/x-QiuChi_*.log`     | 日志文件路径（支持时间模板）                           |
+| `plugins.auto_discovery`      | `PLUGIN_AUTO_DISCOVERY`       | `true`                    | 是否自动发现插件                                 |
+| `plugins.discovery_paths`     | `PLUGIN_DISCOVERY_PATHS`      | `["src.plugins.builtin"]` | 插件扫描路径                                   |
+| `middleware.auth.enabled`     | `AUTH_ENABLED`                | `false`                   | 是否启用传输层 Bearer Token 认证                  |
+| `middleware.auth.tokens`      | `AUTH_TOKENS`                 | `[]`                      | 有效 Bearer Token 列表（enabled 时必填）          |
+| `hanjiang.base_url`           | `HANJIANG_BASE_URL`           | `http://localhost`        | 汉江管理系统后端地址                               |
+| `hanjiang.username`           | `HANJIANG_USERNAME`           | `""`                      | 汉江服务凭据账号                                 |
+| `hanjiang.password`           | `HANJIANG_PASSWORD`           | `""`                      | 汉江服务凭据密码（敏感，仅放 .env）                     |
+| `hanjiang.encryption_enabled` | `HANJIANG_ENCRYPTION_ENABLED` | `true`                    | 是否 RSA-OAEP 加密密码                         |
+| `hanjiang.timeout`            | `HANJIANG_TIMEOUT`            | `30`                      | 汉江请求超时（秒）                                |
 
-**环境变量覆盖**：所有配置均可通过环境变量覆盖，优先级为 **环境变量 > YAML > 默认值**。常用环境变量：
+> 完整配置项见 [config.yaml.example](config.yaml.example) 与 [.env.example](.env.example)。`mcp.version` 不走环境变量——版本唯一事实源为 `pyproject.toml`。
 
-| 环境变量 | 说明 |
-|----------|------|
-| `MCP_SERVER_NAME` | 服务器名称 |
-| `MCP_TRANSPORT` | 传输层类型 |
-| `MCP_HOST` | 监听地址 |
-| `MCP_PORT` | 监听端口 |
-| `LOGGING_LEVEL` | 日志级别 |
-| `LOGGING_OUTPUT` | 日志输出目标 |
-| `AUTH_ENABLED` | 是否启用传输层认证 |
-| `AUTH_TOKENS` | 有效 token 列表（逗号分隔） |
-| `TELEMETRY_ENABLED` | 是否启用 OpenTelemetry |
-| `TELEMETRY_SERVICE_NAME` | 服务名 |
-| `TELEMETRY_EXPORTER` | 导出方式（console / otlp） |
-| `TELEMETRY_OTLP_ENDPOINT` | OTLP 端点 |
+### 5. 服务启动
 
-### 5. 启动服务
-
-#### 方式一：CLI 启动（推荐）
+**方式一：本地开发启动**
 
 ```bash
-# HTTP 模式（默认，端口 8888）
+# 默认启动 streamable-http（端口 8888）
 uv run x-QiuChi
 
-# Stdio 模式（兼容 Claude Desktop）
-uv run x-QiuChi --transport stdio
-
-# 自定义参数
-uv run x-QiuChi --host 127.0.0.1 --port 8080 --log-level DEBUG
-
-# 查看帮助
-uv run x-QiuChi --help
-```
-
-#### 方式二：uv run 直接启动
-
-```bash
-# HTTP 模式（默认，端口 8888）
+# 等价写法（等价于 python -m src.main）
 uv run python -m src.main
 
-# Stdio 模式（兼容 Claude Desktop）
-uv run python -m src.main --transport stdio
-
-# 自定义参数
-uv run python -m src.main --host 127.0.0.1 --port 8080 --log-level DEBUG
+# 自定义启动参数
+uv run x-QiuChi --transport stdio          # 切换为标准输入输出传输
+uv run x-QiuChi --port 8080                # 更换 HTTP 端口
+uv run x-QiuChi --log-level DEBUG          # 调整日志级别
 ```
 
-#### 方式三：Docker 容器部署
+**方式二：Docker 容器部署**
 
 ```bash
-# 构建并启动
+# 一键构建并启动（端口 8888，日志挂载卷，自动健康检查）
 docker compose up -d --build
 
-# 查看日志
-docker compose logs -f
+# 查看运行状态与日志
+docker compose ps
+docker compose logs -f qiuchi-mcp
 
 # 停止
 docker compose down
@@ -181,307 +141,157 @@ docker compose down
 ### 6. 常用工程命令
 
 ```bash
-# 运行全部测试（内置 coverage 门禁：--cov=src --cov-fail-under=45）
+# 单元测试（含覆盖率统计，覆盖率门禁 45%）
 uv run pytest
 
-# 运行指定测试文件（详细输出）
-uv run pytest tests/test_protocol.py -v
-
-# 测试覆盖率报告
-uv run pytest --cov=src --cov-report=term-missing tests/
-
-# 代码格式化
-uv run ruff format src/
-
-# 代码静态检查
-uv run ruff check src/
-
-# 自动修复可修复的 lint 问题
+# 代码格式化（自动修复）
+uv run ruff format src/ tests/
 uv run ruff check --fix src/ tests/
+
+# 静态检查
+uv run ruff check src/ tests/
+uv run ruff format --check src/ tests/
 
 # 类型检查
 uv run mypy src/
 
-# 构建 wheel 与 sdist
+# 构建发行包（wheel + sdist）
 uv build
 
-# MCP Inspector 验证
-npx @anthropic-ai/mcp-inspector
-# 连接地址: http://localhost:8888/mcp
+# 依赖漏洞扫描
+uv pip audit
 ```
 
-> **提交前自动检查**：仓库已配置 git pre-commit 钩子（`hooks/pre-commit`），每次 `git commit` 前自动执行：
->
-> ```sh
-> uv run ruff check --fix src/ tests/
-> uv run ruff format src/ tests/
-> ```
->
-> 能自动修复的问题会被自动修复并重新暂存；无法自动修复的会阻止提交（可用 `git commit --no-verify` 临时跳过）。克隆仓库后首次启用：`git config core.hooksPath hooks`
+> 提交前请确保：`ruff check`、`ruff format --check`、`mypy src/`、`pytest` 四项全绿。仓库已配置 git hooks（`hooks/pre-commit`、`hooks/commit-msg`）与 GitHub Actions CI 自动执行同样门禁。
 
-### 7. 认证与可观测性
+### 7. 使用方法示例
 
-#### 传输层认证（Bearer Token）
-
-认证挂在 MCP **HTTP 传输层**（mcp SDK 官方 `RequireAuthMiddleware`），能读取真实 `Authorization` 请求头，对所有 `/mcp` 请求生效（无 token / 错误 token 返回 `401 invalid_token`）。
-
-```bash
-# 方式一：YAML 配置（config.yaml）
-# middleware:
-#   auth:
-#     enabled: true
-#     tokens: ["my-secret-token"]
-
-# 方式二：环境变量（推荐，避免明文入库）
-AUTH_ENABLED=true AUTH_TOKENS="my-secret-token" uv run python -m src.main
-```
-
-开启认证后所有 MCP 客户端请求需携带：
-
-```http
-Authorization: Bearer my-secret-token
-```
-
-Docker 部署时若开启认证，请同步设置 `MCP_AUTH_TOKEN`（健康检查会自动携带）：
-
-```yaml
-# docker-compose.yml
-environment:
-  AUTH_ENABLED: "true"
-  AUTH_TOKENS: "my-secret-token"
-  MCP_AUTH_TOKEN: "my-secret-token"
-```
-
-#### OpenTelemetry 可观测性
-
-框架内置 OpenTelemetry：每个 HTTP 请求注入真实 `request_id`（`X-Request-ID` 或自动生成），贯穿结构化日志；并记录 HTTP 请求 span 与请求计数/耗时指标。
-
-| exporter | 行为 | 适用场景 |
-|---------|------|---------|
-| `console`（默认） | span 输出到控制台 | 本地开发 |
-| `otlp` | 通过 OTLP/HTTP 导出 trace + metrics | 生产接入 Jaeger / OTel Collector 等 |
-
-```bash
-TELEMETRY_ENABLED=true TELEMETRY_EXPORTER=otlp \
-TELEMETRY_OTLP_ENDPOINT=http://localhost:4318/v1/traces \
-uv run python -m src.main
-```
-
----
-
-## 工程规范
-
-### 版本管理（单一事实源）
-
-版本号**唯一事实源为 `pyproject.toml` 的 `version` 字段**（当前 `0.1.0`）。启动时通过 `importlib.metadata` 自动读取，MCP 握手 `serverInfo.version`、CLI 输出版本号均与其一致。**不要在 `config.yaml` 中配置 `mcp.version`**（如需临时覆盖可设置 `--version` CLI 参数）。
-
-### 提交规范（Conventional Commits）
-
-提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
-
-```text
-feat: 新增功能
-fix: 修复缺陷
-docs: 文档变更
-refactor: 重构（无行为变化）
-test: 测试变更
-chore: 构建/依赖/工具链变更
-ci: CI 配置变更
-perf: 性能优化
-```
-
-示例：`fix: 修复认证中间件未注入真实 request_id 的问题`
-
-**本地强制校验（commit-msg 钩子）**：仓库自带 `hooks/commit-msg`（经 `core.hooksPath` 生效），每次提交自动校验信息格式——`<type>[optional scope]: <subject>`，type 必须是上述枚举之一，subject 不超过 100 字符。合并/还原提交（`Merge` / `Revert` / `fixup!` / `squash!` 开头）自动放行。校验脚本为 `scripts/check_commit_msg.py`（纯标准库，无需额外安装）。临时跳过：`git commit --no-verify`。
-
-### CI/CD
-
-仓库内置 GitHub Actions（`.github/workflows/ci.yml`），push 到 `main`/`master` 或 PR 时自动执行：
-
-1. **lint** —— `ruff check` + `ruff format --check`（src/ 与 tests/）
-2. **typecheck** —— `mypy src/`
-3. **test** —— `pytest`（内置 coverage 门禁 `--cov-fail-under=45`）
-4. **build** —— `uv build` 产出 wheel 与 sdist，并上传 artifact
-
-### 8. 使用方法示例
-
-#### 装饰器注册工具
+**用官方 MCP 客户端连接并调用工具**（完整示例见 [examples/mcp\_clients/mcp\_client.py](examples/mcp_clients/mcp_client.py)）：
 
 ```python
-from src.main import create_server, tool, resource, prompt
+import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
-server = create_server("MyServer")
+async def main() -> None:
+    server_params = StdioServerParameters(
+        command="uv", args=["run", "x-QiuChi", "--transport", "stdio"]
+    )
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+            result = await session.call_tool("add", {"a": 1, "b": 2})
+            print(result)
 
-# 注册工具
-@tool_decorator(category="math")
-def add(a: float, b: float) -> float:
-    """两数相加"""
-    return a + b
-
-# 注册资源
-@resource_decorator(name="config://app", category="config")
-def get_app_config() -> str:
-    """获取应用配置"""
-    return '{"version": "1.0.0"}'
-
-# 注册提示词
-@prompt_decorator(category="code")
-def code_review(language: str) -> str:
-    """生成代码审查提示词"""
-    return f"请审查以下 {language} 代码的最佳实践。"
-
-server.run()
+asyncio.run(main())
 ```
 
-#### HTTP 客户端调用
+**作为 Claude Desktop 的 MCP 服务器**（`claude_desktop_config.json`）：
 
-```python
-import httpx
-
-# 获取 Session ID
-resp = httpx.get("http://localhost:8888/mcp",
-                 headers={"Accept": "text/event-stream"})
-session_id = resp.headers.get("mcp-session-id")
-
-# 调用工具
-resp = httpx.post(
-    "http://localhost:8888/mcp",
-    json={"jsonrpc": "2.0", "method": "tools/call",
-          "params": {"name": "add", "arguments": {"a": 10, "b": 20}},
-          "id": 1},
-    headers={"Content-Type": "application/json",
-             "mcp-session-id": session_id}
-)
-print(resp.json())  # {"result": {"content": [{"text": "30.0"}]}}
+```json
+{
+  "mcpServers": {
+    "qiuchi": {
+      "command": "uv",
+      "args": ["run", "x-QiuChi", "--transport", "stdio"]
+    }
+  }
+}
 ```
 
-#### LangChain / LangGraph 集成
+**HTTP 方式接入 LangChain**（完整示例见 [examples/mcp\_clients/langchain\_mcp\_client.py](examples/mcp_clients/langchain_mcp_client.py)）：
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain.chat_models import init_chat_model
-from langgraph.prebuilt import create_react_agent
 
-client = MultiServerMCPClient({
-    "qiuchi_mcp": {
-        "transport": "http",
-        "url": "http://localhost:8888/mcp",
-    }
-})
-
-tools = await client.get_tools()
-model = init_chat_model("openai:gpt-4o-mini")
-agent = create_react_agent(model, tools)
-
-response = await agent.ainvoke({"messages": "计算 123 + 456"})
-print(response['messages'][-1].content)
+async with MultiServerMCPClient(
+    {"qiuchi": {"transport": "http", "url": "http://localhost:8888/mcp"}}
+) as client:
+    tools = client.get_tools()
 ```
 
----
+### 8. 常见问题排查
 
-## 项目结构
+| 问题                                            | 解决方案                                                                                           |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **端口被占用（Address already in use）**             | `netstat -ano \| findstr :8888` 定位进程后释放，或 `uv run x-QiuChi --port 8080` 换端口                    |
+| **uv 安装失败 / 网络超时**                            | 国内环境配置镜像源：`UV_DEFAULT_INDEX=https://mirrors.aliyun.com/pypi/simple/`；Docker 构建已内置镜像加速          |
+| **配置未生效 / 加载异常**                              | 检查 `.env` 与 `config.yaml` 是否与 `.env.example` / `config.yaml.example` 对齐；环境变量优先于 YAML           |
+| **汉江适配器连接失败（All connection attempts failed）** | 确认汉江后端实际监听端口，修改 `HANJIANG_BASE_URL`（本机 Docker 部署常见为 80 端口）；确认 `HANJIANG_USERNAME/PASSWORD` 已填写 |
+| **认证 401 / 工具调用无权限**                          | 开启认证后客户端需携带 Bearer Token（与 `AUTH_TOKENS` 一致）；汉江侧权限码决定 AI 可操作的工具边界                              |
+| **Docker 构建慢**                                | 使用国内镜像源（Dockerfile 已内置 aliyun PyPI 镜像）；确保 `uv.lock` 与 `pyproject.toml` 一致                      |
 
-```
+## 📁 项目结构
+
+```text
 x-QiuChi/
-├── config.yaml                      # 运行时配置文件
-├── config.yaml.example              # 配置示例（含全部字段说明）
-├── pyproject.toml                   # 包配置、依赖声明、工具链设置
-├── Dockerfile                       # 多阶段构建镜像定义
-├── docker-compose.yml               # 容器编排配置
-├── LICENSE                          # MIT 开源许可证
-│
-├── src/                             # 源码根目录
-│   ├── main.py                      # 主入口：CLI 参数解析与服务器启动
-│   │
-│   ├── constants/                   # 常量定义层
-│   │   ├── constants.py             # 全局常量（应用信息、环境标识、配置文件）
-│   │   └── enums.py                 # 全局枚举（Environment、LogLevel、TransportType、LogOutput、ServerState、PluginType、PluginStatus）
-│   │
-│   ├── core/                        # 核心层：框架基础设施
-│   │   ├── config.py                # Settings 配置管理（dataclass 分节，环境变量 > YAML > 默认值，validate/reload）
-│   │   ├── logger.py                # loguru 结构化日志封装（文件轮转、敏感信息过滤）
-│   │   ├── middleware.py            # 中间件管道（ErrorHandler / Logging）
-│   │   ├── auth.py                  # 传输层认证（SimpleTokenVerifier，mcp TokenVerifier Protocol）
-│   │
-│   ├── plugins/                     # 插件层：插件系统核心 + 内建扩展插件
-│   │   ├── registry.py              # PluginRegistry 统一注册表（RLock 线程安全）
-│   │   ├── manager.py               # PluginManager 插件管理器（自动发现、过滤、注册分发）
-│   │   ├── discovery.py             # 插件发现扫描器
-│   │   ├── collector.py             # 插件收集器（装饰器注册入口）
-│   │   └── builtin/                 # 内建扩展插件（discovery 唯一扫描区）
-│   │       ├── tools/
-│   │       │   └── math.py          # 5 个数学工具（加减乘除、开方）
-│   │       ├── resources/
-│   │       │   └── config.py        # 3 个配置资源（server config / version / API docs）
-│   │       └── prompts/
-│   │           └── templates.py     # 4 个提示词模板（问候、代码审查、天气穿搭、文档摘要）
-│   │
+├── src/                              # 源码根目录
+│   ├── main.py                       # 入口：CLI 解析、配置装配、服务器启动
+│   ├── constants/                    # 常量层：全局枚举与基础常量
+│   │   ├── enums.py                  # Environment / LogLevel / TransportType / PluginType 等枚举
+│   │   ├── constants.py              # 版本、作者、描述等全局常量
+│   │   └── base.py                   # 通用基础常量定义
+│   ├── core/                         # 核心层：框架基础设施
+│   │   ├── config.py                 # Settings 配置管理（dataclass 分节、env>yaml>默认值、校验）
+│   │   ├── logger.py                 # loguru 结构化日志（文件轮转、敏感字段过滤）
+│   │   ├── middleware.py             # 中间件管道（ErrorHandler / Logging / MiddlewareChain / RequestContext）
+│   │   └── auth.py                   # 传输层认证（Bearer Token 验证器，MCP TokenVerifier Protocol）
+│   ├── plugins/                      # 插件层：插件系统核心 + 内建扩展
+│   │   ├── discovery.py              # PluginDiscovery：扫描 discovery_paths，import 触发装饰器收集
+│   │   ├── collector.py              # PluginCollector：进程级全局收集器 + 三大装饰器
+│   │   ├── registry.py               # PluginRegistry：统一注册表（工具/资源/提示词 + 元数据）
+│   │   ├── manager.py                # PluginManager：门面，编排「发现 → 收集 → 注册」
+│   │   └── builtin/                  # 内建扩展插件（discovery 唯一扫描区）
+│   │       ├── tools/math.py         # 5 个数学工具（add/subtract/multiply/divide/sqrt）
+│   │       ├── resources/config.py   # 3 个配置资源（config://server、config://version、docs://api）
+│   │       └── prompts/templates.py  # 4 个提示词模板（greeting/code_review/weather/summarize）
 │   ├── adapters/                     # 适配器层：外部系统集成（HTTP 转接代理）
 │   │   └── hanjiang/                 # 汉江管理系统适配器（认证 + 用户管理，10 个工具）
-│   │       ├── client.py             # HanJiangClient（RSA 登录 / token 生命周期 / 错误映射）
+│   │       ├── client.py             # HanJiangClient：RSA-OAEP 登录 / token 生命周期 / 错误映射
 │   │       ├── auth_tools.py         # 认证域工具（login / logout / session_info）
 │   │       └── user_tools.py         # 用户域工具（create / list / get / update / status / reset / delete）
-│   │
-│   ├── server/                      # 服务层：MCP 服务器核心
-│   │   ├── server.py                # MCPServer 编排门面（组装 FastMCP / 认证 / 中间件 / 插件 / 生命周期）
-│   │   └── lifecycle.py             # 服务器生命周期状态机（UNINITIALIZED → RUNNING → STOPPED）
-│   │
-│   ├── transport/                   # 传输层：多协议传输抽象
-│   │   └── transport.py             # 传输配置、请求 ID 注入（X-Request-ID / ContextVar）与服务承载（Stdio / SSE / Streamable-HTTP）
-│   │
-│   └── utils/                       # 工具层：通用辅助函数
-│       └── helpers.py               # 通用辅助函数（时间格式化等）
-│
-├── examples/                        # 外部示例代码
-│   ├── mcp_clients/
-│   │   ├── mcp_client.py            # 原生 JSON-RPC MCP 客户端示例
-│   │   └── langchain_mcp_client.py  # LangChain MCP 集成示例
-│   └── mcp_servers/
-│       └── weather_mcp_server.py    # OpenWeatherMap 天气 MCP 服务示例
-│
-├── tests/                           # 测试目录
-│   ├── test_integration.py          # 6 步集成测试套件
-│   ├── test_protocol.py             # 真实 MCP 协议测试（官方 client）与传输层认证测试
-│   ├── test_config.py               # 配置单测（版本单一源 / 环境变量覆盖）
-│   ├── test_auth.py                 # 认证单测
-│   ├── test_request_id.py          # 请求 ID 单测
-│   ├── test_runtime.py              # 运行时上下文单测
-│   └── test_main_cli.py             # CLI 入口单测
-│
-├── .github/workflows/ci.yml         # CI：lint + mypy + test（coverage 门禁）+ build
-│
-├── docs/                            # 文档目录
-├── scripts/                         # 脚本工具目录
-├── static/                          # 静态资源目录
-├── logs/                            # 日志输出目录（运行时生成）
-└── tmp/                             # 临时文件目录
+│   ├── server/                       # 服务层：MCP 服务器核心
+│   │   ├── server.py                 # MCPServer 编排门面（组装 FastMCP / 认证 / 中间件 / 插件 / 生命周期）
+│   │   └── lifecycle.py              # 服务器生命周期状态机（UNINITIALIZED → RUNNING → STOPPED）
+│   ├── transport/                    # 传输层：多协议传输抽象
+│   │   └── transport.py              # 传输配置、request_id 注入（X-Request-ID / ContextVar）与服务承载
+│   └── utils/                        # 工具层：通用辅助函数
+│       └── helpers.py                # 通用帮助函数（时间格式化等）
+├── tests/                            # 测试套件（11 个测试模块，110+ 用例）
+├── examples/                         # 示例代码
+│   ├── mcp_clients/                  # MCP 客户端接入示例（官方 SDK / LangChain）
+│   └── mcp_servers/                  # 独立 MCP 服务器示例（天气）
+├── .github/workflows/ci.yml          # GitHub Actions CI（lint / mypy / test / build）
+├── hooks/                            # git hooks（pre-commit / commit-msg 规范检查）
+├── scripts/                          # 工程脚本（提交信息检查等）
+├── config.yaml / config.yaml.example # YAML 配置（示例）
+├── .env / .env.example               # 环境变量配置（示例）
+├── Dockerfile                        # 多阶段构建（非 root、健康检查）
+├── docker-compose.yml                # 容器编排
+├── pyproject.toml                    # 项目元数据 / 依赖 / 工具配置（uv/ruff/mypy/pytest）
+└── LICENSE                           # MIT 开源协议
 ```
 
----
+## 🏗️ 系统架构
 
-## 系统架构
-
-### 系统分层架构图
+### 系统分层架构
 
 ```mermaid
 flowchart TD
-    A["MCP 客户端<br/>(Claude Desktop / LangChain / 自定义客户端)"]
-    B["传输层 transport<br/>Stdio / SSE / Streamable-HTTP（默认）"]
-    B1["传输层加固（HTTP 模式）<br/>Bearer Token 认证（RequireAuthMiddleware）+ OpenTelemetry 遥测"]
-    C["中间件管道 core.middleware<br/>ErrorHandler → Logging → 业务处理器"]
-    subgraph D["MCP 三大原语（PluginType）"]
-        direction LR
-        D1["Tools（工具）"]
-        D2["Resources（资源）"]
-        D3["Prompts（提示词）"]
-    end
-    E["插件系统 plugins<br/>装饰器收集 → 发现 → 加载/启用 → 统一注册"]
-    F["PluginRegistry 统一注册表<br/>(RLock 线程安全)"]
-    G["MCPServer 编排门面 server<br/>组装 FastMCP，LifecycleManager 显式状态机"]
-    H["core 基础设施<br/>Settings 配置 / loguru 日志 / 中间件 / 认证 / 遥测"]
-    I["constants 共享类型<br/>TransportType / ServerState / PluginType 等枚举"]
+    A["MCP 客户端<br/>（Claude Desktop / LangChain / 自研 Agent）"]
+    B["传输层 transport<br/>stdio / SSE / Streamable-HTTP（默认）"]
+    B1["传输加固（HTTP 模式）<br/>Bearer Token 认证 + request_id 注入"]
+    C["中间件管道 core.middleware<br/>ErrorHandler → Logging → 业务处理"]
+    D["MCP 三大原语（PluginType）"]
+    E["插件系统 plugins<br/>发现 → 收集 → 注册"]
+    F["插件注册表 PluginRegistry<br/>（线程安全，RLock）"]
+    G["MCPServer 编排门面 server<br/>组装 FastMCP + 生命周期状态机"]
+    H["核心基础设施 core<br/>配置 / 日志 / 中间件 / 认证"]
+    I["常量层 constants<br/>TransportType / PluginType 等枚举"]
+    J["适配器层 adapters<br/>HanJiang 转接代理（HTTP → MCP 工具）"]
 
-    A -->|"MCP 协议（JSON-RPC）"| B
+    A -->|"MCP 协议（JSON-RPC 2.0）"| B
     B --> B1
     B1 --> C
     C --> D
@@ -490,192 +300,154 @@ flowchart TD
     G -->|"编排"| E
     G --> H
     H --> I
+    J -->|"以工具形式注册"| D
 ```
 
-### 服务器启动流程
+### 核心业务流程
+
+**服务器启动流程：**
 
 ```mermaid
 flowchart TD
-    S1["解析 CLI 参数 / 加载配置<br/>（main.py + Settings）"] --> S2["创建 MCPServer 实例<br/>装配 FastMCP / 传输层认证 / 默认中间件管道"]
-    S2 --> S3["生命周期状态机<br/>UNINITIALIZED → READY → RUNNING"]
-    S3 --> S4["插件初始化（PluginManager）<br/>发现 → 加载 → 启用"]
-    S4 --> S5["装饰器函数注册<br/>包装中间件管道后写入 PluginRegistry + FastMCP"]
-    S5 --> S6["serve_mcp 阻塞监听<br/>Streamable-HTTP（默认） / SSE / Stdio"]
+    S1["解析 CLI 参数 / 加载配置<br/>（main.py + Settings，env > yaml > 默认值）"]
+    S2["创建 MCPServer 实例<br/>组装 FastMCP / 传输认证 / 默认中间件"]
+    S3["生命周期状态机<br/>UNINITIALIZED → READY → RUNNING"]
+    S4["插件初始化（PluginManager）<br/>发现 → 收集 → 注册"]
+    S5["装饰器函数注册<br/>包裹中间件管道，写入 PluginRegistry + FastMCP"]
+    S6["serve_mcp 阻塞监听<br/>Streamable-HTTP（默认）/ SSE / Stdio"]
+
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6
 ```
 
-### 请求处理流程
+**请求处理流程：**
 
 ```mermaid
 flowchart TD
-    R1["接收 MCP 请求（JSON-RPC）"] --> R2["HTTP 传输层<br/>Bearer Token 认证 + OpenTelemetry 埋点（request_id）"]
-    R2 --> R3["FastMCP 按 method 分发<br/>到已注册的工具 / 资源 / 提示词"]
-    R3 --> R4["中间件管道<br/>ErrorHandler → Logging"]
-    R4 --> R6["执行业务函数<br/>（RequestContext 贯穿管道）"]
-    R6 --> R9["返回 MCP 响应"]
+    R1["接收 MCP 请求（JSON-RPC）"]
+    R2["HTTP 传输层<br/>Bearer Token 认证 + request_id 注入"]
+    R3["FastMCP 按方法分发<br/>tools/call → 对应工具"]
+    R4["中间件管道<br/>ErrorHandler → Logging（敏感字段脱敏）"]
+    R5["执行业务函数<br/>（RequestContext 贯穿管道）"]
+    R6["返回 MCP 响应"]
+
+    R1 --> R2 --> R3 --> R4 --> R5 --> R6
 ```
 
-### 模块依赖关系图
+**插件生命周期（装饰器插件）：**
 
 ```mermaid
-flowchart TD
-    A["src/main.py<br/>主入口"] --> B["src/server/server.py<br/>MCPServer 编排门面"]
-    A --> K["src/core/logger.py<br/>日志系统"]
-    K --> K1["loguru（外部依赖）"]
+flowchart LR
+    P1["① 发现<br/>PluginDiscovery 扫描 discovery_paths"]
+    P2["② 收集<br/>模块 import 时装饰器副作用写入 PluginCollector"]
+    P3["③ 注册<br/>PluginManager 读取 Collector，注册进 Registry + FastMCP"]
+    P4["④ 调用<br/>MCP 客户端 → wrapper → 中间件管道 → 原函数"]
 
-    B --> C1["FastMCP（外部依赖）"]
-    B --> D["src/plugins/manager.py<br/>插件管理器"]
-    B --> E["src/core/middleware.py<br/>中间件管道"]
-    B --> F["src/transport/transport.py<br/>传输承载 + 请求 ID 注入"]
-    B --> AUTH["src/core/auth.py<br/>传输层认证装配"]
-    B --> LC["src/server/lifecycle.py<br/>生命周期状态机"]
-    B --> H["src/core/config.py<br/>配置管理"]
-    H --> H1["dataclass + PyYAML（外部依赖）"]
-
-    D --> D2["src/plugins/registry.py<br/>PluginRegistry"]
-    D --> D3["src/plugins/discovery.py<br/>插件发现"]
-    D --> D4["src/plugins/collector.py<br/>装饰器收集"]
-
-    E --> E1["ErrorHandler 中间件"]
-    E --> E2["Logging 中间件"]
-
-    F --> T1["src/constants/enums.py<br/>TransportType 枚举"]
-    F --> T2["uvicorn（外部依赖）"]
-
-    D4 --> EN["src/constants/<br/>枚举与常量（最底层）"]
-    T1 --> EN
+    P1 --> P2 --> P3 --> P4
 ```
 
----
+### 关键技术组件
 
-## 技术栈
+| 组件                         | 模块                                | 职责                                                    |
+| -------------------------- | --------------------------------- | ----------------------------------------------------- |
+| **MCPServer**              | `src/server/server.py`            | 编排门面：组装 FastMCP / 认证 / 中间件 / 插件 / 生命周期，对外唯一入口         |
+| **LifecycleManager**       | `src/server/lifecycle.py`         | 服务器生命周期状态机（UNINITIALIZED → READY → RUNNING → STOPPED） |
+| **PluginManager**          | `src/plugins/manager.py`          | 插件系统门面：编排「发现 → 收集 → 注册」三段流程                           |
+| **PluginDiscovery**        | `src/plugins/discovery.py`        | 扫描 `discovery_paths` 并导入模块，触发装饰器收集（用后即弃）              |
+| **PluginCollector**        | `src/plugins/collector.py`        | 进程级全局收集器；`@tool` 等装饰器在 import 时自动写入                   |
+| **PluginRegistry**         | `src/plugins/registry.py`         | 统一注册表：工具/资源/提示词 + 元数据（线程安全，RLock）                     |
+| **MiddlewareChain**        | `src/core/middleware.py`          | 洋葱模型中间件执行链 + RequestContext/ResponseContext           |
+| **ErrorHandlerMiddleware** | `src/core/middleware.py`          | 错误兜底：JSON-RPC 标准错误码（-32700 \~ -32603）+ 自定义业务错误码       |
+| **LoggingMiddleware**      | `src/core/middleware.py`          | 请求/响应日志、耗时统计、敏感字段（password/token/key）自动脱敏             |
+| **Settings**               | `src/core/config.py`              | 配置管理：dataclass 分节、env > yaml > 默认值、按环境校验              |
+| **HanJiangClient**         | `src/adapters/hanjiang/client.py` | 汉江系统 HTTP 转接客户端：RSA-OAEP 登录、token 生命周期、错误映射           |
+| **Transport**              | `src/transport/transport.py`      | 传输配置与 request\_id 注入（X-Request-ID / ContextVar）、多协议承载 |
 
-| 分类 | 技术 | 版本 | 说明 |
-|------|------|------|------|
-| **开发语言** | [Python](https://www.python.org/) | >= 3.11 | 主开发语言 |
-| **MCP 框架** | [FastMCP (mcp)](https://github.com/modelcontextprotocol/python-sdk) | >= 1.0.0, < 2.0.0 | MCP 协议 Python SDK，服务器核心 |
-| **数据验证** | [Pydantic](https://docs.pydantic.dev/) | >= 2.0.0 | 传输层配置模型（SSEConfig / HTTPConfig / TLSConfig）与数据验证 |
-| **HTTP 客户端** | [httpx](https://www.python-httpx.org/) | >= 0.27.0 | 异步 HTTP 客户端 |
-| **配置解析** | [PyYAML](https://pyyaml.org/) | >= 6.0 | YAML 配置文件解析 |
-| **日志** | [loguru](https://loguru.readthedocs.io/) | >= 0.7.0 | 结构化日志，文件轮转与敏感信息过滤 |
-| **代码质量** | [Ruff](https://docs.astral.sh/ruff/) | >= 0.6.0 | 代码格式化 + Lint（替代 Black + Flake8） |
-| **类型检查** | [Mypy](https://mypy.readthedocs.io/) | >= 1.0.0 | 静态类型检查（strict 模式） |
-| **测试框架** | [Pytest](https://docs.pytest.org/) + pytest-asyncio | >= 8.0.0 | 单元测试与异步测试 |
-| **包管理** | [uv](https://docs.astral.sh/uv/) | >= 0.1 | 高性能 Python 包管理器 |
-| **容器化** | [Docker](https://www.docker.com/) / Docker Compose | - | 多阶段构建，非 root 用户运行，健康检查 |
-| **构建后端** | [Hatchling](https://hatch.pypa.io/) | - | PEP 517 构建后端 |
+## 🧰 技术栈
 
----
+| 分类           | 技术                                                                                                      | 用途                                     |
+| ------------ | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| **开发语言**     | Python ≥ 3.11                                                                                           | 项目开发语言                                 |
+| **协议框架**     | [MCP Python SDK（FastMCP）](https://github.com/modelcontextprotocol/python-sdk) ≥ 1.0                     | MCP 协议封装：三大原语注册、传输承载、客户端               |
+| **HTTP 客户端** | [httpx](https://www.python-httpx.org/) ≥ 0.27                                                           | 异步 HTTP 请求（汉江适配器、健康检查）                 |
+| **日志**       | [loguru](https://loguru.readthedocs.io/) ≥ 0.7                                                          | 结构化日志、文件轮转、敏感信息过滤                      |
+| **配置**       | [pydantic](https://docs.pydantic.dev/) / [pydantic-settings](https://docs.pydantic.dev/settings/) ≥ 2.0 | 配置模型与校验                                |
+| **配置解析**     | [PyYAML](https://pyyaml.org/) ≥ 6.0                                                                     | YAML 配置文件加载                            |
+| **加密**       | [pycryptodome](https://www.pycryptodome.org/) ≥ 3.24                                                    | RSA-OAEP(SHA-256) 加密（汉江登录链路）           |
+| **包管理**      | [uv](https://docs.astral.sh/uv/)                                                                        | 依赖安装/同步、虚拟环境、构建                        |
+| **测试**       | [pytest](https://docs.pytest.org/) / pytest-asyncio / pytest-cov                                        | 单元/集成/协议测试，覆盖率门禁 45%                   |
+| **代码质量**     | [ruff](https://docs.astral.sh/ruff/)                                                                    | Lint + 格式化（E/F/I/N/W/UP/B/C4/SIM）      |
+| **类型检查**     | [mypy](https://mypy.readthedocs.io/)                                                                    | 静态类型检查（src 零错误）                        |
+| **CI/CD**    | [GitHub Actions](https://github.com/features/actions)                                                   | lint / typecheck / test / build 四阶段流水线 |
+| **容器化**      | [Docker](https://www.docker.com/) / docker-compose                                                      | 多阶段构建、非 root 运行、健康检查                   |
 
-## API 文档说明
+## 📡 API 文档说明
 
-秋池（QiuChi）作为 MCP 服务器框架，不提供传统 REST API，而是通过 **MCP 协议** 进行能力发现与交互。
+本项目**不提供 REST API**（无 Swagger / ReDoc / OpenAPI 端点），对外接口为 **MCP 协议**（JSON-RPC 2.0），通过以下传输暴露：
 
-### MCP 三大原语
+| 传输类型                  | 连接方式                          | 说明                    |
+| --------------------- | ----------------------------- | --------------------- |
+| `streamable-http`（默认） | `POST http://<host>:8888/mcp` | 可流式 HTTP，适合远端接入       |
+| `stdio`               | 标准输入/输出                       | Claude Desktop 等本地客户端 |
+| `sse`                 | `GET http://<host>:8888/sse`  | Server-Sent Events    |
 
-MCP 协议把服务端可控能力分为三类——**工具（tools）**、**资源（resources）**、**提示词（prompts）**，即"三大原语"（primitives）。每类原语对应一组 JSON-RPC 方法，在本项目里通过装饰器声明、由插件系统自动发现并注册到 FastMCP：
+**核心 JSON-RPC 方法（MCP 协议方法）：**
 
-| 原语 | 定义 | JSON-RPC 方法 | 项目实例 | 声明位置 |
-|------|------|--------------|---------|---------|
-| **tools 工具** | 模型主动调用的带参函数，可产生副作用 | `tools/list` · `tools/call` | 5 个：`add` `subtract` `multiply` `divide` `sqrt` | `src/plugins/builtin/tools/math.py`（`@tool`） |
-| **resources 资源** | 模型按需读取的只读内容，URI 定位 | `resources/list` · `resources/read` | 3 个：`config://server` `config://version` `docs://api` | `src/plugins/builtin/resources/config.py`（`@resource`） |
-| **prompts 提示词** | 模型按参数实例化的可复用提示模板 | `prompts/list` · `prompts/get` | 4 个：`greeting` `code_review` `weather_outfit_advice` `summarize_document` | `src/plugins/builtin/prompts/templates.py`（`@prompt`） |
+| 类别   | 方法                                                  | 说明            |
+| ---- | --------------------------------------------------- | ------------- |
+| 生命周期 | `initialize` / `notifications/initialized` / `ping` | 握手、版本协商、心跳    |
+| 工具   | `tools/list` / `tools/call`                         | 发现工具、调用工具     |
+| 资源   | `resources/list` / `resources/read`                 | 发现资源、读取资源     |
+| 提示词  | `prompts/list` / `prompts/get`                      | 发现提示词、获取提示词模板 |
 
-**注册链路**：`@tool` / `@resource` / `@prompt` 装饰器 → 全局 Collector（模块 import 时收集）→ `PluginManager` 过滤注册 → FastMCP 自动暴露 JSON-RPC 端点。每个调用先注入真实 `request_id`，再走中间件管道（ErrorHandler → Logging）后执行原函数。
+**内置能力清单：**
 
-### MCP 协议接口清单
+- **工具（15 个）**：数学域 5 个（`add` / `subtract` / `multiply` / `divide` / `sqrt`）；汉江域 10 个（`hanjiang_login` / `hanjiang_logout` / `hanjiang_session_info` / `hanjiang_user_create` / `hanjiang_user_list` / `hanjiang_user_get` / `hanjiang_user_update` / `hanjiang_user_status` / `hanjiang_user_reset_password` / `hanjiang_user_delete`）
+- **资源（3 个）**：`config://server`、`config://version`、`docs://api`
+- **提示词（4 个）**：`greeting`、`code_review`、`weather_outfit_advice`、`summarize_document`
 
-| 能力 | MCP 方法 | 说明 |
-|------|---------|------|
-| 工具列表 | `tools/list` | 获取所有已注册工具及其参数定义 |
-| 工具调用 | `tools/call` | 调用指定工具并返回执行结果 |
-| 资源列表 | `resources/list` | 获取所有已注册资源及其 URI |
-| 资源读取 | `resources/read` | 读取指定 URI 的资源内容 |
-| 提示词列表 | `prompts/list` | 获取所有已注册提示词模板 |
-| 提示词获取 | `prompts/get` | 获取指定提示词模板及其参数 |
+**权限控制：**
 
-### 内置示例
+- 传输层认证：`middleware.auth.enabled=true` 时，HTTP 请求必须携带 `Authorization: Bearer <token>`（token 与 `AUTH_TOKENS` 一致）
+- 适配器权限：汉江侧用户权限码决定 AI 可操作的工具边界（建议为适配器配置最小权限专用账号）
 
-**工具（8 个）**：
+## 💾 存储配置说明
 
-| 工具名 | 说明 |
-|--------|------|
-| `add` | 两数相加 |
-| `subtract` | 两数相减 |
-| `multiply` | 两数相乘 |
-| `divide` | 两数相除 |
-| `sqrt` | 开平方 |
+本项目**无业务数据库 / 对象存储**，唯一持久化输出为**文件日志**：
 
-**资源（3 个）**：
+| 配置项                 | 默认值                                      | 说明                              |
+| ------------------- | ---------------------------------------- | ------------------------------- |
+| `logging.output`    | `both`                                   | 输出目标：`stderr` / `file` / `both` |
+| `logging.file_path` | `logs/x-QiuChi_{time:YYYY-MM-DD-HH}.log` | 日志文件路径（支持 `{time}` 模板）          |
+| `logging.rotation`  | `1 hour`                                 | 日志轮转周期                          |
+| `logging.retention` | `7 days`                                 | 日志保留时长                          |
+| `logging.format`    | 结构化格式                                    | loguru 日志格式（含时间/级别/文件/行号）       |
 
-| 资源 URI | 说明 |
-|----------|------|
-| `config://server` | 服务器配置信息 |
-| `config://version` | 版本信息 |
-| `docs://api` | API 文档 |
+> Docker 部署时日志目录挂载到 `qiuchi-logs` 命名卷，宿主机可通过 `docker compose logs` 查看。日志中敏感字段（密码/Token/密钥）由 `LoggingMiddleware` 自动脱敏。
 
-**提示词（5 个）**：
+## 📜 许可证
 
-| 提示词名 | 说明 |
-|----------|------|
-| `greeting` | 个性化问候 |
-| `code_review` | 代码审查提示词 |
-| `weather_outfit_advice` | 天气穿搭建议 |
-| `summarize_document` | 文档摘要提示词 |
+本项目基于 [MIT 开源协议](LICENSE) 发布，可自由使用、修改与分发（保留版权声明）。
 
----
+## 📚 参考资料
 
-## 存储配置说明
+- [MCP 协议规范](https://modelcontextprotocol.io/specification/2025-03-26) —— Model Context Protocol 官方规范
+- [MCP Python SDK（FastMCP）](https://github.com/modelcontextprotocol/python-sdk) —— 官方 Python 实现
+- [Python 官方文档](https://docs.python.org/3.11/) —— Python 3.11
+- [uv 包管理器](https://docs.astral.sh/uv/) —— 依赖管理与构建
+- [loguru 文档](https://loguru.readthedocs.io/) —— 日志库
+- [httpx 文档](https://www.python-httpx.org/) —— HTTP 客户端
+- [pycryptodome 文档](https://www.pycryptodome.org/) —— 加密库
+- [pydantic 文档](https://docs.pydantic.dev/) —— 配置与校验
+- [ruff 文档](https://docs.astral.sh/ruff/) —— Lint 与格式化
+- [mypy 文档](https://mypy.readthedocs.io/) —— 类型检查
+- [pytest 文档](https://docs.pytest.org/) —— 测试框架
+- [Docker 文档](https://docs.docker.com/) —— 容器化部署
 
-### 内存存储
+## 📬 联系方式
 
-| 存储类型 | 实现方式 | 配置位置 | 说明 |
-|---------|---------|---------|------|
-| 会话存储 | 内存字典 | `src/runtime/session.py` | SessionManager，支持 TTL 和自动清理 |
-| 插件注册表 | 内存字典 | `src/plugins/registry.py` | PluginRegistry，线程安全（RLock） |
+- **作者**：John Young（夜雨诗来）
+- **邮箱**：<john.young@foxmail.com>
+- **Gitee**：<https://gitee.com/yeyushilai>
+- **GitHub**：<https://github.com/yeyushilai>
+- **项目地址**：<https://github.com/chain-engine/x-QiuChi>
 
-### 日志文件存储
-
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `logging.file_path` | `logs/x-QiuChi_{time:YYYY-MM-DD-HH}.log` | 日志文件路径（支持时间模板变量） |
-| `logging.rotation` | `1 hour` | 日志轮转周期 |
-| `logging.retention` | `7 days` | 日志保留时长 |
-| `logging.output` | `both` | 输出目标：`stderr`（仅标准错误）/ `file`（仅文件）/ `both`（两者） |
-
----
-
-## 许可证
-
-本项目采用 [MIT](LICENSE) 许可证。
-
----
-
-## 参考资料
-
-| 资源 | 链接 |
-|------|------|
-| MCP 协议规范 | https://modelcontextprotocol.io/ |
-| FastMCP SDK | https://github.com/modelcontextprotocol/python-sdk |
-| Python 官方文档 | https://docs.python.org/3.11/ |
-| Pydantic 文档 | https://docs.pydantic.dev/ |
-| uv 包管理器 | https://docs.astral.sh/uv/ |
-| loguru 日志库 | https://loguru.readthedocs.io/ |
-| httpx 文档 | https://www.python-httpx.org/ |
-| PyYAML 文档 | https://pyyaml.org/wiki/PyYAMLDocumentation |
-| Ruff 文档 | https://docs.astral.sh/ruff/ |
-| Mypy 文档 | https://mypy.readthedocs.io/ |
-| Pytest 文档 | https://docs.pytest.org/ |
-| Docker 官方文档 | https://docs.docker.com/ |
-| Hatchling 文档 | https://hatch.pypa.io/ |
-
----
-
-## 联系方式
-
-| 渠道 | 信息 |
-|------|------|
-| 作者 | John Young（夜雨诗来） |
-| 邮箱 | [john.young@foxmail.com](mailto:john.young@foxmail.com) |
-| Gitee | https://gitee.com/yeyushilai |
-| GitHub | https://github.com/yeyushilai |
-| 项目地址 | https://github.com/chain-engine/x-QiuChi |

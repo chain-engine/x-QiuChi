@@ -7,7 +7,7 @@
 - user_tools：用户管理域工具（create / list / get / update / status / reset_password / delete）
 
 装配方式：应用入口显式 import 本包（src/main.py 的 main_async 中
-import src.adapters），import 副作用触发 @tool_decorator 收集，
+import src.adapters），import 副作用触发 @tool 收集，
 随后由 PluginManager.initialize() 统一注册进 registry + FastMCP。
 """
 

@@ -2,7 +2,7 @@
 汉江认证域 MCP 工具
 
 将汉江管理系统认证 API（登录 / 登出 / 当前用户）转接为 MCP 工具。
-所有工具经 @tool_decorator 收集，注册后由 FastMCP 暴露给 MCP 客户端。
+所有工具经 @tool 收集，注册后由 FastMCP 暴露给 MCP 客户端。
 
 安全约定：
 - 密码等敏感参数由 LoggingMiddleware 的 _SENSITIVE_FIELDS 自动脱敏，不入日志
@@ -15,7 +15,7 @@ import json
 from typing import Any
 
 from src.adapters.hanjiang.client import HanJiangError, get_client
-from src.plugins import tool_decorator
+from src.plugins import tool
 
 
 def _format_result(data: Any) -> str:
@@ -23,7 +23,7 @@ def _format_result(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
-@tool_decorator(category="hanjiang.auth", subcategory="session", tags=["hanjiang", "auth", "login"])
+@tool(category="hanjiang.auth", subcategory="session", tags=["hanjiang", "auth", "login"])
 async def hanjiang_login(username: str, password: str) -> str:
     """
     登录汉江管理系统（密码经 RSA-OAEP 加密传输，password 参数自动脱敏不入日志）
@@ -48,9 +48,7 @@ async def hanjiang_login(username: str, password: str) -> str:
         return f"登录失败: {e.message}（请检查账号密码或稍后重试）"
 
 
-@tool_decorator(
-    category="hanjiang.auth", subcategory="session", tags=["hanjiang", "auth", "logout"]
-)
+@tool(category="hanjiang.auth", subcategory="session", tags=["hanjiang", "auth", "logout"])
 async def hanjiang_logout() -> str:
     """
     登出汉江管理系统：清除当前会话在汉江的登录态，使令牌立即失效
@@ -65,9 +63,7 @@ async def hanjiang_logout() -> str:
         return f"登出失败: {e.message}"
 
 
-@tool_decorator(
-    category="hanjiang.auth", subcategory="session", tags=["hanjiang", "auth", "session", "me"]
-)
+@tool(category="hanjiang.auth", subcategory="session", tags=["hanjiang", "auth", "session", "me"])
 async def hanjiang_session_info() -> str:
     """
     获取汉江当前登录用户资料（含角色与权限码），用于验证会话有效性与权限边界

@@ -5,7 +5,7 @@
 
 发现流程：
     1. 扫描配置的发现路径
-    2. 导入模块触发装饰器收集（@tool_decorator/@resource_decorator/@prompt_decorator → 全局 collector）
+    2. 导入模块触发装饰器收集（@tool/@resource/@prompt → 全局 collector）
     3. 返回发现的插件名称列表
 """
 
@@ -36,7 +36,7 @@ class PluginDiscovery:
         自动发现插件（tool / resource / prompt）
 
         扫描配置的发现路径并导入模块，import 副作用触发
-        @tool_decorator/@resource_decorator/@prompt_decorator 收集进全局 collector。
+        @tool/@resource/@prompt 收集进全局 collector。
 
         Returns:
             发现的插件名称列表（不分类型）

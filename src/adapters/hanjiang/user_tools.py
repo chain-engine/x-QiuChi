@@ -16,7 +16,7 @@ import json
 from typing import Any
 
 from src.adapters.hanjiang.client import HanJiangError, get_client
-from src.plugins import tool_decorator
+from src.plugins import tool
 
 
 def _format_result(data: Any) -> str:
@@ -29,7 +29,7 @@ def _build_update_payload(**fields: Any) -> dict[str, Any]:
     return {key: value for key, value in fields.items() if value is not None}
 
 
-@tool_decorator(category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "create"])
+@tool(category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "create"])
 async def hanjiang_user_create(
     username: str,
     email: str,
@@ -83,7 +83,7 @@ async def hanjiang_user_create(
         return f"创建用户失败: {e.message}"
 
 
-@tool_decorator(category="hanjiang.user", subcategory="query", tags=["hanjiang", "user", "list"])
+@tool(category="hanjiang.user", subcategory="query", tags=["hanjiang", "user", "list"])
 async def hanjiang_user_list(
     page: int = 1,
     page_size: int = 20,
@@ -114,7 +114,7 @@ async def hanjiang_user_list(
         return f"查询用户列表失败: {e.message}"
 
 
-@tool_decorator(category="hanjiang.user", subcategory="query", tags=["hanjiang", "user", "detail"])
+@tool(category="hanjiang.user", subcategory="query", tags=["hanjiang", "user", "detail"])
 async def hanjiang_user_get(user_id: int) -> str:
     """
     查询汉江用户详情
@@ -132,7 +132,7 @@ async def hanjiang_user_get(user_id: int) -> str:
         return f"查询用户失败: {e.message}（用户可能不存在）"
 
 
-@tool_decorator(category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "update"])
+@tool(category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "update"])
 async def hanjiang_user_update(
     user_id: int,
     username: str | None = None,
@@ -184,7 +184,7 @@ async def hanjiang_user_update(
         return f"更新用户失败: {e.message}"
 
 
-@tool_decorator(category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "status"])
+@tool(category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "status"])
 async def hanjiang_user_status(user_id: int, status: str) -> str:
     """
     启用/禁用汉江用户账号
@@ -203,9 +203,7 @@ async def hanjiang_user_status(user_id: int, status: str) -> str:
         return f"更新用户状态失败: {e.message}"
 
 
-@tool_decorator(
-    category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "reset-password"]
-)
+@tool(category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "reset-password"])
 async def hanjiang_user_reset_password(user_id: int, new_password: str) -> str:
     """
     管理员重置汉江用户密码（new_password 参数自动脱敏不入日志）
@@ -224,7 +222,7 @@ async def hanjiang_user_reset_password(user_id: int, new_password: str) -> str:
         return f"重置密码失败: {e.message}"
 
 
-@tool_decorator(category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "delete"])
+@tool(category="hanjiang.user", subcategory="manage", tags=["hanjiang", "user", "delete"])
 async def hanjiang_user_delete(user_id: int) -> str:
     """
     删除汉江用户（软删除，仅禁用账号）

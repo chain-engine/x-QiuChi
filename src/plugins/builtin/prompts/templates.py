@@ -5,10 +5,10 @@
 每个模板遵循「角色设定 → 任务目标 → 输入说明 → 输出规范 → 质量约束」结构。
 """
 
-from src.plugins import prompt_decorator
+from src.plugins import prompt
 
 
-@prompt_decorator(category="greeting", tags=["welcome", "social"])
+@prompt(category="greeting", tags=["welcome", "social"])
 def greeting(name: str) -> str:
     """
     生成问候语
@@ -36,7 +36,7 @@ def greeting(name: str) -> str:
 - 必须引导用户提出具体需求"""
 
 
-@prompt_decorator(category="code", tags=["development", "review"])
+@prompt(category="code", tags=["development", "review"])
 def code_review(language: str, code_snippet: str) -> str:
     """
     生成代码审查提示
@@ -77,7 +77,7 @@ def code_review(language: str, code_snippet: str) -> str:
 - 不输出与代码无关的泛泛建议"""
 
 
-@prompt_decorator(category="weather", tags=["advice", "daily"])
+@prompt(category="weather", tags=["advice", "daily"])
 def weather_outfit_advice(weather: str, temperature: float) -> str:
     """
     生成天气穿衣建议
@@ -127,7 +127,7 @@ def weather_outfit_advice(weather: str, temperature: float) -> str:
 - 温度与天气必须同时纳入考量"""
 
 
-@prompt_decorator(category="documentation", tags=["summary", "analysis"])
+@prompt(category="documentation", tags=["summary", "analysis"])
 def summarize_document(document: str, max_length: int = 200) -> str:
     """
     生成文档摘要提示
