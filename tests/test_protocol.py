@@ -130,7 +130,7 @@ async def test_protocol_tools_list(server_port: int) -> None:
         await session.initialize()
         tools = await session.list_tools()
         names = [t.name for t in tools.tools]
-        # math 工具（src.extensions.tools.math 注册的 tool 类型插件）
+        # math 工具（src.plugins.tools.math 注册的 tool 类型插件）
         assert {"add", "subtract", "multiply", "divide", "power", "sqrt"} <= set(names)
 
 

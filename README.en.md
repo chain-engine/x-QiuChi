@@ -111,7 +111,7 @@ cp config.yaml.example config.yaml
 | `features.prompts` | `true` | Enable Prompts primitive |
 | `features.middleware` | `true` | Enable middleware pipeline |
 | `plugins.auto_discovery` | `true` | Enable automatic plugin discovery |
-| `plugins.discovery_paths` | `["src.extensions"]` | Plugin scan paths |
+| `plugins.discovery_paths` | `["src.plugins"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable transport-layer Bearer Token auth |
 | `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
 | `opentelemetry.enabled` | `true` | Enable OpenTelemetry |
@@ -328,13 +328,17 @@ x-QiuChi/
 │   │   ├── logger.py                # loguru structured logging (file rotation, sensitive info filtering)
 │   │   └── middleware.py            # Middleware pipeline (ErrorHandler / Logging / Auth)
 │   │
-│   ├── plugins/                     # Plugin layer: plugin system core
-│   │   ├── base.py                  # Plugin abstract base class and metadata (PluginMetadata)
+│   ├── plugins/                     # Plugin layer: plugin system core + built-in extensions
 │   │   ├── registry.py              # PluginRegistry (thread-safe, RLock)
-│   │   ├── manager.py               # PluginManager (auto-discovery, dependency resolution, lifecycle)
+│   │   ├── manager.py               # PluginManager (auto-discovery, filtering, registration dispatch)
 │   │   ├── discovery.py             # Plugin discovery scanner
-│   │   ├── loader.py                # Plugin loader
-│   │   └── collector.py             # Plugin collector (decorator registration entry)
+│   │   ├── collector.py             # Plugin collector (decorator registration entry)
+│   │   ├── tools/
+│   │   │   └── math.py              # 8 math tools (add, subtract, multiply, divide, power, sqrt, temperature)
+│   │   ├── resources/
+│   │   │   └── config.py            # 3 config resources (server config / version / API docs)
+│   │   └── prompts/
+│   │       └── templates.py         # 5 prompt templates (greeting, code review, weather outfit, etc.)
 │   │
 │   ├── server/                      # Server layer: MCP server core
 │   │   ├── server.py                # MCPServer facade (assembles FastMCP / auth / middleware / plugins / lifecycle)
@@ -347,15 +351,8 @@ x-QiuChi/
 │   ├── transport/                   # Transport layer: multi-protocol transport abstraction
 │   │   └── transport.py             # Transport config & serving (Stdio / SSE / Streamable-HTTP, default streamable-http)
 │   │
-│   ├── utils/                       # Utils layer (currently empty, reserved for helper functions)
-│   │
-│   └── extensions/                  # Extensions layer: built-in extension plugins (tools / resources / prompts)
-│       ├── tools/
-│       │   └── math.py              # 8 math tools (add, subtract, multiply, divide, power, sqrt, temperature)
-│       ├── resources/
-│       │   └── config.py            # 3 config resources (server config / version / API docs)
-│       └── prompts/
-│           └── templates.py         # 5 prompt templates (greeting, code review, weather outfit, etc.)
+│   └── utils/                       # Utils layer: general helper functions
+│       └── helpers.py               # General helpers (time formatting, etc.)
 │
 ├── examples/                        # External example code
 │   ├── mcp_clients/
@@ -458,7 +455,7 @@ flowchart TD
 
     F --> T1["src/constants/enums.py<br/>TransportType Enum"]
     F --> T2["uvicorn (External)"]
-    F -.->|"Lazy Import"| OT["src/core/opentelemetry.py<br/>Telemetry"]
+    F -.->|"Lazy Import"| OT["src/infras/opentelemetry.py<br/>Telemetry"]
 
     D4 --> EN["src/constants/<br/>Enums & Constants (Bottom Layer)"]
     T1 --> EN

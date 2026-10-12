@@ -111,7 +111,7 @@ cp config.yaml.example config.yaml
 | `features.prompts` | `true` | 是否启用提示词原语 |
 | `features.middleware` | `true` | 是否启用中间件管道 |
 | `plugins.auto_discovery` | `true` | 是否自动发现插件 |
-| `plugins.discovery_paths` | `["src.extensions"]` | 插件扫描路径 |
+| `plugins.discovery_paths` | `["src.plugins"]` | 插件扫描路径 |
 | `middleware.auth.enabled` | `false` | 是否启用传输层 Bearer Token 认证 |
 | `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
 | `opentelemetry.enabled` | `true` | 是否启用 OpenTelemetry |
@@ -404,15 +404,21 @@ x-QiuChi/
 │   │   ├── logger.py                # loguru 结构化日志封装（文件轮转、敏感信息过滤）
 │   │   ├── middleware.py            # 中间件管道（ErrorHandler / Logging）
 │   │   ├── auth.py                  # 传输层认证（SimpleTokenVerifier，mcp TokenVerifier Protocol）
+│   │
+│   ├── infras/                      # 基础设施层：第三方能力适配
 │   │   └── opentelemetry.py         # OpenTelemetry（request_id 注入、HTTP span/metrics，console/otlp）
 │   │
-│   ├── plugins/                     # 插件层：插件系统核心
-│   │   ├── base.py                  # 插件抽象基类与元数据定义（PluginMetadata）
+│   ├── plugins/                     # 插件层：插件系统核心 + 内建扩展插件
 │   │   ├── registry.py              # PluginRegistry 统一注册表（RLock 线程安全）
-│   │   ├── manager.py               # PluginManager 插件管理器（自动发现、依赖解析、生命周期）
+│   │   ├── manager.py               # PluginManager 插件管理器（自动发现、过滤、注册分发）
 │   │   ├── discovery.py             # 插件发现扫描器
-│   │   ├── loader.py                # 插件加载器
-│   │   └── collector.py             # 插件收集器（装饰器注册入口）
+│   │   ├── collector.py             # 插件收集器（装饰器注册入口）
+│   │   ├── tools/
+│   │   │   └── math.py              # 8 个数学工具（加减乘除、幂、开方、温度转换）
+│   │   ├── resources/
+│   │   │   └── config.py            # 3 个配置资源（server config / version / API docs）
+│   │   └── prompts/
+│   │       └── templates.py         # 5 个提示词模板（问候、代码审查、天气穿搭等）
 │   │
 │   ├── server/                      # 服务层：MCP 服务器核心
 │   │   ├── server.py                # MCPServer 编排门面（组装 FastMCP / 认证 / 中间件 / 插件 / 生命周期）
@@ -425,15 +431,8 @@ x-QiuChi/
 │   ├── transport/                   # 传输层：多协议传输抽象
 │   │   └── transport.py             # 传输配置与服务承载（Stdio / SSE / Streamable-HTTP，默认 streamable-http）
 │   │
-│   ├── utils/                       # 工具层（当前为空，预留通用辅助函数位）
-│   │
-│   └── extensions/                  # 扩展层：内置扩展插件（tools / resources / prompts）
-│       ├── tools/
-│       │   └── math.py              # 8 个数学工具（加减乘除、幂、开方、温度转换）
-│       ├── resources/
-│       │   └── config.py            # 3 个配置资源（server config / version / API docs）
-│       └── prompts/
-│           └── templates.py         # 5 个提示词模板（问候、代码审查、天气穿搭等）
+│   └── utils/                       # 工具层：通用辅助函数
+│       └── helpers.py               # 通用辅助函数（时间格式化等）
 │
 ├── examples/                        # 外部示例代码
 │   ├── mcp_clients/
@@ -544,7 +543,7 @@ flowchart TD
 
     F --> T1["src/constants/enums.py<br/>TransportType 枚举"]
     F --> T2["uvicorn（外部依赖）"]
-    F -.->|"延迟导入"| OT["src/core/opentelemetry.py<br/>遥测埋点"]
+    F -.->|"延迟导入"| OT["src/infras/opentelemetry.py<br/>遥测埋点"]
 
     D4 --> EN["src/constants/<br/>枚举与常量（最底层）"]
     T1 --> EN
