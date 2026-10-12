@@ -29,7 +29,7 @@ features:
 plugins:
   auto_discovery: true
   discovery_paths:
-    - "src.plugins"
+    - "src.plugins.builtin"
   enabled_plugins: []  # 空列表表示启用所有
   disabled_plugins: []  # 禁用的插件列表
 

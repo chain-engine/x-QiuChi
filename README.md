@@ -111,7 +111,7 @@ cp config.yaml.example config.yaml
 | `features.prompts` | `true` | 是否启用提示词原语 |
 | `features.middleware` | `true` | 是否启用中间件管道 |
 | `plugins.auto_discovery` | `true` | 是否自动发现插件 |
-| `plugins.discovery_paths` | `["src.plugins"]` | 插件扫描路径 |
+| `plugins.discovery_paths` | `["src.plugins.builtin"]` | 插件扫描路径 |
 | `middleware.auth.enabled` | `false` | 是否启用传输层 Bearer Token 认证 |
 | `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
 | `opentelemetry.enabled` | `true` | 是否启用 OpenTelemetry |
@@ -413,12 +413,13 @@ x-QiuChi/
 │   │   ├── manager.py               # PluginManager 插件管理器（自动发现、过滤、注册分发）
 │   │   ├── discovery.py             # 插件发现扫描器
 │   │   ├── collector.py             # 插件收集器（装饰器注册入口）
-│   │   ├── tools/
-│   │   │   └── math.py              # 8 个数学工具（加减乘除、幂、开方、温度转换）
-│   │   ├── resources/
-│   │   │   └── config.py            # 3 个配置资源（server config / version / API docs）
-│   │   └── prompts/
-│   │       └── templates.py         # 5 个提示词模板（问候、代码审查、天气穿搭等）
+│   │   └── builtin/                 # 内建扩展插件（discovery 唯一扫描区）
+│   │       ├── tools/
+│   │       │   └── math.py          # 8 个数学工具（加减乘除、幂、开方、温度转换）
+│   │       ├── resources/
+│   │       │   └── config.py        # 3 个配置资源（server config / version / API docs）
+│   │       └── prompts/
+│   │           └── templates.py     # 5 个提示词模板（问候、代码审查、天气穿搭等）
 │   │
 │   ├── server/                      # 服务层：MCP 服务器核心
 │   │   ├── server.py                # MCPServer 编排门面（组装 FastMCP / 认证 / 中间件 / 插件 / 生命周期）

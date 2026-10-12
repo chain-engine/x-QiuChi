@@ -111,7 +111,7 @@ cp config.yaml.example config.yaml
 | `features.prompts` | `true` | Enable Prompts primitive |
 | `features.middleware` | `true` | Enable middleware pipeline |
 | `plugins.auto_discovery` | `true` | Enable automatic plugin discovery |
-| `plugins.discovery_paths` | `["src.plugins"]` | Plugin scan paths |
+| `plugins.discovery_paths` | `["src.plugins.builtin"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable transport-layer Bearer Token auth |
 | `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
 | `opentelemetry.enabled` | `true` | Enable OpenTelemetry |
@@ -333,12 +333,13 @@ x-QiuChi/
 │   │   ├── manager.py               # PluginManager (auto-discovery, filtering, registration dispatch)
 │   │   ├── discovery.py             # Plugin discovery scanner
 │   │   ├── collector.py             # Plugin collector (decorator registration entry)
-│   │   ├── tools/
-│   │   │   └── math.py              # 8 math tools (add, subtract, multiply, divide, power, sqrt, temperature)
-│   │   ├── resources/
-│   │   │   └── config.py            # 3 config resources (server config / version / API docs)
-│   │   └── prompts/
-│   │       └── templates.py         # 5 prompt templates (greeting, code review, weather outfit, etc.)
+│   │   └── builtin/                 # Built-in extensions (only discovery scan area)
+│   │       ├── tools/
+│   │       │   └── math.py          # 8 math tools (add, subtract, multiply, divide, power, sqrt, temperature)
+│   │       ├── resources/
+│   │       │   └── config.py        # 3 config resources (server config / version / API docs)
+│   │       └── prompts/
+│   │           └── templates.py     # 5 prompt templates (greeting, code review, weather outfit, etc.)
 │   │
 │   ├── server/                      # Server layer: MCP server core
 │   │   ├── server.py                # MCPServer facade (assembles FastMCP / auth / middleware / plugins / lifecycle)

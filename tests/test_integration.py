@@ -107,7 +107,7 @@ def test_extensions():
 
     try:
         # Test math tools
-        from src.plugins.tools.math import add, divide, multiply, subtract
+        from src.plugins.builtin.tools.math import add, divide, multiply, subtract
 
         assert add(10, 5) == 15.0
         assert subtract(10, 5) == 5.0
@@ -117,7 +117,7 @@ def test_extensions():
         print("    [OK] Math tools working")
 
         # Test config resources
-        from src.plugins.resources.config import get_server_config
+        from src.plugins.builtin.resources.config import get_server_config
 
         config = get_server_config()
         assert isinstance(config, str)
@@ -126,7 +126,7 @@ def test_extensions():
         print("    [OK] Config resources working")
 
         # Test prompt templates
-        from src.plugins.prompts.templates import greeting
+        from src.plugins.builtin.prompts.templates import greeting
 
         greeting_text = greeting("Test")
         assert "Test" in greeting_text

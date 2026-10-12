@@ -4,7 +4,7 @@
 覆盖：
 - PluginRegistry：注册（同名拒绝/覆盖）、类型化注册、按类型/分类/子分类/tags 过滤查询
 - PluginCollector：collect 元数据注入、默认值、get_items 副本、装饰器工厂
-- PluginDiscovery：扫描 src.plugins 真实发现、空路径分支
+- PluginDiscovery：扫描 src.plugins.builtin 真实发现、空路径分支
 - PluginManager：initialize 全链路、注册过滤、中间件 wrapper（同步/异步函数）
 """
 
@@ -182,7 +182,7 @@ class TestPluginDiscovery:
     def test_discover_scans_extensions(self) -> None:
         names = PluginDiscovery().discover()
         assert isinstance(names, list)
-        assert len(names) > 0  # src.plugins 下的 @tool 函数应被发现
+        assert len(names) > 0  # src.plugins.builtin 下的 @tool 函数应被发现
 
     def test_discover_empty_paths(self, monkeypatch) -> None:
         from src.core.config import settings
@@ -191,7 +191,7 @@ class TestPluginDiscovery:
         assert PluginDiscovery().discover() == []
 
     def test_scan_module_finds_decorator_items(self) -> None:
-        import src.plugins as ext
+        import src.plugins.builtin as ext
 
         module_path = Path(ext.__file__).parent
         names = PluginDiscovery()._scan_module(ext, module_path)
@@ -209,21 +209,6 @@ class TestPluginManager:
         manager = PluginManager(server)
         await manager.initialize()
         assert server.registry.count() > 0
-
-    def test_should_register_func(self, monkeypatch) -> None:
-        from src.core.config import settings
-
-        server = MCPServer()
-        manager = PluginManager(server)
-
-        monkeypatch.setattr(settings.plugins, "enabled_plugins", ["a"])
-        monkeypatch.setattr(settings.plugins, "disabled_plugins", ["b"])
-        assert manager._should_register_func("a") is True
-        assert manager._should_register_func("c") is False  # 白名单外
-        assert manager._should_register_func("b") is False  # 黑名单优先
-
-        monkeypatch.setattr(settings.plugins, "enabled_plugins", [])
-        assert manager._should_register_func("c") is True  # 空白名单=全启用
 
     def test_register_item_writes_registry(self) -> None:
         server = MCPServer()

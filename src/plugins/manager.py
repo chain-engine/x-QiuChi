@@ -6,11 +6,11 @@
 
 生命周期（装饰器插件：发现 → 收集 → 注册 → 调用）
 --------------------------------------------------
-① 发现（server.start() → initialize()）
-   discover() ──委托──► PluginDiscovery 扫描 discovery_paths
+① 发现（server.start() → initialize() → discover_plugins()）
+   PluginDiscovery 扫描 discovery_paths
        │ import 子模块，触发装饰器收集
        ▼
-   返回装饰器函数名单
+   返回插件名单
 
 ② 收集（模块 import 时，装饰器副作用）
    业务代码: @tool / @resource / @prompt 标记函数
@@ -20,12 +20,11 @@
 
 ③ 注册（initialize() → _register_decorator_functions()）
    get_*_collector().get_items()
-       │ _should_register_func()：enabled / disabled 过滤
        ▼
-   _register_item(kind, name, info)
+   _register_item(item_type, name, info)
        ├─► _build_middleware_wrapper()：包裹中间件管道（注入 request_id）
-       ├─► registry.register_<kind>()：写入 ServerRegistry
-       └─► mcp.<kind>()(wrapper)：注册进 FastMCP
+       ├─► registry.register_<item_type>()：写入 ServerRegistry
+       └─► mcp.<item_type>()(wrapper)：注册进 FastMCP
 
 ④ 调用（运行时）
    MCP 客户端 ──► FastMCP ──► wrapper（保持原签名）
@@ -37,8 +36,8 @@
    返回结果
 
 职责分工：发现委托 PluginDiscovery（临时创建、用后即弃）；
-装饰器函数从全局 Collector 读取，经 enabled/disabled 过滤后
-注册到 server.registry（PluginRegistry）+ server.mcp（FastMCP）。
+装饰器函数从全局 Collector 读取后注册到
+server.registry（PluginRegistry）+ server.mcp（FastMCP）。
 """
 
 from __future__ import annotations
@@ -61,9 +60,8 @@ class PluginManager:
     """
     插件管理器（插件子系统门面 / 编排者）
 
-    只做编排与决策（发现顺序、过滤、注册分发），不承载扫描 / 收集 / 存储实现：
-    - 发现：委托 PluginDiscovery（discover()，临时创建、用后即弃）
-    - 过滤：_should_register_func()（enabled_plugins / disabled_plugins 白黑名单）
+    只做编排与决策（发现顺序、注册分发），不承载扫描 / 收集 / 存储实现：
+    - 发现：initialize() 内直接调 discover_plugins()
     - 注册：_register_decorator_functions() → _register_item()（registry + FastMCP）
 
     Args:
@@ -74,72 +72,41 @@ class PluginManager:
         self.server = server
 
     # ------------------------------------------------------------------
-    # 发现
-    # ------------------------------------------------------------------
-    def discover(self) -> list[str]:
-        """
-        自动发现插件（委托 PluginDiscovery，单一扫描）
-
-        import 副作用触发 @tool/@resource/@prompt 收集进全局 collector，
-        发现明细由 PluginDiscovery 分组输出，本方法不重复打日志。
-
-        Returns:
-            发现的插件名称列表
-        """
-        from .discovery import discover_plugins
-
-        return discover_plugins()
-
-    # ------------------------------------------------------------------
-    # 初始化与注册
+    # 初始化：发现 → 注册
     # ------------------------------------------------------------------
     async def initialize(self) -> None:
-        """初始化插件系统：发现 → 读取收集器 → 过滤 → 注册到 registry + FastMCP。"""
+        """初始化插件系统：发现插件 → 读取收集器 → 注册到 registry + FastMCP。"""
         logger.info("Initializing plugin system...")
 
-        # 发现插件
-        if settings.plugins.auto_discovery:
-            self.discover()
+        if not settings.plugins.auto_discovery:
+            logger.warning("Plugin auto-discovery is disabled, no plugins will be loaded")
+            return
 
-        # 注册插件
+        # 第一步：发现插件（过程中会触发装饰器收集）
+        from .discovery import discover_plugins
+
+        discover_plugins()
+
+        # 第二步：注册插件（从收集器读取，统一注册）
         self._register_decorator_functions()
 
-    def _should_register_func(self, name: str) -> bool:
-        """装饰器函数注册过滤：未被禁用，且（白名单为空或已命中）。"""
-        return not self._is_disabled(name) and self._is_enabled(name)
-
-    def _is_enabled(self, name: str) -> bool:
-        """enabled_plugins 为空表示全部启用；否则仅启用列表中的"""
-        enabled = settings.plugins.enabled_plugins
-        return not enabled or name in enabled
-
-    def _is_disabled(self, name: str) -> bool:
-        """命中 disabled_plugins 列表则视为禁用"""
-        return name in settings.plugins.disabled_plugins
-
     def _register_decorator_functions(self) -> None:
-        """从全局收集器读取装饰器函数，经 enabled/disabled 过滤后统一注册。"""
+        """从全局收集器读取装饰器函数，统一注册到 registry + FastMCP。"""
         from .collector import get_prompt_collector, get_resource_collector, get_tool_collector
 
         for tool_name, info in get_tool_collector().get_items().items():
-            if not self._should_register_func(tool_name):
-                continue
             self._register_item("tool", tool_name, info)
 
         for resource_name, info in get_resource_collector().get_items().items():
-            if not self._should_register_func(resource_name):
-                continue
             self._register_item("resource", resource_name, info)
 
         for prompt_name, info in get_prompt_collector().get_items().items():
-            if not self._should_register_func(prompt_name):
-                continue
             self._register_item("prompt", prompt_name, info)
 
     def _build_middleware_wrapper(
         self,
         func: Callable,
-        func_kind: str,
+        func_type: str,
         func_id: str,
     ) -> Callable:
         """为 func 包裹中间件管道。
@@ -157,7 +124,7 @@ class PluginManager:
 
             req = RequestContext(
                 request={
-                    "method": f"{func_kind}:{func_id}",
+                    "method": f"{func_type}:{func_id}",
                     "id": get_request_id(),  # 传输层注入的真实 request_id
                     "params": kwargs,
                     "_args": args,
@@ -184,15 +151,17 @@ class PluginManager:
         wrapped.__wrapped__ = func
         return wrapped
 
-    def _register_item(self, kind: str, name: str, info: dict[str, Any]) -> None:
+    def _register_item(self, item_type: str, name: str, info: dict[str, Any]) -> None:
         """将单个装饰器收集项注册到 registry + FastMCP（tool/resource/prompt 统一入口）。
 
         Args:
-            kind: 插件类型，取值 "tool" / "resource" / "prompt"
+            item_type: 插件类型，取值 "tool" / "resource" / "prompt"
             name: 工具名 / 资源 URI / 提示词名
             info: collector 收集项（含 func/doc/category/subcategory/tags）
         """
-        wrapper = self._build_middleware_wrapper(info["func"], kind, name)
+
+        # registry：按 item_type 分发到 register_tool / register_resource / register_prompt
+        wrapper = self._build_middleware_wrapper(info["func"], item_type, name)
         metadata = PluginMetadata(
             name=name,
             description=info["doc"],
@@ -200,12 +169,10 @@ class PluginManager:
             subcategory=info["subcategory"],
             tags=info["tags"],
         )
-
-        # registry：按 kind 分发到 register_tool / register_resource / register_prompt
-        register_fn = getattr(self.server.registry, f"register_{kind}")
+        register_fn = getattr(self.server.registry, f"register_{item_type}")
         register_fn(
             name=name,
-            **{kind: wrapper},
+            **{item_type: wrapper},
             metadata=metadata,
             category=info["category"],
             subcategory=info["subcategory"],
@@ -213,13 +180,13 @@ class PluginManager:
         )
 
         # FastMCP：由 wrapper 承载中间件管道，schema 由 FastMCP 分析
-        mcp_fn = getattr(self.server.mcp, kind)
-        if kind == "resource":
+        mcp_fn = getattr(self.server.mcp, item_type)
+        if item_type == "resource":
             mcp_fn(name, name=name, description=info["doc"])(wrapper)
         else:
             mcp_fn(name=name, description=info["doc"])(wrapper)
 
-        logger.debug(f"Registered {kind}: {name}")
+        logger.debug(f"Registered {item_type}: {name}")
 
 
 __all__ = ["PluginManager"]
