@@ -116,7 +116,7 @@ class MiddlewareConfig:
 class HanJiangConfig:
     """汉江管理系统适配器配置（HTTP 转接代理的目标系统凭据）。"""
 
-    base_url: str = "http://localhost:8000"
+    base_url: str = "http://localhost"
     username: str = ""
     password: str = ""
     encryption_enabled: bool = True
@@ -235,7 +235,7 @@ class Settings:
                 },
             },
             "hanjiang": {
-                "base_url": "http://localhost:8000",
+                "base_url": "http://localhost",
                 "username": "",
                 "password": "",
                 "encryption_enabled": True,

@@ -86,7 +86,6 @@ class MCPServer:
             logger.warning("Server is already running")
             return
 
-        logger.info(f"Starting MCP Server '{self.name}'...")
         await self.lifecycle.initialize()
         await self.lifecycle.startup()
         await self.plugin_manager.initialize()
@@ -97,7 +96,6 @@ class MCPServer:
         if not self.lifecycle.is_running():
             return
 
-        logger.info(f"Stopping MCP Server '{self.name}'...")
         await self.lifecycle.shutdown()
         logger.info(f"MCP Server '{self.name}' stopped")
 

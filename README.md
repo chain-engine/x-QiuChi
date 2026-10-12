@@ -111,7 +111,7 @@ cp config.yaml.example config.yaml
 | `plugins.discovery_paths` | `["src.plugins.builtin"]` | 插件扫描路径 |
 | `middleware.auth.enabled` | `false` | 是否启用传输层 Bearer Token 认证 |
 | `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
-| `hanjiang.base_url` | `http://localhost:8000` | 汉江管理系统后端地址（HTTP 转接代理目标） |
+| `hanjiang.base_url` | `http://localhost` | 汉江管理系统后端地址（HTTP 转接代理目标） |
 | `hanjiang.username` | `""` | 汉江服务凭据账号（权限决定 AI 操作边界） |
 | `hanjiang.password` | `""` | 汉江服务凭据密码（敏感，优先 .env） |
 | `hanjiang.encryption_enabled` | `true` | 是否 RSA-OAEP 加密密码（与汉江 AUTH_ENCRYPTION_ENABLED 一致） |
@@ -410,11 +410,11 @@ x-QiuChi/
 │   │   ├── collector.py             # 插件收集器（装饰器注册入口）
 │   │   └── builtin/                 # 内建扩展插件（discovery 唯一扫描区）
 │   │       ├── tools/
-│   │       │   └── math.py          # 8 个数学工具（加减乘除、幂、开方、温度转换）
+│   │       │   └── math.py          # 5 个数学工具（加减乘除、开方）
 │   │       ├── resources/
 │   │       │   └── config.py        # 3 个配置资源（server config / version / API docs）
 │   │       └── prompts/
-│   │           └── templates.py     # 5 个提示词模板（问候、代码审查、天气穿搭等）
+│   │           └── templates.py     # 4 个提示词模板（问候、代码审查、天气穿搭、文档摘要）
 │   │
 │   ├── adapters/                     # 适配器层：外部系统集成（HTTP 转接代理）
 │   │   └── hanjiang/                 # 汉江管理系统适配器（认证 + 用户管理，10 个工具）
@@ -576,9 +576,9 @@ MCP 协议把服务端可控能力分为三类——**工具（tools）**、**�
 
 | 原语 | 定义 | JSON-RPC 方法 | 项目实例 | 声明位置 |
 |------|------|--------------|---------|---------|
-| **tools 工具** | 模型主动调用的带参函数，可产生副作用 | `tools/list` · `tools/call` | 8 个：`add` `subtract` `multiply` `divide` `power` `sqrt` `celsius_to_fahrenheit` `fahrenheit_to_celsius` | `src/plugins/builtin/tools/math.py`（`@tool`） |
+| **tools 工具** | 模型主动调用的带参函数，可产生副作用 | `tools/list` · `tools/call` | 5 个：`add` `subtract` `multiply` `divide` `sqrt` | `src/plugins/builtin/tools/math.py`（`@tool`） |
 | **resources 资源** | 模型按需读取的只读内容，URI 定位 | `resources/list` · `resources/read` | 3 个：`config://server` `config://version` `docs://api` | `src/plugins/builtin/resources/config.py`（`@resource`） |
-| **prompts 提示词** | 模型按参数实例化的可复用提示模板 | `prompts/list` · `prompts/get` | 5 个：`greeting` `code_review` `weather_outfit_advice` `explain_concept` `summarize_document` | `src/plugins/builtin/prompts/templates.py`（`@prompt`） |
+| **prompts 提示词** | 模型按参数实例化的可复用提示模板 | `prompts/list` · `prompts/get` | 4 个：`greeting` `code_review` `weather_outfit_advice` `summarize_document` | `src/plugins/builtin/prompts/templates.py`（`@prompt`） |
 
 **注册链路**：`@tool` / `@resource` / `@prompt` 装饰器 → 全局 Collector（模块 import 时收集）→ `PluginManager` 过滤注册 → FastMCP 自动暴露 JSON-RPC 端点。每个调用先注入真实 `request_id`，再走中间件管道（ErrorHandler → Logging）后执行原函数。
 
@@ -603,10 +603,7 @@ MCP 协议把服务端可控能力分为三类——**工具（tools）**、**�
 | `subtract` | 两数相减 |
 | `multiply` | 两数相乘 |
 | `divide` | 两数相除 |
-| `power` | 幂运算 |
 | `sqrt` | 开平方 |
-| `celsius_to_fahrenheit` | 摄氏度转华氏度 |
-| `fahrenheit_to_celsius` | 华氏度转摄氏度 |
 
 **资源（3 个）**：
 
@@ -623,7 +620,6 @@ MCP 协议把服务端可控能力分为三类——**工具（tools）**、**�
 | `greeting` | 个性化问候 |
 | `code_review` | 代码审查提示词 |
 | `weather_outfit_advice` | 天气穿搭建议 |
-| `explain_concept` | 概念解释提示词 |
 | `summarize_document` | 文档摘要提示词 |
 
 ---

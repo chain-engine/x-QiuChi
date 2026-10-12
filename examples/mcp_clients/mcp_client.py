@@ -12,8 +12,13 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 
 import httpx
+
+# Windows 控制台默认 GBK，强制 stdout 用 UTF-8 输出，避免中文乱码
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # ---------------------------------------------------------------------------
 # 配置：从项目根 .env 读取（仅填充未设置的键），与配置文件平级独立
@@ -109,6 +114,9 @@ if __name__ == "__main__":
     print(f"tools/list: {[t['name'] for t in tools]}")
     result = call("tools/call", {"name": "add", "arguments": {"a": 1, "b": 2}})
     print(f"tools/call add(1, 2): {json.dumps(result, ensure_ascii=False)}")
+    # 汉江登录示例：替换为真实账号密码（password 经 RSA-OAEP 加密传输，不落日志）
+    result = call("tools/call", {"name": "hanjiang_login", "arguments": {"username": "qiuchi", "password": "admin@123456"}})
+    print(f"tools/call hanjiang_login: {json.dumps(result, ensure_ascii=False)}")
 
     print("\n=== 资源 ===")
     resources = call("resources/list").get("resources", [])

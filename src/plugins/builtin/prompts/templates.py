@@ -1,7 +1,8 @@
 """
 提示词模板示例
 
-展示如何使用 QiuChi 的提示词装饰器创建提示词模板。
+展示如何使用 QiuChi 的提示词装饰器创建生产级提示词模板。
+每个模板遵循「角色设定 → 任务目标 → 输入说明 → 输出规范 → 质量约束」结构。
 """
 
 from src.plugins import prompt_decorator
@@ -18,7 +19,21 @@ def greeting(name: str) -> str:
     Returns:
         个性化的问候语
     """
-    return f"Hello, {name}! Welcome to QiuChi MCP Server. How can I assist you today?"
+    return f"""你是秋池 MCP 服务器的智能助手，具备专业、友好、高效的沟通风格。
+
+【任务】
+为用户 {name} 生成一句个性化问候语。
+
+【输出规范】
+- 语气：真诚、温暖、不谄媚
+- 长度：不超过 50 字
+- 必须包含用户名 {name}
+- 需体现秋池的核心能力：工具调用、资源查询、提示词生成
+
+【约束】
+- 禁止使用感叹号堆砌
+- 禁止空泛的客套话（如"很高兴为你服务"）
+- 必须引导用户提出具体需求"""
 
 
 @prompt_decorator(category="code", tags=["development", "review"])
@@ -33,18 +48,33 @@ def code_review(language: str, code_snippet: str) -> str:
     Returns:
         代码审查提示
     """
-    return f"""Please review the following {language} code for best practices, potential bugs, and performance issues:
+    return f"""你是一位拥有 10 年经验的高级 {language} 工程师，同时兼任团队代码审查委员会主席。
 
+【审查目标】
+对以下 {language} 代码进行全面审查，识别潜在问题并给出可落地的改进建议。
+
+【待审查代码】
 ```{language}
 {code_snippet}
 ```
 
-Please provide:
-1. Code quality assessment
-2. Potential bugs or edge cases
-3. Performance considerations
-4. Suggested improvements
-5. Security concerns (if any)"""
+【审查维度（按优先级排序）】
+1. **正确性** — 逻辑是否正确？边界条件是否覆盖？是否存在死代码或未处理的异常路径？
+2. **安全性** — 是否存在注入风险、信息泄露、权限绕过、不安全的随机数/加密？
+3. **性能** — 是否存在不必要的循环、内存泄漏、N+1 查询、可优化的算法复杂度？
+4. **可维护性** — 命名是否清晰？函数是否单一职责？是否有重复代码可抽取？注释是否准确而非复述代码？
+5. **一致性** — 是否遵循项目既有代码风格与约定？
+
+【输出规范】
+- 每个问题必须包含：问题描述、严重级别（致命/高/中/低）、代码定位、修复建议
+- 按严重级别从高到低排序
+- 如无问题，明确回复"未发现需要改进的问题"，不得强行凑数
+- 修复建议需给出具体代码示例
+
+【质量约束】
+- 只审查提供的代码，不臆测上下文
+- 区分"事实性缺陷"与"风格偏好"，后者归入低优先级
+- 不输出与代码无关的泛泛建议"""
 
 
 @prompt_decorator(category="weather", tags=["advice", "daily"])
@@ -59,43 +89,42 @@ def weather_outfit_advice(weather: str, temperature: float) -> str:
     Returns:
         穿衣建议提示
     """
-    return f"""Based on the current weather ({weather}, {temperature}°C), here's my outfit advice:
+    return f"""你是一位专业生活顾问，擅长根据天气与温度提供实用的穿搭建议。
 
-1. **Temperature consideration**: {temperature}°C is {"very cold" if temperature < 0 else "cold" if temperature < 10 else "cool" if temperature < 20 else "warm" if temperature < 30 else "hot"}.
-2. **Weather-specific advice**: {{
-    'sunny': 'Wear sunglasses and apply sunscreen',
-    'rainy': 'Bring an umbrella and wear waterproof shoes',
-    'cloudy': 'Layers are recommended as it might get chilly',
-    'snowy': 'Wear insulated clothing and waterproof boots'
-    }}.get(weather, 'Dress appropriately for the conditions')
-3. **Recommended clothing**: Suggest appropriate clothing based on both temperature and weather.
+【输入条件】
+- 天气：{weather}
+- 温度：{temperature}°C
 
-Please provide specific clothing recommendations."""
+【分析框架】
+1. **体感评估**：结合温度与天气判断实际体感（如雨天体感低于实际温度）
+2. **分层穿搭**：按"内层-中层-外层"给出建议，便于增减
+3. **配件建议**：根据天气给出针对性配件（伞、墨镜、围巾等）
+4. **场景适配**：兼顾通勤与日常活动
 
+【温度分级参考】
+- < 0°C：极寒，需厚羽绒服 + 保暖内衣
+- 0 ~ 10°C：寒冷，需羽绒服或厚外套
+- 10 ~ 20°C：凉爽，需薄外套或风衣
+- 20 ~ 30°C：温暖，长袖或短袖
+- ≥ 30°C：炎热，透气短袖
 
-@prompt_decorator(category="education", tags=["learning", "explanation"])
-def explain_concept(concept: str, audience: str = "beginner") -> str:
-    """
-    生成概念解释提示
+【天气针对性建议】
+{{
+    'sunny': '紫外线强，建议防晒霜 + 墨镜，浅色衣物',
+    'rainy': '需防水外套 + 雨伞，避免布鞋',
+    'cloudy': '温差可能较大，建议多层穿搭便于增减',
+    'snowy': '需防水防滑靴 + 厚袜 + 手套围巾'
+}}.get("{weather}", '请根据实际天气灵活调整')
 
-    Args:
-        concept: 要解释的概念
-        audience: 目标受众 (beginner, intermediate, advanced)
+【输出规范】
+- 先给出一句话总体判断
+- 然后按"上衣 / 下装 / 鞋履 / 配件"分项列出
+- 每条建议需说明理由
+- 最后给出一条"出行提醒"
 
-    Returns:
-        概念解释提示
-    """
-    return f"""Please explain the concept of "{concept}" to a {audience} audience.
-
-Requirements:
-1. Start with a simple, clear definition
-2. Use analogies or examples appropriate for a {audience}
-3. Explain why this concept is important
-4. Provide practical applications or use cases
-5. Mention any common misconceptions
-6. Keep the explanation concise but comprehensive
-
-Target audience: {audience}"""
+【约束】
+- 建议必须具体可执行，禁止"适当增减衣物"这类废话
+- 温度与天气必须同时纳入考量"""
 
 
 @prompt_decorator(category="documentation", tags=["summary", "analysis"])
@@ -110,24 +139,40 @@ def summarize_document(document: str, max_length: int = 200) -> str:
     Returns:
         文档摘要提示
     """
-    return f"""Please summarize the following document in under {max_length} words:
+    return f"""你是一位专业的技术文档编辑，擅长从长文本中提取核心信息。
 
+【任务】
+将以下文档摘要为不超过 {max_length} 字的精简版本。
+
+【待摘要文档】
 {document}
 
-Summary requirements:
-1. Capture the main points and key information
-2. Maintain the original meaning and context
-3. Use clear, concise language
-4. Highlight any important conclusions or recommendations
-5. Keep the summary under {max_length} words
+【摘要原则】
+1. **保留核心**：必须包含文档的主题、关键结论、重要数据
+2. **删除冗余**：去除背景铺垫、重复表述、次要细节
+3. **忠于原文**：不得添加原文没有的信息，不得改变原文立场
+4. **逻辑连贯**：摘要本身应是一段通顺的文字，而非要点堆砌
 
-Provide only the summary, without additional commentary."""
+【输出规范】
+- 长度：严格不超过 {max_length} 字
+- 格式：单段连贯文本，不使用列表
+- 如原文有明确结论，摘要必须以结论收尾
+
+【质量检查清单】
+- [ ] 是否覆盖了原文的核心论点？
+- [ ] 是否遗漏了关键数据或事实？
+- [ ] 是否存在原文未提及的内容？
+- [ ] 字数是否在限制内？
+- [ ] 语句是否通顺、无语法错误？
+
+【约束】
+- 只输出摘要正文，不要输出"摘要："等前缀
+- 不要附加"以上是摘要"之类的结束语"""
 
 
 __all__ = [
     "greeting",
     "code_review",
     "weather_outfit_advice",
-    "explain_concept",
     "summarize_document",
 ]

@@ -131,7 +131,7 @@ async def test_protocol_tools_list(server_port: int) -> None:
         tools = await session.list_tools()
         names = [t.name for t in tools.tools]
         # math 工具（src.plugins.builtin.tools.math 注册的 tool 类型插件）
-        assert {"add", "subtract", "multiply", "divide", "power", "sqrt"} <= set(names)
+        assert {"add", "subtract", "multiply", "divide", "sqrt"} <= set(names)
 
 
 @pytest.mark.asyncio

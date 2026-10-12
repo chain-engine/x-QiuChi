@@ -114,7 +114,7 @@ cp config.yaml.example config.yaml
 | `plugins.discovery_paths` | `["src.plugins.builtin"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable transport-layer Bearer Token auth |
 | `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
-| `hanjiang.base_url` | `http://localhost:8000` | HanJiang backend base URL (HTTP proxy target) |
+| `hanjiang.base_url` | `http://localhost` | HanJiang backend base URL (HTTP proxy target) |
 | `hanjiang.username` | `""` | HanJiang service credential username (defines AI operation boundary) |
 | `hanjiang.password` | `""` | HanJiang service credential password (sensitive, prefer .env) |
 | `hanjiang.encryption_enabled` | `true` | RSA-OAEP password encryption (align with HanJiang AUTH_ENCRYPTION_ENABLED) |
@@ -337,11 +337,11 @@ x-QiuChi/
 │   │   ├── collector.py             # Plugin collector (decorator registration entry)
 │   │   └── builtin/                 # Built-in extensions (only discovery scan area)
 │   │       ├── tools/
-│   │       │   └── math.py          # 8 math tools (add, subtract, multiply, divide, power, sqrt, temperature)
+│   │       │   └── math.py          # 5 math tools (add, subtract, multiply, divide, sqrt)
 │   │       ├── resources/
 │   │       │   └── config.py        # 3 config resources (server config / version / API docs)
 │   │       └── prompts/
-│   │           └── templates.py     # 5 prompt templates (greeting, code review, weather outfit, etc.)
+│   │           └── templates.py     # 4 prompt templates (greeting, code review, weather outfit, summary)
 │   │
 │   ├── adapters/                     # Adapter layer: external system integration (HTTP proxy)
 │   │   └── hanjiang/                 # HanJiang management system adapter (auth + user management, 10 tools)
@@ -495,9 +495,9 @@ The MCP protocol divides server-side capabilities into three kinds — **tools**
 
 | Primitive | Definition | JSON-RPC methods | Project instances | Declaration |
 |-----------|-----------|------------------|-------------------|-------------|
-| **tools** | Parameterized functions the model actively calls; may have side effects | `tools/list` · `tools/call` | 8: `add` `subtract` `multiply` `divide` `power` `sqrt` `celsius_to_fahrenheit` `fahrenheit_to_celsius` | `src/plugins/builtin/tools/math.py` (`@tool`) |
+| **tools** | Parameterized functions the model actively calls; may have side effects | `tools/list` · `tools/call` | 5: `add` `subtract` `multiply` `divide` `sqrt` | `src/plugins/builtin/tools/math.py` (`@tool`) |
 | **resources** | Read-only content the model fetches on demand, addressed by URI | `resources/list` · `resources/read` | 3: `config://server` `config://version` `docs://api` | `src/plugins/builtin/resources/config.py` (`@resource`) |
-| **prompts** | Reusable prompt templates the model instantiates with arguments | `prompts/list` · `prompts/get` | 5: `greeting` `code_review` `weather_outfit_advice` `explain_concept` `summarize_document` | `src/plugins/builtin/prompts/templates.py` (`@prompt`) |
+| **prompts** | Reusable prompt templates the model instantiates with arguments | `prompts/list` · `prompts/get` | 4: `greeting` `code_review` `weather_outfit_advice` `summarize_document` | `src/plugins/builtin/prompts/templates.py` (`@prompt`) |
 
 **Registration chain**: `@tool` / `@resource` / `@prompt` decorator → global Collector (collected on module import) → `PluginManager` filtering & registration → FastMCP exposes JSON-RPC endpoints automatically. Every call first injects a real `request_id`, then runs through the middleware pipeline (ErrorHandler → Logging) before executing the original function.
 
@@ -522,10 +522,7 @@ The MCP protocol divides server-side capabilities into three kinds — **tools**
 | `subtract` | Subtract two numbers |
 | `multiply` | Multiply two numbers |
 | `divide` | Divide two numbers |
-| `power` | Power operation |
 | `sqrt` | Square root |
-| `celsius_to_fahrenheit` | Celsius to Fahrenheit |
-| `fahrenheit_to_celsius` | Fahrenheit to Celsius |
 
 **Resources (3)**:
 
@@ -542,7 +539,6 @@ The MCP protocol divides server-side capabilities into three kinds — **tools**
 | `greeting` | Personalized greeting |
 | `code_review` | Code review prompt |
 | `weather_outfit_advice` | Weather outfit advice |
-| `explain_concept` | Concept explanation prompt |
 | `summarize_document` | Document summary prompt |
 
 ---

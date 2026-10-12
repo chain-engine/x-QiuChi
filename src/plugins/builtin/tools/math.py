@@ -72,21 +72,6 @@ def divide(a: float, b: float) -> float:
     return a / b
 
 
-@tool_decorator(category="math", subcategory="advanced", tags=["exponentiation"])
-def power(base: float, exponent: float) -> float:
-    """
-    幂运算
-
-    Args:
-        base: 底数
-        exponent: 指数
-
-    Returns:
-        base 的 exponent 次方
-    """
-    return float(base**exponent)
-
-
 @tool_decorator(category="math", subcategory="advanced", tags=["root"])
 def sqrt(number: float) -> float:
     """
@@ -106,41 +91,10 @@ def sqrt(number: float) -> float:
     return float(number**0.5)
 
 
-@tool_decorator(category="conversion", tags=["temperature"])
-def celsius_to_fahrenheit(celsius: float) -> float:
-    """
-    摄氏度转华氏度
-
-    Args:
-        celsius: 摄氏度
-
-    Returns:
-        对应的华氏度
-    """
-    return (celsius * 9 / 5) + 32
-
-
-@tool_decorator(category="conversion", tags=["temperature"])
-def fahrenheit_to_celsius(fahrenheit: float) -> float:
-    """
-    华氏度转摄氏度
-
-    Args:
-        fahrenheit: 华氏度
-
-    Returns:
-        对应的摄氏度
-    """
-    return (fahrenheit - 32) * 5 / 9
-
-
 __all__ = [
     "add",
     "subtract",
     "multiply",
     "divide",
-    "power",
     "sqrt",
-    "celsius_to_fahrenheit",
-    "fahrenheit_to_celsius",
 ]

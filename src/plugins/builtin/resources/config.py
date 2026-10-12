@@ -28,7 +28,7 @@ def get_server_config() -> str:
             "prompts": True,
         },
     }
-    return json.dumps(config, indent=2)
+    return json.dumps(config, indent=2, ensure_ascii=False)
 
 
 @resource_decorator(name="config://version", category="system", tags=["info"])
@@ -44,11 +44,11 @@ def get_version_info() -> str:
     info = {
         "name": "QiuChi",
         "version": "1.0.0",
-        "description": "Enterprise-grade MCP Server Framework",
+        "description": "一个生产级 MCP（Model Context Protocol）服务器框架",
         "author": "John Young <john.young@foxmail.com>",
         "license": "MIT",
     }
-    return json.dumps(info, indent=2)
+    return json.dumps(info, indent=2, ensure_ascii=False)
 
 
 @resource_decorator(name="docs://api", category="documentation", tags=["docs", "api"])
@@ -60,24 +60,25 @@ def get_api_documentation() -> str:
         API 文档的 Markdown 格式
     """
     return """
-# QiuChi MCP Server API Documentation
+# 秋池 MCP 服务器 API 文档
 
-## Overview
-QiuChi is an enterprise-grade MCP (Model Context Protocol) server framework.
+## 概述
+秋池（QiuChi）是一个生产级 MCP（Model Context Protocol）服务器框架。
 
-## Available Tools
-- `add`: Add two numbers
-- `subtract`: Subtract two numbers
-- `multiply`: Multiply two numbers
-- `divide`: Divide two numbers
+## 可用工具
+- `add`：两数相加
+- `subtract`：两数相减
+- `multiply`：两数相乘
+- `divide`：两数相除
+- `sqrt`：开平方
 
-## Available Resources
-- `config://server`: Server configuration
-- `config://version`: Version information
-- `docs://api`: This documentation
+## 可用资源
+- `config://server`：服务器配置
+- `config://version`：版本信息
+- `docs://api`：本文档
 
-## Usage
-Connect to the server using any MCP-compatible client.
+## 使用方式
+使用任意 MCP 兼容客户端连接服务器即可。
 """
 
 

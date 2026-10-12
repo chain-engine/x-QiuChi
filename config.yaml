@@ -41,7 +41,7 @@ middleware:
 
 # 汉江管理系统适配器配置（HTTP 转接代理：认证 + 用户管理）
 hanjiang:
-  base_url: "http://localhost:8000"  # 汉江管理系统后端地址
+  base_url: "http://localhost"  # 汉江管理系统后端地址（本机部署时 80 端口）
   username: ""                        # 服务凭据账号（管理员，敏感值优先放 .env）
   password: ""                        # 服务凭据密码（敏感值优先放 .env）
   encryption_enabled: true            # 是否 RSA-OAEP 加密密码（与汉江 AUTH_ENCRYPTION_ENABLED 保持一致）
