@@ -56,7 +56,7 @@ class ServerState(StrBaseEnum):
 
 
 class PluginType(StrBaseEnum):
-    """插件扩展点类型枚举（tool / resource / prompt）"""
+    """插件类型枚举（tool / resource / prompt）"""
 
     TOOL = ("tool", "工具")
     RESOURCE = ("resource", "资源")

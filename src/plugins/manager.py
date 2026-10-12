@@ -78,18 +78,17 @@ class PluginManager:
     # ------------------------------------------------------------------
     def discover(self) -> list[str]:
         """
-        自动发现装饰器函数插件（委托 PluginDiscovery，单一扫描）
+        自动发现插件（委托 PluginDiscovery，单一扫描）
 
-        import 副作用触发 @tool/@resource/@prompt 收集进全局 collector。
+        import 副作用触发 @tool/@resource/@prompt 收集进全局 collector，
+        发现明细由 PluginDiscovery 分组输出，本方法不重复打日志。
 
         Returns:
-            发现的装饰器函数插件名称列表
+            发现的插件名称列表
         """
         from .discovery import discover_plugins
 
-        names = discover_plugins()
-        logger.info(f"Auto-discovered {len(names)} decorator entries")
-        return names
+        return discover_plugins()
 
     # ------------------------------------------------------------------
     # 初始化与注册
@@ -98,11 +97,11 @@ class PluginManager:
         """初始化插件系统：发现 → 读取收集器 → 过滤 → 注册到 registry + FastMCP。"""
         logger.info("Initializing plugin system...")
 
-        # 发现装饰器函数插件
+        # 发现插件
         if settings.plugins.auto_discovery:
             self.discover()
 
-        # 注册装饰器函数插件
+        # 注册插件
         self._register_decorator_functions()
 
     def _should_register_func(self, name: str) -> bool:

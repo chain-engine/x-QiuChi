@@ -13,6 +13,7 @@ import importlib
 from pathlib import Path
 from typing import Any
 
+from src.constants import PluginType
 from src.core.config import settings
 from src.core.logger import get_logger
 
@@ -28,17 +29,17 @@ class PluginDiscovery:
     """
 
     def __init__(self):
-        self._discovered_items: list[str] = []
+        self._discovered_items: list[tuple[str, str]] = []
 
     def discover(self) -> list[str]:
         """
-        自动发现装饰器函数插件
+        自动发现插件（tool / resource / prompt）
 
         扫描配置的发现路径并导入模块，import 副作用触发
         @tool/@resource/@prompt 收集进全局 collector。
 
         Returns:
-            发现的装饰器函数插件名称列表
+            发现的插件名称列表（不分类型）
         """
         self._discovered_items.clear()
 
@@ -52,11 +53,11 @@ class PluginDiscovery:
             except ImportError as e:
                 logger.warning(f"无法导入发现路径 {discovery_path}: {e}")
 
-        logger.info(f"发现 {len(self._discovered_items)} 个装饰器函数项: {self._discovered_items}")
-        return self._discovered_items.copy()
+        self._log_summary()
+        return [name for name, _ in self._discovered_items]
 
-    def _scan_module(self, module: Any, module_path: Path) -> list[str]:
-        """扫描模块中的装饰器函数插件"""
+    def _scan_module(self, module: Any, module_path: Path) -> list[tuple[str, str]]:
+        """扫描模块中的插件，返回 (名称, 类型) 对"""
         discovered = []
 
         for py_file in module_path.rglob("*.py"):
@@ -78,21 +79,36 @@ class PluginDiscovery:
 
                     if hasattr(attr, "_is_plugin_item") and attr._is_plugin_item:
                         plugin_name = getattr(attr, "_plugin_name", attr.__name__)
-                        discovered.append(plugin_name)
-                        logger.debug(f"发现装饰器注册的函数: {plugin_name}")
+                        plugin_type = getattr(attr, "_plugin_type", "")
+                        discovered.append((plugin_name, plugin_type))
+                        logger.debug(f"发现插件: [{plugin_type}] {plugin_name}")
 
             except ImportError as e:
                 logger.debug(f"无法导入子模块 {module_name}: {e}")
 
         return discovered
 
+    def _log_summary(self) -> None:
+        """按插件类型分组输出发现结果（固定 tool → resource → prompt 顺序）。"""
+        grouped: dict[str, list[str]] = {}
+        for name, ptype in self._discovered_items:
+            grouped.setdefault(ptype, []).append(name)
+
+        parts = []
+        for ptype in PluginType:
+            names = grouped.get(ptype.value)
+            if names:
+                parts.append(f"{ptype.desc}[{len(names)}]: {', '.join(sorted(names))}")
+
+        logger.info(f"发现 {len(self._discovered_items)} 个插件 | {' | '.join(parts)}")
+
 
 def discover_plugins() -> list[str]:
     """
-    便捷函数：发现装饰器函数插件（等价于 PluginDiscovery().discover()）
+    便捷函数：发现插件（等价于 PluginDiscovery().discover()）
 
     Returns:
-        发现的装饰器函数插件名称列表
+        发现的插件名称列表
     """
     discovery = PluginDiscovery()
     return discovery.discover()

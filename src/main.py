@@ -149,7 +149,6 @@ def print_startup_info(server, args):
 
     logger.info("=" * 60)
     logger.info(f"QiuChi Server v{settings.mcp.version}")
-    logger.info("=" * 60)
     logger.info(f"Server: {settings.mcp.server_name}")
     logger.info(f"Transport: {settings.mcp.transport}")
 
