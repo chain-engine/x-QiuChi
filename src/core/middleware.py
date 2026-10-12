@@ -2,12 +2,12 @@
 """
 中间件模块
 
-本模块提供 MCP 协议中间件支持（JSON-RPC 请求管道）：
+MCP 中间件体系：抽象基类、执行链与内置实现。
 
-    - ``Middleware`` / ``MiddlewareChain`` — 抽象基类与洋葱模型管道执行
-    - ``RequestContext`` / ``ResponseContext`` — 请求/响应上下文数据类
-    - ``ErrorHandlerMiddleware`` — MCP 请求错误处理（JSON-RPC 标准错误码）
-    - ``LoggingMiddleware`` — MCP 请求/响应日志与性能告警
+    - ``Middleware`` / ``MiddlewareChain`` — 抽象基类与洋葱模型执行链
+    - ``RequestContext`` / ``ResponseContext`` — 中间件间传递的请求/响应信封
+    - ``ErrorHandlerMiddleware`` — 错误处理中间件（JSON-RPC 标准错误码）
+    - ``LoggingMiddleware`` — 请求/响应日志与性能告警中间件
 
 Usage:
     from src.core.middleware import MiddlewareChain, ErrorHandlerMiddleware, LoggingMiddleware
@@ -157,111 +157,6 @@ class Middleware(ABC):
         return await self.handle(request, next_handler)
 
 
-class MiddlewareChain:
-    """MCP 中间件链。
-
-    管理中间件的执行顺序，支持管道式处理。
-    执行顺序：``chain[0] -> chain[1] -> ... -> chain[-1] -> final_handler``
-    越靠前离调用者越近（洋葱模型的外层）。
-
-    Example:
-        chain = MiddlewareChain()
-        chain.add(ErrorHandlerMiddleware())
-        chain.add(LoggingMiddleware())
-        response = await chain.execute(request, final_handler)
-    """
-
-    def __init__(self) -> None:
-        self.middlewares: list[Middleware] = []
-        self._names: list[str] = []
-
-    def add(self, middleware: Middleware) -> MiddlewareChain:
-        """在链尾追加中间件。"""
-        self.middlewares.append(middleware)
-        self._names.append(type(middleware).__name__)
-        return self
-
-    def add_all(self, middlewares: list[Middleware]) -> MiddlewareChain:
-        """批量追加中间件。"""
-        for m in middlewares:
-            self.add(m)
-        return self
-
-    def insert(self, index: int, middleware: Middleware) -> MiddlewareChain:
-        """在指定位置插入中间件，支持负索引。"""
-        if index < 0:
-            index = max(0, len(self.middlewares) + index + 1)
-        self.middlewares.insert(index, middleware)
-        self._names.insert(index, type(middleware).__name__)
-        return self
-
-    def remove(self, middleware: Middleware) -> bool:
-        """按实例移除中间件。"""
-        try:
-            idx = self.middlewares.index(middleware)
-            self.middlewares.pop(idx)
-            self._names.pop(idx)
-            return True
-        except ValueError:
-            return False
-
-    def remove_by_name(self, name: str) -> bool:
-        """按类名移除中间件。"""
-        for i, n in enumerate(list(self._names)):
-            if n == name:
-                self.middlewares.pop(i)
-                self._names.pop(i)
-                return True
-        return False
-
-    def clear(self) -> None:
-        """清空所有中间件。"""
-        self.middlewares.clear()
-        self._names.clear()
-
-    async def execute(
-        self,
-        request: RequestContext,
-        final_handler: Handler,
-    ) -> ResponseContext:
-        """执行中间件链。
-
-        从后往前 wrap：保证 ``self.middlewares[0]`` 是最外层。
-        """
-        handler = final_handler
-        for middleware in reversed(self.middlewares):
-            handler = self._wrap_handler(middleware, handler)
-        return await handler(request)
-
-    @staticmethod
-    def _wrap_handler(
-        middleware: Middleware,
-        next_handler: Handler,
-    ) -> Handler:
-        async def wrapped_handler(request: RequestContext) -> ResponseContext:
-            return await middleware(request, next_handler)
-
-        return wrapped_handler
-
-    def names(self) -> list[str]:
-        """返回中间件名称列表（副本）。"""
-        return list(self._names)
-
-    def __len__(self) -> int:
-        return len(self.middlewares)
-
-    def __iter__(self):
-        return iter(self.middlewares)
-
-    def __contains__(self, name: str) -> bool:
-        return name in self._names
-
-
-# ---------------------------------------------------------------------------
-#  错误处理
-# ---------------------------------------------------------------------------
-
-
 class ErrorHandlerMiddleware(Middleware):
     """MCP 错误处理中间件。
 
@@ -356,11 +251,6 @@ class ErrorHandlerMiddleware(Middleware):
         if rid is not None:
             resp["id"] = rid
         return resp
-
-
-# ---------------------------------------------------------------------------
-#  日志
-# ---------------------------------------------------------------------------
 
 
 class LoggingMiddleware(Middleware):
@@ -516,9 +406,105 @@ class LoggingMiddleware(Middleware):
             return None
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  导出
-# ═══════════════════════════════════════════════════════════════════════════
+class MiddlewareChain:
+    """MCP 中间件链。
+
+    管理中间件的执行顺序，支持管道式处理。
+    执行顺序：``chain[0] -> chain[1] -> ... -> chain[-1] -> final_handler``
+    越靠前离调用者越近（洋葱模型的外层）。
+
+    Example:
+        chain = MiddlewareChain()
+        chain.add(ErrorHandlerMiddleware())
+        chain.add(LoggingMiddleware())
+        response = await chain.execute(request, final_handler)
+    """
+
+    def __init__(self) -> None:
+        self.middlewares: list[Middleware] = []
+        self._names: list[str] = []
+
+    def add(self, middleware: Middleware) -> MiddlewareChain:
+        """在链尾追加中间件。"""
+        self.middlewares.append(middleware)
+        self._names.append(type(middleware).__name__)
+        return self
+
+    def add_all(self, middlewares: list[Middleware]) -> MiddlewareChain:
+        """批量追加中间件。"""
+        for m in middlewares:
+            self.add(m)
+        return self
+
+    def insert(self, index: int, middleware: Middleware) -> MiddlewareChain:
+        """在指定位置插入中间件，支持负索引。"""
+        if index < 0:
+            index = max(0, len(self.middlewares) + index + 1)
+        self.middlewares.insert(index, middleware)
+        self._names.insert(index, type(middleware).__name__)
+        return self
+
+    def remove(self, middleware: Middleware) -> bool:
+        """按实例移除中间件。"""
+        try:
+            idx = self.middlewares.index(middleware)
+            self.middlewares.pop(idx)
+            self._names.pop(idx)
+            return True
+        except ValueError:
+            return False
+
+    def remove_by_name(self, name: str) -> bool:
+        """按类名移除中间件。"""
+        for i, n in enumerate(list(self._names)):
+            if n == name:
+                self.middlewares.pop(i)
+                self._names.pop(i)
+                return True
+        return False
+
+    def clear(self) -> None:
+        """清空所有中间件。"""
+        self.middlewares.clear()
+        self._names.clear()
+
+    async def execute(
+        self,
+        request: RequestContext,
+        final_handler: Handler,
+    ) -> ResponseContext:
+        """执行中间件链。
+
+        从后往前 wrap：保证 ``self.middlewares[0]`` 是最外层。
+        """
+        handler = final_handler
+        for middleware in reversed(self.middlewares):
+            handler = self._wrap_handler(middleware, handler)
+        return await handler(request)
+
+    @staticmethod
+    def _wrap_handler(
+        middleware: Middleware,
+        next_handler: Handler,
+    ) -> Handler:
+        async def wrapped_handler(request: RequestContext) -> ResponseContext:
+            return await middleware(request, next_handler)
+
+        return wrapped_handler
+
+    def names(self) -> list[str]:
+        """返回中间件名称列表（副本）。"""
+        return list(self._names)
+
+    def __len__(self) -> int:
+        return len(self.middlewares)
+
+    def __iter__(self):
+        return iter(self.middlewares)
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._names
+
 
 __all__ = [
     # --- MCP 协议中间件：基础 ---

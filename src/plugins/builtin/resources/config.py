@@ -4,10 +4,10 @@
 展示如何使用 QiuChi 的资源装饰器创建资源。
 """
 
-from src.plugins import resource
+from src.plugins import resource_decorator
 
 
-@resource(name="config://server", category="system", tags=["configuration"])
+@resource_decorator(name="config://server", category="system", tags=["configuration"])
 def get_server_config() -> str:
     """
     获取服务器配置
@@ -31,7 +31,7 @@ def get_server_config() -> str:
     return json.dumps(config, indent=2)
 
 
-@resource(name="config://version", category="system", tags=["info"])
+@resource_decorator(name="config://version", category="system", tags=["info"])
 def get_version_info() -> str:
     """
     获取版本信息
@@ -51,7 +51,7 @@ def get_version_info() -> str:
     return json.dumps(info, indent=2)
 
 
-@resource(name="docs://api", category="documentation", tags=["docs", "api"])
+@resource_decorator(name="docs://api", category="documentation", tags=["docs", "api"])
 def get_api_documentation() -> str:
     """
     获取 API 文档

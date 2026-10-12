@@ -114,10 +114,6 @@ cp config.yaml.example config.yaml
 | `plugins.discovery_paths` | `["src.plugins.builtin"]` | 插件扫描路径 |
 | `middleware.auth.enabled` | `false` | 是否启用传输层 Bearer Token 认证 |
 | `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
-| `opentelemetry.enabled` | `true` | 是否启用 OpenTelemetry |
-| `opentelemetry.service_name` | `x-QiuChi` | 服务名（trace/metric 资源属性） |
-| `opentelemetry.exporter` | `console` | 导出方式：`console` / `otlp` |
-| `opentelemetry.otlp_endpoint` | `""` | OTLP 端点（exporter=otlp 时必填） |
 
 **环境变量覆盖**：所有配置均可通过环境变量覆盖，优先级为 **环境变量 > YAML > 默认值**。常用环境变量：
 
@@ -315,19 +311,19 @@ from src.main import create_server, tool, resource, prompt
 server = create_server("MyServer")
 
 # 注册工具
-@tool(category="math")
+@tool_decorator(category="math")
 def add(a: float, b: float) -> float:
     """两数相加"""
     return a + b
 
 # 注册资源
-@resource(name="config://app", category="config")
+@resource_decorator(name="config://app", category="config")
 def get_app_config() -> str:
     """获取应用配置"""
     return '{"version": "1.0.0"}'
 
 # 注册提示词
-@prompt(category="code")
+@prompt_decorator(category="code")
 def code_review(language: str) -> str:
     """生成代码审查提示词"""
     return f"请审查以下 {language} 代码的最佳实践。"
@@ -406,7 +402,7 @@ x-QiuChi/
 │   │   ├── auth.py                  # 传输层认证（SimpleTokenVerifier，mcp TokenVerifier Protocol）
 │   │
 │   ├── infras/                      # 基础设施层：第三方能力适配
-│   │   └── opentelemetry.py         # OpenTelemetry（request_id 注入、HTTP span/metrics，console/otlp）
+│   │   └── request_id.py            # 请求 ID 基础设施（X-Request-ID 注入、日志串联）
 │   │
 │   ├── plugins/                     # 插件层：插件系统核心 + 内建扩展插件
 │   │   ├── registry.py              # PluginRegistry 统一注册表（RLock 线程安全）
@@ -447,7 +443,7 @@ x-QiuChi/
 │   ├── test_protocol.py             # 真实 MCP 协议测试（官方 client）与传输层认证测试
 │   ├── test_config.py               # 配置单测（版本单一源 / 环境变量覆盖）
 │   ├── test_auth.py                 # 认证单测
-│   ├── test_telemetry.py            # 可观测性单测
+│   ├── test_request_id.py          # 请求 ID 单测
 │   ├── test_runtime.py              # 运行时上下文单测
 │   └── test_main_cli.py             # CLI 入口单测
 │
@@ -544,7 +540,7 @@ flowchart TD
 
     F --> T1["src/constants/enums.py<br/>TransportType 枚举"]
     F --> T2["uvicorn（外部依赖）"]
-    F -.->|"延迟导入"| OT["src/infras/opentelemetry.py<br/>遥测埋点"]
+    F -.->|"延迟导入"| OT["src/infras/request_id.py<br/>请求 ID 注入"]
 
     D4 --> EN["src/constants/<br/>枚举与常量（最底层）"]
     T1 --> EN
@@ -574,6 +570,18 @@ flowchart TD
 ## API 文档说明
 
 秋池（QiuChi）作为 MCP 服务器框架，不提供传统 REST API，而是通过 **MCP 协议** 进行能力发现与交互。
+
+### MCP 三大原语
+
+MCP 协议把服务端可控能力分为三类——**工具（tools）**、**资源（resources）**、**提示词（prompts）**，即"三大原语"（primitives）。每类原语对应一组 JSON-RPC 方法，在本项目里通过装饰器声明、由插件系统自动发现并注册到 FastMCP：
+
+| 原语 | 定义 | JSON-RPC 方法 | 项目实例 | 声明位置 |
+|------|------|--------------|---------|---------|
+| **tools 工具** | 模型主动调用的带参函数，可产生副作用 | `tools/list` · `tools/call` | 8 个：`add` `subtract` `multiply` `divide` `power` `sqrt` `celsius_to_fahrenheit` `fahrenheit_to_celsius` | `src/plugins/builtin/tools/math.py`（`@tool`） |
+| **resources 资源** | 模型按需读取的只读内容，URI 定位 | `resources/list` · `resources/read` | 3 个：`config://server` `config://version` `docs://api` | `src/plugins/builtin/resources/config.py`（`@resource`） |
+| **prompts 提示词** | 模型按参数实例化的可复用提示模板 | `prompts/list` · `prompts/get` | 5 个：`greeting` `code_review` `weather_outfit_advice` `explain_concept` `summarize_document` | `src/plugins/builtin/prompts/templates.py`（`@prompt`） |
+
+**注册链路**：`@tool` / `@resource` / `@prompt` 装饰器 → 全局 Collector（模块 import 时收集）→ `PluginManager` 过滤注册 → FastMCP 自动暴露 JSON-RPC 端点。每个调用先注入真实 `request_id`，再走中间件管道（ErrorHandler → Logging）后执行原函数。
 
 ### MCP 协议接口清单
 

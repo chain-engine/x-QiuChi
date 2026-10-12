@@ -106,16 +106,6 @@ class AuthConfig:
 
 
 @dataclass
-class OpenTelemetryConfig:
-    """OpenTelemetry 可观测性配置。"""
-
-    enabled: bool = True
-    service_name: str = "x-QiuChi"
-    exporter: str = "console"  # console | otlp
-    otlp_endpoint: str = ""  # 例如 http://localhost:4318/v1/traces
-
-
-@dataclass
 class MiddlewareConfig:
     """中间件配置。"""
 
@@ -136,7 +126,6 @@ _ENV_SECTION_MAP: dict[str, tuple[str, list[str]]] = {
         ["auto_discovery", "discovery_paths", "enabled_plugins", "disabled_plugins"],
     ),
     "middleware.auth": ("AUTH_", ["enabled", "tokens"]),
-    "opentelemetry": ("TELEMETRY_", ["enabled", "service_name", "exporter", "otlp_endpoint"]),
 }
 
 
@@ -160,7 +149,6 @@ class Settings:
         features: 功能开关配置
         plugins: 插件配置
         middleware: 中间件配置
-        telemetry: OpenTelemetry 可观测性配置
     """
 
     def __init__(self, config_file: str | None = None) -> None:
@@ -176,7 +164,6 @@ class Settings:
         self.features = FeaturesConfig()
         self.plugins = PluginConfig()
         self.middleware = MiddlewareConfig()
-        self.telemetry = OpenTelemetryConfig()
 
         self._parse_config()
 
@@ -230,12 +217,6 @@ class Settings:
                     "enabled": False,
                     "tokens": [],
                 },
-            },
-            "opentelemetry": {
-                "enabled": True,
-                "service_name": "x-QiuChi",
-                "exporter": "console",
-                "otlp_endpoint": "",
             },
         }
 
@@ -335,10 +316,6 @@ class Settings:
 
         self.middleware = MiddlewareConfig(auth=AuthConfig(**auth_raw))
 
-        # 可观测性配置
-        telemetry_raw = self._config.get("opentelemetry", {})
-        self.telemetry = OpenTelemetryConfig(**telemetry_raw)
-
     # ----------------------------------------------------------
     # 环境判断
     # ----------------------------------------------------------
@@ -435,12 +412,6 @@ class Settings:
                     "tokens": self.middleware.auth.tokens,
                 },
             },
-            "opentelemetry": {
-                "enabled": self.telemetry.enabled,
-                "service_name": self.telemetry.service_name,
-                "exporter": self.telemetry.exporter,
-                "otlp_endpoint": self.telemetry.otlp_endpoint,
-            },
         }
 
     def save_to_yaml(self, file_path: str | None = None) -> bool:
@@ -480,7 +451,6 @@ __all__ = [
     "FeaturesConfig",
     "PluginConfig",
     "AuthConfig",
-    "OpenTelemetryConfig",
     "MiddlewareConfig",
     "LogLevel",
     "LogOutput",

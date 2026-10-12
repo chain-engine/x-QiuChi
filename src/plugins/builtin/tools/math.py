@@ -4,10 +4,10 @@
 展示如何使用 QiuChi 的装饰器 API 创建工具。
 """
 
-from src.plugins import tool
+from src.plugins import tool_decorator
 
 
-@tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
+@tool_decorator(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
 def add(a: float, b: float) -> float:
     """
     两数相加
@@ -22,7 +22,7 @@ def add(a: float, b: float) -> float:
     return a + b
 
 
-@tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
+@tool_decorator(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
 def subtract(a: float, b: float) -> float:
     """
     两数相减
@@ -37,7 +37,7 @@ def subtract(a: float, b: float) -> float:
     return a - b
 
 
-@tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
+@tool_decorator(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
 def multiply(a: float, b: float) -> float:
     """
     两数相乘
@@ -52,7 +52,7 @@ def multiply(a: float, b: float) -> float:
     return a * b
 
 
-@tool(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
+@tool_decorator(category="math", subcategory="basic", tags=["arithmetic", "calculation"])
 def divide(a: float, b: float) -> float:
     """
     两数相除
@@ -72,7 +72,7 @@ def divide(a: float, b: float) -> float:
     return a / b
 
 
-@tool(category="math", subcategory="advanced", tags=["exponentiation"])
+@tool_decorator(category="math", subcategory="advanced", tags=["exponentiation"])
 def power(base: float, exponent: float) -> float:
     """
     幂运算
@@ -87,7 +87,7 @@ def power(base: float, exponent: float) -> float:
     return float(base**exponent)
 
 
-@tool(category="math", subcategory="advanced", tags=["root"])
+@tool_decorator(category="math", subcategory="advanced", tags=["root"])
 def sqrt(number: float) -> float:
     """
     平方根
@@ -106,7 +106,7 @@ def sqrt(number: float) -> float:
     return float(number**0.5)
 
 
-@tool(category="conversion", tags=["temperature"])
+@tool_decorator(category="conversion", tags=["temperature"])
 def celsius_to_fahrenheit(celsius: float) -> float:
     """
     摄氏度转华氏度
@@ -120,7 +120,7 @@ def celsius_to_fahrenheit(celsius: float) -> float:
     return (celsius * 9 / 5) + 32
 
 
-@tool(category="conversion", tags=["temperature"])
+@tool_decorator(category="conversion", tags=["temperature"])
 def fahrenheit_to_celsius(fahrenheit: float) -> float:
     """
     华氏度转摄氏度

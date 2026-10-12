@@ -98,6 +98,27 @@ def get_transport_config(
     return TransportConfig(transport=transport, host=host, port=port)
 
 
+async def _serve_http_app(app: Any, config: TransportConfig) -> None:
+    """以 uvicorn 运行 MCP HTTP ASGI app。"""
+    # request_id 注入：挂 HTTP 传输层最外层中间件（纯日志链路追踪，无第三方可观测性依赖）
+    from src.infras.request_id import RequestIDMiddleware
+
+    app.add_middleware(RequestIDMiddleware)
+
+    # uvicorn 负责 HTTP 协议解析与连接管理；认证由 app 内部的 RequireAuthMiddleware 处理
+    import uvicorn
+
+    uvicorn_config = uvicorn.Config(
+        app,
+        host=config.host,
+        port=config.port,
+        log_level="info",
+    )
+    server = uvicorn.Server(uvicorn_config)
+    # 阻塞处理请求，直到收到停止信号（Ctrl+C / SIGTERM）
+    await server.serve()
+
+
 async def serve_mcp(mcp: Any, config: TransportConfig) -> None:
     """以指定传输方式承载 FastMCP 实例，阻塞直到服务停止。
 
@@ -119,25 +140,3 @@ async def serve_mcp(mcp: Any, config: TransportConfig) -> None:
         await _serve_http_app(mcp.streamable_http_app(), config)
     else:
         raise ValueError(f"Unsupported transport type: {config.transport.value}")
-
-
-async def _serve_http_app(app: Any, config: TransportConfig) -> None:
-    """以 uvicorn 运行 MCP HTTP ASGI app。"""
-    # 遥测埋点：初始化 OpenTelemetry，并把 request_id 注入中间件挂到 app 最外层
-    from src.infras.opentelemetry import QiuChiHTTPMiddleware, setup_telemetry
-
-    setup_telemetry()
-    app.add_middleware(QiuChiHTTPMiddleware)
-
-    # uvicorn 负责 HTTP 协议解析与连接管理；认证由 app 内部的 RequireAuthMiddleware 处理
-    import uvicorn
-
-    uvicorn_config = uvicorn.Config(
-        app,
-        host=config.host,
-        port=config.port,
-        log_level="info",
-    )
-    server = uvicorn.Server(uvicorn_config)
-    # 阻塞处理请求，直到收到停止信号（Ctrl+C / SIGTERM）
-    await server.serve()

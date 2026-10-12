@@ -1,9 +1,9 @@
 """
 插件收集器（收集组件）
 
-负责装饰器函数插件（@tool/@resource/@prompt）的收集，进程级全局单例：
+负责装饰器函数插件（@tool_decorator/@resource_decorator/@prompt_decorator）的收集，进程级全局单例：
 - PluginCollector：收集器核心（线程安全，按插件类型各持一份）
-- @tool/@resource/@prompt 装饰器：标记函数并写入全局收集器
+- @tool_decorator/@resource_decorator/@prompt_decorator 装饰器：标记函数并写入全局收集器
 
 与 PluginManager 的关系：本模块是"被动写入、主动读取"的数据源。
 写入发生在模块 import 时（装饰器副作用，无需显式调用）；
@@ -121,6 +121,6 @@ def _make_decorator(plugin_type: PluginType):
 
 
 # 公共装饰器
-tool = _make_decorator(PluginType.TOOL)
-resource = _make_decorator(PluginType.RESOURCE)
-prompt = _make_decorator(PluginType.PROMPT)
+tool_decorator = _make_decorator(PluginType.TOOL)
+resource_decorator = _make_decorator(PluginType.RESOURCE)
+prompt_decorator = _make_decorator(PluginType.PROMPT)

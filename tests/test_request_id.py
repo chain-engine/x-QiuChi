@@ -1,11 +1,14 @@
-"""可观测性模块单测：setup_telemetry 幂等与 request_id contextvar。"""
+"""请求 ID 基础设施单测：ContextVar 默认值、RequestIDMiddleware HTTP 行为。"""
 
 from __future__ import annotations
 
-from src.infras.opentelemetry import (
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse
+from starlette.testclient import TestClient
+
+from src.infras.request_id import (
+    RequestIDMiddleware,
     get_request_id,
-    get_tracer,
-    setup_telemetry,
 )
 
 
@@ -14,14 +17,38 @@ def test_get_request_id_default() -> None:
     assert get_request_id() == "-"
 
 
-def test_setup_telemetry_idempotent() -> None:
-    """setup_telemetry 多次调用不抛错、不重复初始化。"""
-    setup_telemetry()
-    setup_telemetry()  # 第二次调用应直接返回
+def _build_request_id_app(header_name: str = "X-Request-ID") -> Starlette:
+    """构建挂载 RequestIDMiddleware 的最小 ASGI app（返回 request_id 供断言）。"""
+    app = Starlette()
+
+    @app.route("/")
+    async def root(request):
+        return JSONResponse({"state": request.state.request_id, "ctx": get_request_id()})
+
+    app.add_middleware(RequestIDMiddleware, header_name=header_name)
+    return app
 
 
-def test_setup_telemetry_initializes_tracer() -> None:
-    """默认配置（console exporter）下应初始化 tracer。"""
-    setup_telemetry()
-    tracer = get_tracer()
-    assert tracer is not None
+def test_request_id_middleware_reuses_header() -> None:
+    """携带 X-Request-ID 时复用：state / ContextVar / 响应头三者一致。"""
+    with TestClient(_build_request_id_app()) as client:
+        resp = client.get("/", headers={"X-Request-ID": "rid-abc-123"})
+    assert resp.json() == {"state": "rid-abc-123", "ctx": "rid-abc-123"}
+    assert resp.headers["X-Request-ID"] == "rid-abc-123"
+
+
+def test_request_id_middleware_generates_uuid() -> None:
+    """未携带头时生成 UUID：非默认值、回写响应头。"""
+    with TestClient(_build_request_id_app()) as client:
+        resp = client.get("/")
+    rid = resp.json()["state"]
+    assert rid and rid != "-"
+    assert resp.headers["X-Request-ID"] == rid
+
+
+def test_request_id_middleware_custom_header() -> None:
+    """自定义请求头名称生效。"""
+    with TestClient(_build_request_id_app(header_name="X-Trace-ID")) as client:
+        resp = client.get("/", headers={"X-Trace-ID": "trace-1"})
+    assert resp.json() == {"state": "trace-1", "ctx": "trace-1"}
+    assert resp.headers["X-Trace-ID"] == "trace-1"

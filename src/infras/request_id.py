@@ -1,28 +1,27 @@
 """
-OpenTelemetry 可观测性接入
+请求 ID 基础设施（request_id）
 
-提供:
-    - ``setup_telemetry`` — 初始化 TracerProvider / MeterProvider（console 或 OTLP）
-    - ``QiuChiHTTPMiddleware`` — 挂在 MCP HTTP 传输层外层的 Starlette 中间件：
-      注入真实 ``request_id``（X-Request-ID 或自动生成，贯穿日志）、
-      记录 HTTP 请求 span 与计数器/直方图
-    - ``get_tracer`` / ``get_meter`` / ``get_request_id`` — 供业务代码取用
+为每个 HTTP 请求确定贯穿全链路的 ``request_id``，用于日志串联与问题排查。
+本项目不依赖 OpenTelemetry 等第三方可观测性体系，request_id 是纯日志链路追踪的最小形态：
 
-配置（config.yaml / 环境变量 TELEMETRY_*）::
+    - ``request_id_var`` — 请求级 ContextVar（异步安全），默认 ``"-"``
+    - ``get_request_id`` — 供业务代码（wrapper / 协议中间件）读取当前请求 id
+    - ``RequestIDMiddleware`` — HTTP 传输层中间件（最外层）：
+      优先复用上游 ``X-Request-ID`` 请求头（网关链路追踪），否则生成 UUID；
+      写入 request.state 与 ContextVar，通过 loguru ``contextualize`` 贯穿日志，
+      并在响应头回写。
 
-    opentelemetry:
-      enabled: true
-      service_name: "x-QiuChi"
-      exporter: "console"        # console | otlp
-      otlp_endpoint: ""          # exporter=otlp 时填写，如 http://localhost:4318/v1/traces
+挂载（FastMCP app 外层，Starlette 栈式）::
 
-说明: console 模式只输出 tracing span（便于开发观察）；
-otlp 模式启用 metrics + tracing 全量导出（接 Jaeger / OTel Collector 等）。
+    app.add_middleware(RequestIDMiddleware)
+
+Usage:
+    from src.infras.request_id import RequestIDMiddleware, get_request_id
+    rid = get_request_id()  # 未处于请求上下文时返回 "-"
 """
 
 from __future__ import annotations
 
-import time
 import uuid
 from contextvars import ContextVar
 
@@ -31,21 +30,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from src.core.config import settings
-
-_configured: bool = False
-_tracer = None
-_meter = None
-
 # 请求级 request_id（contextvar，异步安全）
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
 __all__ = [
-    "setup_telemetry",
-    "QiuChiHTTPMiddleware",
-    "get_tracer",
-    "get_meter",
+    "request_id_var",
     "get_request_id",
+    "RequestIDMiddleware",
 ]
 
 
@@ -54,139 +45,33 @@ def get_request_id() -> str:
     return request_id_var.get()
 
 
-def setup_telemetry() -> None:
-    """初始化 OpenTelemetry（幂等）。"""
-    global _configured, _tracer, _meter
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """请求 ID 注入中间件（HTTP 传输层，最外层）。
 
-    if _configured:
-        return
-    _configured = True
+    职责单一：为每个 HTTP 请求确定贯穿全链路的 ``request_id``。
+    优先复用上游传入的 ``X-Request-ID`` 请求头（网关链路追踪场景），否则生成 UUID；
+    将 request_id 写入 ``request.state.request_id`` 与全局 ``request_id_var``（ContextVar），
+    并通过 loguru ``contextualize`` 让该请求作用域内的所有日志自动携带 request_id；
+    最后在响应头回写，供客户端 / 网关继续追踪。
 
-    if not settings.telemetry.enabled:
-        logger.debug("Telemetry disabled by config")
-        return
+    必须挂在 FastMCP app 外层且**最早**执行，以保证下游
+    （wrapper 的 ``get_request_id()``、协议中间件、日志）都能取到真实 request_id。
 
-    from opentelemetry import metrics, trace
-    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.metrics import MeterProvider
-    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import (
-        ConsoleSpanExporter,
-        SimpleSpanProcessor,
-        SpanExporter,
-    )
-
-    resource = Resource.create({SERVICE_NAME: settings.telemetry.service_name})
-    use_otlp = settings.telemetry.exporter == "otlp" and settings.telemetry.otlp_endpoint
-
-    span_exporter: SpanExporter
-    if use_otlp:
-        span_exporter = OTLPSpanExporter(endpoint=settings.telemetry.otlp_endpoint)
-    else:
-        span_exporter = ConsoleSpanExporter()
-
-    trace_provider = TracerProvider(resource=resource)
-    trace_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
-    trace.set_tracer_provider(trace_provider)
-    _tracer = trace.get_tracer(settings.telemetry.service_name)
-
-    if use_otlp:
-        metric_reader = PeriodicExportingMetricReader(
-            OTLPMetricExporter(endpoint=settings.telemetry.otlp_endpoint),
-            export_interval_millis=30_000,
-        )
-        meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
-        metrics.set_meter_provider(meter_provider)
-        _meter = metrics.get_meter(settings.telemetry.service_name)
-    else:
-        # console 模式不启用 metrics，避免周期性刷屏；OTLP 模式全量导出
-        _meter = None
-
-    logger.info(
-        f"Telemetry initialized (service={settings.telemetry.service_name}, "
-        f"exporter={settings.telemetry.exporter})"
-    )
-
-
-def get_tracer():
-    """获取全局 Tracer（惰性初始化）。"""
-    if not _configured:
-        setup_telemetry()
-    return _tracer
-
-
-def get_meter():
-    """获取全局 Meter（惰性初始化，console 模式下为 None）。"""
-    if not _configured:
-        setup_telemetry()
-    return _meter
-
-
-class QiuChiHTTPMiddleware(BaseHTTPMiddleware):
-    """MCP HTTP 传输层中间件。
-
-    负责:
-    1. 注入真实 request_id：优先取 ``X-Request-ID`` 请求头，否则生成 uuid；
-       通过 loguru ``contextualize`` 贯穿整个请求的日志输出。
-    2. OpenTelemetry 埋点：HTTP 请求 span、请求计数、耗时直方图。
-
-    挂在 ``FastMCP.streamable_http_app()`` / ``FastMCP.sse_app()`` 外层。
+    Attributes:
+        app: ASGI 应用实例
+        header_name: request_id 请求 / 响应头名称，默认 ``X-Request-ID``
     """
 
-    def __init__(self, app) -> None:
+    def __init__(self, app, header_name: str = "X-Request-ID") -> None:
         super().__init__(app)
-        self._tracer = get_tracer()
-        self._meter = get_meter()
-        self._requests_total = None
-        self._request_duration = None
-        if self._meter is not None:
-            self._requests_total = self._meter.create_counter(
-                "mcp.http.requests_total",
-                unit="1",
-                description="Total MCP HTTP requests",
-            )
-            self._request_duration = self._meter.create_histogram(
-                "mcp.http.request.duration",
-                unit="s",
-                description="MCP HTTP request duration",
-            )
+        self.header_name: str = header_name
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        rid = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        rid = request.headers.get(self.header_name) or str(uuid.uuid4())
+        request.state.request_id = rid
         request_id_var.set(rid)
-        start = time.perf_counter()
-        status_code = 500
-
+        # contextualize 基于 contextvars，自动传播到所有 async 子任务
         with logger.contextualize(request_id=rid):
-            try:
-                if self._tracer is not None:
-                    with self._tracer.start_as_current_span(
-                        "mcp.http.request",
-                        attributes={
-                            "http.request.method": request.method,
-                            "url.path": request.url.path,
-                            "request_id": rid,
-                        },
-                    ) as span:
-                        response: Response = await call_next(request)
-                        status_code = response.status_code
-                        span.set_attribute("http.response.status_code", status_code)
-                        return response
-
-                resp: Response = await call_next(request)
-                status_code = resp.status_code
-                return resp
-            finally:
-                if self._requests_total is not None:
-                    self._requests_total.add(
-                        1,
-                        {"http.method": request.method, "http.status": str(status_code)},
-                    )
-                if self._request_duration is not None:
-                    self._request_duration.record(
-                        time.perf_counter() - start,
-                        {"http.method": request.method},
-                    )
+            response: Response = await call_next(request)
+            response.headers[self.header_name] = rid
+            return response

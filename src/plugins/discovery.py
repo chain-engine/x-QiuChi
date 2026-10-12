@@ -5,7 +5,7 @@
 
 发现流程：
     1. 扫描配置的发现路径
-    2. 导入模块触发装饰器收集（@tool/@resource/@prompt → 全局 collector）
+    2. 导入模块触发装饰器收集（@tool_decorator/@resource_decorator/@prompt_decorator → 全局 collector）
     3. 返回发现的插件名称列表
 """
 
@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 class PluginDiscovery:
     """插件发现器（发现组件）
 
-    由 PluginManager.discover() 临时创建并调用，扫描完成后即弃，不常驻。
+    由 PluginManager 在发现阶段临时创建并调用，扫描完成后即弃，不常驻。
     只负责"扫描 + 导入 + 触发装饰器收集"；不感知 Collector / Registry，
     收集结果由 PluginManager 在注册阶段读取。
     """
@@ -36,7 +36,7 @@ class PluginDiscovery:
         自动发现插件（tool / resource / prompt）
 
         扫描配置的发现路径并导入模块，import 副作用触发
-        @tool/@resource/@prompt 收集进全局 collector。
+        @tool_decorator/@resource_decorator/@prompt_decorator 收集进全局 collector。
 
         Returns:
             发现的插件名称列表（不分类型）

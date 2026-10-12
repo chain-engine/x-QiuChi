@@ -4,10 +4,10 @@
 展示如何使用 QiuChi 的提示词装饰器创建提示词模板。
 """
 
-from src.plugins import prompt
+from src.plugins import prompt_decorator
 
 
-@prompt(category="greeting", tags=["welcome", "social"])
+@prompt_decorator(category="greeting", tags=["welcome", "social"])
 def greeting(name: str) -> str:
     """
     生成问候语
@@ -21,7 +21,7 @@ def greeting(name: str) -> str:
     return f"Hello, {name}! Welcome to QiuChi MCP Server. How can I assist you today?"
 
 
-@prompt(category="code", tags=["development", "review"])
+@prompt_decorator(category="code", tags=["development", "review"])
 def code_review(language: str, code_snippet: str) -> str:
     """
     生成代码审查提示
@@ -47,7 +47,7 @@ Please provide:
 5. Security concerns (if any)"""
 
 
-@prompt(category="weather", tags=["advice", "daily"])
+@prompt_decorator(category="weather", tags=["advice", "daily"])
 def weather_outfit_advice(weather: str, temperature: float) -> str:
     """
     生成天气穿衣建议
@@ -73,7 +73,7 @@ def weather_outfit_advice(weather: str, temperature: float) -> str:
 Please provide specific clothing recommendations."""
 
 
-@prompt(category="education", tags=["learning", "explanation"])
+@prompt_decorator(category="education", tags=["learning", "explanation"])
 def explain_concept(concept: str, audience: str = "beginner") -> str:
     """
     生成概念解释提示
@@ -98,7 +98,7 @@ Requirements:
 Target audience: {audience}"""
 
 
-@prompt(category="documentation", tags=["summary", "analysis"])
+@prompt_decorator(category="documentation", tags=["summary", "analysis"])
 def summarize_document(document: str, max_length: int = 200) -> str:
     """
     生成文档摘要提示

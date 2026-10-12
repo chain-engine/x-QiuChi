@@ -163,7 +163,7 @@ class TestPluginCollector:
         tmp = {PluginType.TOOL: PluginCollector(PluginType.TOOL)}
         monkeypatch.setattr(collector_mod, "_collectors", tmp)
 
-        @collector_mod.tool(category="math", tags=["demo"])
+        @collector_mod.tool_decorator(category="math", tags=["demo"])
         def add(a: int, b: int) -> int:
             return a + b
 
@@ -223,11 +223,11 @@ class TestPluginManager:
         assert "my_add" in server.registry.list_names()
 
     async def test_middleware_wrapper_sync_func(self, monkeypatch) -> None:
-        import src.infras.opentelemetry as otel
+        import src.infras.request_id as rid_mod
 
         server = MCPServer()
         manager = PluginManager(server)
-        monkeypatch.setattr(otel, "get_request_id", lambda: "rid-1")
+        monkeypatch.setattr(rid_mod, "get_request_id", lambda: "rid-1")
 
         def add(a: int, b: int) -> int:
             return a + b

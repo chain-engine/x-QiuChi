@@ -114,10 +114,6 @@ cp config.yaml.example config.yaml
 | `plugins.discovery_paths` | `["src.plugins.builtin"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable transport-layer Bearer Token auth |
 | `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
-| `opentelemetry.enabled` | `true` | Enable OpenTelemetry |
-| `opentelemetry.service_name` | `x-QiuChi` | Service name for traces/metrics |
-| `opentelemetry.exporter` | `console` | Exporter: `console` / `otlp` |
-| `opentelemetry.otlp_endpoint` | `""` | OTLP endpoint (required when exporter=otlp) |
 
 **Environment Variable Override**: All configuration can be overridden via environment variables. Priority: **Environment Variables > YAML > Defaults**. Common environment variables:
 
@@ -239,19 +235,19 @@ from src.main import create_server, tool, resource, prompt
 server = create_server("MyServer")
 
 # Register a tool
-@tool(category="math")
+@tool_decorator(category="math")
 def add(a: float, b: float) -> float:
     """Add two numbers."""
     return a + b
 
 # Register a resource
-@resource(name="config://app", category="config")
+@resource_decorator(name="config://app", category="config")
 def get_app_config() -> str:
     """Get application configuration."""
     return '{"version": "1.0.0"}'
 
 # Register a prompt
-@prompt(category="code")
+@prompt_decorator(category="code")
 def code_review(language: str) -> str:
     """Generate a code review prompt."""
     return f"Please review this {language} code for best practices."
@@ -328,6 +324,9 @@ x-QiuChi/
 │   │   ├── logger.py                # loguru structured logging (file rotation, sensitive info filtering)
 │   │   └── middleware.py            # Middleware pipeline (ErrorHandler / Logging / Auth)
 │   │
+│   ├── infras/                      # Infrastructure layer: third-party adaptation
+│   │   └── request_id.py            # Request ID infrastructure (X-Request-ID injection, log correlation)
+│   │
 │   ├── plugins/                     # Plugin layer: plugin system core + built-in extensions
 │   │   ├── registry.py              # PluginRegistry (thread-safe, RLock)
 │   │   ├── manager.py               # PluginManager (auto-discovery, filtering, registration dispatch)
@@ -344,10 +343,6 @@ x-QiuChi/
 │   ├── server/                      # Server layer: MCP server core
 │   │   ├── server.py                # MCPServer facade (assembles FastMCP / auth / middleware / plugins / lifecycle)
 │   │   └── lifecycle.py             # Server lifecycle state machine (UNINITIALIZED → RUNNING → STOPPED)
-│   │
-│   ├── runtime/                     # Runtime layer: request context and session management
-│   │   ├── context.py               # RequestContext
-│   │   └── session.py               # SessionManager
 │   │
 │   ├── transport/                   # Transport layer: multi-protocol transport abstraction
 │   │   └── transport.py             # Transport config & serving (Stdio / SSE / Streamable-HTTP, default streamable-http)
@@ -382,7 +377,7 @@ x-QiuChi/
 flowchart TD
     A["MCP Client<br/>(Claude Desktop / LangChain / Custom Client)"]
     B["Transport Layer (transport)<br/>Stdio / SSE / Streamable-HTTP (Default)"]
-    B1["Transport Hardening (HTTP Mode)<br/>Bearer Token Auth (RequireAuthMiddleware) + OpenTelemetry"]
+    B1["Transport Hardening (HTTP Mode)<br/>Bearer Token Auth (RequireAuthMiddleware)"]
     C["Middleware Pipeline (core.middleware)<br/>ErrorHandler → Logging → Business Handler"]
     subgraph D["MCP Three Primitives (PluginType)"]
         direction LR
@@ -393,7 +388,7 @@ flowchart TD
     E["Plugin System (plugins)<br/>Decorator Collect → Discover → Load/Enable → Register"]
     F["PluginRegistry (Thread-Safe, RLock)"]
     G["MCPServer Facade (server)<br/>Assembles FastMCP, LifecycleManager State Machine"]
-    H["core Infrastructure<br/>Settings Config / loguru Logging / Middleware / Auth / Telemetry"]
+    H["core Infrastructure<br/>Settings Config / loguru Logging / Middleware / Auth / RequestID"]
     I["constants Shared Types<br/>TransportType / ServerState / PluginType Enums"]
 
     A -->|"MCP Protocol (JSON-RPC)"| B
@@ -422,7 +417,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    R1["Receive MCP Request (JSON-RPC)"] --> R2["HTTP Transport Layer<br/>Bearer Token Auth + OpenTelemetry (request_id)"]
+    R1["Receive MCP Request (JSON-RPC)"] --> R2["HTTP Transport Layer<br/>Bearer Token Auth + RequestID (request_id)"]
     R2 --> R3["FastMCP Dispatches by Method<br/>to Registered Tools / Resources / Prompts"]
     R3 --> R4["Middleware Pipeline<br/>ErrorHandler → Logging"]
     R4 --> R6["Execute Business Function<br/>(RequestContext Flows Through Pipeline)"]
@@ -456,7 +451,7 @@ flowchart TD
 
     F --> T1["src/constants/enums.py<br/>TransportType Enum"]
     F --> T2["uvicorn (External)"]
-    F -.->|"Lazy Import"| OT["src/infras/opentelemetry.py<br/>Telemetry"]
+    F -.->|"Lazy Import"| OT["src/infras/request_id.py<br/>Request ID Injection"]
 
     D4 --> EN["src/constants/<br/>Enums & Constants (Bottom Layer)"]
     T1 --> EN
@@ -486,6 +481,18 @@ flowchart TD
 ## API Documentation
 
 QiuChi, as an MCP server framework, does not provide traditional REST APIs. Instead, it uses the **MCP protocol** for capability discovery and interaction.
+
+### MCP Primitives
+
+The MCP protocol divides server-side capabilities into three kinds — **tools**, **resources** and **prompts** — the "three primitives". Each primitive maps to a set of JSON-RPC methods; in this project they are declared via decorators and auto-registered into FastMCP by the plugin system:
+
+| Primitive | Definition | JSON-RPC methods | Project instances | Declaration |
+|-----------|-----------|------------------|-------------------|-------------|
+| **tools** | Parameterized functions the model actively calls; may have side effects | `tools/list` · `tools/call` | 8: `add` `subtract` `multiply` `divide` `power` `sqrt` `celsius_to_fahrenheit` `fahrenheit_to_celsius` | `src/plugins/builtin/tools/math.py` (`@tool`) |
+| **resources** | Read-only content the model fetches on demand, addressed by URI | `resources/list` · `resources/read` | 3: `config://server` `config://version` `docs://api` | `src/plugins/builtin/resources/config.py` (`@resource`) |
+| **prompts** | Reusable prompt templates the model instantiates with arguments | `prompts/list` · `prompts/get` | 5: `greeting` `code_review` `weather_outfit_advice` `explain_concept` `summarize_document` | `src/plugins/builtin/prompts/templates.py` (`@prompt`) |
+
+**Registration chain**: `@tool` / `@resource` / `@prompt` decorator → global Collector (collected on module import) → `PluginManager` filtering & registration → FastMCP exposes JSON-RPC endpoints automatically. Every call first injects a real `request_id`, then runs through the middleware pipeline (ErrorHandler → Logging) before executing the original function.
 
 ### MCP Protocol Interface List
 

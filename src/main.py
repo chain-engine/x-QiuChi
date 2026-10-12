@@ -14,10 +14,10 @@
 - 完整的类型提示和文档
 
 快速开始:
-    >>> from src.main import create_server, tool, resource, prompt
+    >>> from src.main import create_server, tool_decorator, resource_decorator, prompt_decorator
     >>> server = create_server("MyServer")
     >>>
-    >>> @tool(category="math")
+    >>> @tool_decorator(category="math")
     ... def add(a: float, b: float) -> float:
     ...     '''Add two numbers.'''
     ...     return a + b
@@ -39,7 +39,7 @@ from src.core.middleware import (
     Middleware,
     MiddlewareChain,
 )
-from src.plugins import PluginMetadata, prompt, resource, tool
+from src.plugins import PluginMetadata, prompt_decorator, resource_decorator, tool_decorator
 from src.server import MCPServer, create_server
 from src.transport import TransportConfig, TransportType
 
@@ -59,9 +59,9 @@ __all__ = [
     "TransportType",
     "TransportConfig",
     # 装饰器
-    "tool",
-    "resource",
-    "prompt",
+    "tool_decorator",
+    "resource_decorator",
+    "prompt_decorator",
 ]
 
 __version__ = PACKAGE_VERSION

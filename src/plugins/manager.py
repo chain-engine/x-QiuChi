@@ -13,7 +13,7 @@
    返回插件名单
 
 ② 收集（模块 import 时，装饰器副作用）
-   业务代码: @tool / @resource / @prompt 标记函数
+   业务代码: @tool_decorator / @resource_decorator / @prompt_decorator 标记函数
        │ 装饰器 collect() 自动写入（无需显式调用）
        ▼
    PluginCollector（全局单例，进程内唯一）
@@ -28,10 +28,10 @@
 
 ④ 调用（运行时）
    MCP 客户端 ──► FastMCP ──► wrapper（保持原签名）
-       │ 构造 RequestContext（request_id / runtime context）
+       │ 构造 RequestContext（method / request_id / params）
        ▼
    middleware_chain.execute(req, final_handler)
-       │ ErrorHandler → Logging → Cache → 原函数
+       │ ErrorHandler → Logging → 原函数
        ▼
    返回结果
 
@@ -120,7 +120,7 @@ class PluginManager:
 
         @wraps(func)
         async def wrapped(*args, **kwargs):
-            from src.infras.opentelemetry import get_request_id
+            from src.infras.request_id import get_request_id
 
             req = RequestContext(
                 request={

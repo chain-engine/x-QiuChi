@@ -38,10 +38,3 @@ middleware:
   auth:
     enabled: false
     tokens: []  # 有效 Bearer Token 列表（enabled: true 时必填，如 ["dev-token"]）
-
-# OpenTelemetry 可观测性配置
-opentelemetry:
-  enabled: true
-  service_name: "x-QiuChi"
-  exporter: "console"  # console | otlp
-  otlp_endpoint: ""  # exporter=otlp 时填写，如 http://localhost:4318/v1/traces
