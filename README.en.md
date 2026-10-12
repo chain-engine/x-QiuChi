@@ -2,10 +2,6 @@
 
 # x-QiuChi
 
-An enterprise-grade MCP (Model Context Protocol) server framework built on [FastMCP](https://github.com/modelcontextprotocol/python-sdk) — go from zero to a production-ready MCP server out of the box.
-
-> The "capability hub" for AI applications: declarative decorators for tools/resources/prompts, plugin auto-discovery, cross-cutting middleware, multi-transport support, and a single command to connect to any MCP client.
-
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-1.0%2B-000000?logo=modelcontextprotocol&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-0.6%2B-946b48?logo=uv&logoColor=white)

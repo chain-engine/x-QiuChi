@@ -2,10 +2,6 @@
 
 # x-QiuChi（秋池）
 
-一个基于 [FastMCP](https://github.com/modelcontextprotocol/python-sdk) 的企业级 MCP（Model Context Protocol）服务器框架——开箱即用，构建生产级 MCP 服务器。
-
-> 面向 AI 应用的「能力中转站」：以声明式装饰器定义工具/资源/提示词，插件化自动发现，中间件横切治理，多传输协议接入，一条命令对接任意 MCP 客户端。
-
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python\&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-1.0%2B-000000?logo=modelcontextprotocol\&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-0.6%2B-946b48?logo=uv\&logoColor=white)
