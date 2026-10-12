@@ -8,6 +8,7 @@
 
 当前适配器：
 - hanjiang：汉江管理系统（认证 + 用户管理）
+  （接入范围约定：仅 admin 域 /api/admin/v1/*；开放 API 与开放平台门户不接入）
 """
 
 from src.adapters import hanjiang  # noqa: F401  # 装配全部适配器（触发 @tool 收集）

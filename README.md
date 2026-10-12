@@ -397,7 +397,7 @@ flowchart LR
 
 **内置能力清单：**
 
-- **工具（15 个）**：数学域 5 个（`add` / `subtract` / `multiply` / `divide` / `sqrt`）；汉江域 10 个（`hanjiang_login` / `hanjiang_logout` / `hanjiang_session_info` / `hanjiang_user_create` / `hanjiang_user_list` / `hanjiang_user_get` / `hanjiang_user_update` / `hanjiang_user_status` / `hanjiang_user_reset_password` / `hanjiang_user_delete`）
+- **工具（15 个）**：数学域 5 个（`add` / `subtract` / `multiply` / `divide` / `sqrt`）；汉江域 10 个（`hanjiang_login` / `hanjiang_logout` / `hanjiang_session_info` / `hanjiang_user_create` / `hanjiang_user_list` / `hanjiang_user_get` / `hanjiang_user_update` / `hanjiang_user_status` / `hanjiang_user_reset_password` / `hanjiang_user_delete`）——**仅接入汉江 admin 管理系统（`/api/admin/v1/*`），开放 API 与开放平台门户不接入**
 - **资源（3 个）**：`config://server`、`config://version`、`docs://api`
 - **提示词（4 个）**：`greeting`、`code_review`、`weather_outfit_advice`、`summarize_document`
 

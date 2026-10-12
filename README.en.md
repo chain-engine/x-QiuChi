@@ -397,7 +397,7 @@ This project **does not expose a REST API** (no Swagger / ReDoc / OpenAPI endpoi
 
 **Built-in capabilities:**
 
-- **Tools (15)**: math (5): `add` / `subtract` / `multiply` / `divide` / `sqrt`; HanJiang (10): `hanjiang_login` / `hanjiang_logout` / `hanjiang_session_info` / `hanjiang_user_create` / `hanjiang_user_list` / `hanjiang_user_get` / `hanjiang_user_update` / `hanjiang_user_status` / `hanjiang_user_reset_password` / `hanjiang_user_delete`
+- **Tools (15)**: math (5): `add` / `subtract` / `multiply` / `divide` / `sqrt`; HanJiang (10): `hanjiang_login` / `hanjiang_logout` / `hanjiang_session_info` / `hanjiang_user_create` / `hanjiang_user_list` / `hanjiang_user_get` / `hanjiang_user_update` / `hanjiang_user_status` / `hanjiang_user_reset_password` / `hanjiang_user_delete` — **only the HanJiang admin system is integrated (`/api/admin/v1/*`); the Open API and Open Portal are not in scope**
 - **Resources (3)**: `config://server`, `config://version`, `docs://api`
 - **Prompts (4)**: `greeting`, `code_review`, `weather_outfit_advice`, `summarize_document`
 

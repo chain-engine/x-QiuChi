@@ -33,6 +33,7 @@ from src.core.logger import get_logger
 logger = get_logger(__name__)
 
 #: 汉江 admin 域 API 前缀（API_PREFIX=/api + ADMIN_PREFIX=/admin + v1）
+#: 接入范围约定：仅 admin 域；开放 API / 开放平台门户不接入
 _ADMIN_API_PREFIX: Final[str] = "/api/admin/v1"
 #: access_token 剩余有效期小于该值（秒）时提前刷新，避免调用中途过期
 _TOKEN_EXPIRY_SLACK_SECONDS: Final[int] = 30
