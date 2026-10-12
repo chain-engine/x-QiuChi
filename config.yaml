@@ -38,3 +38,11 @@ middleware:
   auth:
     enabled: false
     tokens: []  # 有效 Bearer Token 列表（enabled: true 时必填，如 ["dev-token"]）
+
+# 汉江管理系统适配器配置（HTTP 转接代理：认证 + 用户管理）
+hanjiang:
+  base_url: "http://localhost:8000"  # 汉江管理系统后端地址
+  username: ""                        # 服务凭据账号（管理员，敏感值优先放 .env）
+  password: ""                        # 服务凭据密码（敏感值优先放 .env）
+  encryption_enabled: true            # 是否 RSA-OAEP 加密密码（与汉江 AUTH_ENCRYPTION_ENABLED 保持一致）
+  timeout: 30                         # 请求超时（秒）

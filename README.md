@@ -11,7 +11,7 @@
 **核心价值**：
 
 - **协议合规** —— 完整实现 MCP 协议 Tools、Resources、Prompts 三大原语
-- **架构清晰** —— Constants / Core / Plugins / Server / Runtime / Transport / Utils / Examples 八层职责分明
+- **架构清晰** —— Constants / Core / Plugins / Adapters / Server / Transport / Utils / Examples 八层职责分明
 - **开箱即用** —— 装饰器一键注册、插件自动发现、中间件即插即用
 - **生产就绪** —— 结构化日志、健康检查、容器化部署、TLS 支持
 
@@ -106,14 +106,16 @@ cp config.yaml.example config.yaml
 | `logging.file_path` | `logs/x-QiuChi_{time:YYYY-MM-DD-HH}.log` | 日志文件路径（支持时间模板） |
 | `logging.rotation` | `1 hour` | 日志轮转周期 |
 | `logging.retention` | `7 days` | 日志保留时长 |
-| `features.tools` | `true` | 是否启用工具原语 |
-| `features.resources` | `true` | 是否启用资源原语 |
-| `features.prompts` | `true` | 是否启用提示词原语 |
 | `features.middleware` | `true` | 是否启用中间件管道 |
 | `plugins.auto_discovery` | `true` | 是否自动发现插件 |
 | `plugins.discovery_paths` | `["src.plugins.builtin"]` | 插件扫描路径 |
 | `middleware.auth.enabled` | `false` | 是否启用传输层 Bearer Token 认证 |
 | `middleware.auth.tokens` | `[]` | 有效 Bearer Token 列表（enabled 时必填） |
+| `hanjiang.base_url` | `http://localhost:8000` | 汉江管理系统后端地址（HTTP 转接代理目标） |
+| `hanjiang.username` | `""` | 汉江服务凭据账号（权限决定 AI 操作边界） |
+| `hanjiang.password` | `""` | 汉江服务凭据密码（敏感，优先 .env） |
+| `hanjiang.encryption_enabled` | `true` | 是否 RSA-OAEP 加密密码（与汉江 AUTH_ENCRYPTION_ENABLED 一致） |
+| `hanjiang.timeout` | `30` | 汉江请求超时（秒） |
 
 **环境变量覆盖**：所有配置均可通过环境变量覆盖，优先级为 **环境变量 > YAML > 默认值**。常用环境变量：
 
@@ -401,9 +403,6 @@ x-QiuChi/
 │   │   ├── middleware.py            # 中间件管道（ErrorHandler / Logging）
 │   │   ├── auth.py                  # 传输层认证（SimpleTokenVerifier，mcp TokenVerifier Protocol）
 │   │
-│   ├── infras/                      # 基础设施层：第三方能力适配
-│   │   └── request_id.py            # 请求 ID 基础设施（X-Request-ID 注入、日志串联）
-│   │
 │   ├── plugins/                     # 插件层：插件系统核心 + 内建扩展插件
 │   │   ├── registry.py              # PluginRegistry 统一注册表（RLock 线程安全）
 │   │   ├── manager.py               # PluginManager 插件管理器（自动发现、过滤、注册分发）
@@ -417,16 +416,18 @@ x-QiuChi/
 │   │       └── prompts/
 │   │           └── templates.py     # 5 个提示词模板（问候、代码审查、天气穿搭等）
 │   │
+│   ├── adapters/                     # 适配器层：外部系统集成（HTTP 转接代理）
+│   │   └── hanjiang/                 # 汉江管理系统适配器（认证 + 用户管理，10 个工具）
+│   │       ├── client.py             # HanJiangClient（RSA 登录 / token 生命周期 / 错误映射）
+│   │       ├── auth_tools.py         # 认证域工具（login / logout / session_info）
+│   │       └── user_tools.py         # 用户域工具（create / list / get / update / status / reset / delete）
+│   │
 │   ├── server/                      # 服务层：MCP 服务器核心
 │   │   ├── server.py                # MCPServer 编排门面（组装 FastMCP / 认证 / 中间件 / 插件 / 生命周期）
 │   │   └── lifecycle.py             # 服务器生命周期状态机（UNINITIALIZED → RUNNING → STOPPED）
 │   │
-│   ├── runtime/                     # 运行时层：请求上下文与会话管理
-│   │   ├── context.py               # RequestContext 请求上下文
-│   │   └── session.py               # SessionManager 会话管理器
-│   │
 │   ├── transport/                   # 传输层：多协议传输抽象
-│   │   └── transport.py             # 传输配置与服务承载（Stdio / SSE / Streamable-HTTP，默认 streamable-http）
+│   │   └── transport.py             # 传输配置、请求 ID 注入（X-Request-ID / ContextVar）与服务承载（Stdio / SSE / Streamable-HTTP）
 │   │
 │   └── utils/                       # 工具层：通用辅助函数
 │       └── helpers.py               # 通用辅助函数（时间格式化等）
@@ -524,13 +525,12 @@ flowchart TD
     B --> C1["FastMCP（外部依赖）"]
     B --> D["src/plugins/manager.py<br/>插件管理器"]
     B --> E["src/core/middleware.py<br/>中间件管道"]
-    B --> F["src/transport/transport.py<br/>传输承载"]
+    B --> F["src/transport/transport.py<br/>传输承载 + 请求 ID 注入"]
     B --> AUTH["src/core/auth.py<br/>传输层认证装配"]
     B --> LC["src/server/lifecycle.py<br/>生命周期状态机"]
     B --> H["src/core/config.py<br/>配置管理"]
     H --> H1["dataclass + PyYAML（外部依赖）"]
 
-    D --> D1["src/plugins/base.py<br/>插件基类"]
     D --> D2["src/plugins/registry.py<br/>PluginRegistry"]
     D --> D3["src/plugins/discovery.py<br/>插件发现"]
     D --> D4["src/plugins/collector.py<br/>装饰器收集"]
@@ -540,7 +540,6 @@ flowchart TD
 
     F --> T1["src/constants/enums.py<br/>TransportType 枚举"]
     F --> T2["uvicorn（外部依赖）"]
-    F -.->|"延迟导入"| OT["src/infras/request_id.py<br/>请求 ID 注入"]
 
     D4 --> EN["src/constants/<br/>枚举与常量（最底层）"]
     T1 --> EN

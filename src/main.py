@@ -172,6 +172,10 @@ def main_async():
     # 设置日志
     setup_logging()
 
+    # 装配外部系统适配器（hanjiang 等）：显式 import 触发 @tool_decorator 收集，
+    # 由 create_server 后的插件系统统一注册进 registry + FastMCP
+    import src.adapters  # noqa: F401
+
     # 创建服务器（插件将通过自动发现机制加载）
     server = create_server(
         name=settings.mcp.server_name,

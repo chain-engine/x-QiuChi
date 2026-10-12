@@ -120,7 +120,7 @@ class PluginManager:
 
         @wraps(func)
         async def wrapped(*args, **kwargs):
-            from src.infras.request_id import get_request_id
+            from src.transport.transport import get_request_id
 
             req = RequestContext(
                 request={

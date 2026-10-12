@@ -112,6 +112,17 @@ class MiddlewareConfig:
     auth: AuthConfig = field(default_factory=AuthConfig)
 
 
+@dataclass
+class HanJiangConfig:
+    """汉江管理系统适配器配置（HTTP 转接代理的目标系统凭据）。"""
+
+    base_url: str = "http://localhost:8000"
+    username: str = ""
+    password: str = ""
+    encryption_enabled: bool = True
+    timeout: float = 30.0
+
+
 # ============================================================
 # 环境变量 → YAML 配置段 映射
 # ============================================================
@@ -126,6 +137,10 @@ _ENV_SECTION_MAP: dict[str, tuple[str, list[str]]] = {
         ["auto_discovery", "discovery_paths", "enabled_plugins", "disabled_plugins"],
     ),
     "middleware.auth": ("AUTH_", ["enabled", "tokens"]),
+    "hanjiang": (
+        "HANJIANG_",
+        ["base_url", "username", "password", "encryption_enabled", "timeout"],
+    ),
 }
 
 
@@ -164,6 +179,7 @@ class Settings:
         self.features = FeaturesConfig()
         self.plugins = PluginConfig()
         self.middleware = MiddlewareConfig()
+        self.hanjiang = HanJiangConfig()
 
         self._parse_config()
 
@@ -217,6 +233,13 @@ class Settings:
                     "enabled": False,
                     "tokens": [],
                 },
+            },
+            "hanjiang": {
+                "base_url": "http://localhost:8000",
+                "username": "",
+                "password": "",
+                "encryption_enabled": True,
+                "timeout": 30.0,
             },
         }
 
@@ -316,6 +339,10 @@ class Settings:
 
         self.middleware = MiddlewareConfig(auth=AuthConfig(**auth_raw))
 
+        # 汉江适配器配置
+        hanjiang_raw = self._config.get("hanjiang", {})
+        self.hanjiang = HanJiangConfig(**hanjiang_raw)
+
     # ----------------------------------------------------------
     # 环境判断
     # ----------------------------------------------------------
@@ -412,6 +439,13 @@ class Settings:
                     "tokens": self.middleware.auth.tokens,
                 },
             },
+            "hanjiang": {
+                "base_url": self.hanjiang.base_url,
+                "username": self.hanjiang.username,
+                "password": self.hanjiang.password,
+                "encryption_enabled": self.hanjiang.encryption_enabled,
+                "timeout": self.hanjiang.timeout,
+            },
         }
 
     def save_to_yaml(self, file_path: str | None = None) -> bool:
@@ -452,6 +486,7 @@ __all__ = [
     "PluginConfig",
     "AuthConfig",
     "MiddlewareConfig",
+    "HanJiangConfig",
     "LogLevel",
     "LogOutput",
     "TransportType",

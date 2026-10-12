@@ -18,6 +18,7 @@ dependencies = [
     # uvicorn websockets_impl 仍 import websockets.legacy.handshake（4.x），
     # 而 websockets>=14 已移除 legacy API —— 锁 <14 保证 HTTP/SSE 承载可启动
     "websockets>=10.4,<14",
+    "pycryptodome>=3.24.1",
 ]
 
 [project.optional-dependencies]
@@ -34,7 +35,7 @@ dev = [
 x-QiuChi = "src.main:main"
 
 [[tool.uv.index]]
-url = "https://pypi.org/simple"
+url = "https://mirrors.aliyun.com/pypi/simple/"
 default = true
 
 [build-system]

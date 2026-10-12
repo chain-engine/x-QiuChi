@@ -223,11 +223,11 @@ class TestPluginManager:
         assert "my_add" in server.registry.list_names()
 
     async def test_middleware_wrapper_sync_func(self, monkeypatch) -> None:
-        import src.infras.request_id as rid_mod
+        import src.transport.transport as transport_mod
 
         server = MCPServer()
         manager = PluginManager(server)
-        monkeypatch.setattr(rid_mod, "get_request_id", lambda: "rid-1")
+        monkeypatch.setattr(transport_mod, "get_request_id", lambda: "rid-1")
 
         def add(a: int, b: int) -> int:
             return a + b

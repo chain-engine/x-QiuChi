@@ -11,7 +11,7 @@
 **Core Value**:
 
 - **Protocol Compliant** — Full implementation of MCP protocol's three primitives: Tools, Resources, and Prompts
-- **Clean Architecture** — Eight distinct layers: Constants / Core / Plugins / Server / Runtime / Transport / Utils / Examples
+- **Clean Architecture** — Eight distinct layers: Constants / Core / Plugins / Adapters / Server / Transport / Utils / Examples
 - **Out of the Box** — One-line decorator registration, automatic plugin discovery, plug-and-play middleware
 - **Production Ready** — Structured logging, health checks, containerized deployment, TLS support
 
@@ -113,6 +113,12 @@ cp config.yaml.example config.yaml
 | `plugins.auto_discovery` | `true` | Enable automatic plugin discovery |
 | `plugins.discovery_paths` | `["src.plugins.builtin"]` | Plugin scan paths |
 | `middleware.auth.enabled` | `false` | Enable transport-layer Bearer Token auth |
+| `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
+| `hanjiang.base_url` | `http://localhost:8000` | HanJiang backend base URL (HTTP proxy target) |
+| `hanjiang.username` | `""` | HanJiang service credential username (defines AI operation boundary) |
+| `hanjiang.password` | `""` | HanJiang service credential password (sensitive, prefer .env) |
+| `hanjiang.encryption_enabled` | `true` | RSA-OAEP password encryption (align with HanJiang AUTH_ENCRYPTION_ENABLED) |
+| `hanjiang.timeout` | `30` | HanJiang request timeout (seconds) |
 | `middleware.auth.tokens` | `[]` | Valid Bearer tokens (required when enabled) |
 
 **Environment Variable Override**: All configuration can be overridden via environment variables. Priority: **Environment Variables > YAML > Defaults**. Common environment variables:
@@ -324,9 +330,6 @@ x-QiuChi/
 │   │   ├── logger.py                # loguru structured logging (file rotation, sensitive info filtering)
 │   │   └── middleware.py            # Middleware pipeline (ErrorHandler / Logging / Auth)
 │   │
-│   ├── infras/                      # Infrastructure layer: third-party adaptation
-│   │   └── request_id.py            # Request ID infrastructure (X-Request-ID injection, log correlation)
-│   │
 │   ├── plugins/                     # Plugin layer: plugin system core + built-in extensions
 │   │   ├── registry.py              # PluginRegistry (thread-safe, RLock)
 │   │   ├── manager.py               # PluginManager (auto-discovery, filtering, registration dispatch)
@@ -340,12 +343,18 @@ x-QiuChi/
 │   │       └── prompts/
 │   │           └── templates.py     # 5 prompt templates (greeting, code review, weather outfit, etc.)
 │   │
+│   ├── adapters/                     # Adapter layer: external system integration (HTTP proxy)
+│   │   └── hanjiang/                 # HanJiang management system adapter (auth + user management, 10 tools)
+│   │       ├── client.py             # HanJiangClient (RSA login / token lifecycle / error mapping)
+│   │       ├── auth_tools.py         # Auth tools (login / logout / session_info)
+│   │       └── user_tools.py         # User tools (create / list / get / update / status / reset / delete)
+│   │
 │   ├── server/                      # Server layer: MCP server core
 │   │   ├── server.py                # MCPServer facade (assembles FastMCP / auth / middleware / plugins / lifecycle)
 │   │   └── lifecycle.py             # Server lifecycle state machine (UNINITIALIZED → RUNNING → STOPPED)
 │   │
 │   ├── transport/                   # Transport layer: multi-protocol transport abstraction
-│   │   └── transport.py             # Transport config & serving (Stdio / SSE / Streamable-HTTP, default streamable-http)
+│   │   └── transport.py             # Transport config, request ID injection (X-Request-ID / ContextVar) & serving (Stdio / SSE / Streamable-HTTP)
 │   │
 │   └── utils/                       # Utils layer: general helper functions
 │       └── helpers.py               # General helpers (time formatting, etc.)
@@ -435,13 +444,12 @@ flowchart TD
     B --> C1["FastMCP (External)"]
     B --> D["src/plugins/manager.py<br/>Plugin Manager"]
     B --> E["src/core/middleware.py<br/>Middleware Pipeline"]
-    B --> F["src/transport/transport.py<br/>Transport Serving"]
+    B --> F["src/transport/transport.py<br/>Transport Serving + Request ID Injection"]
     B --> AUTH["src/core/auth.py<br/>Transport Auth Assembly"]
     B --> LC["src/server/lifecycle.py<br/>Lifecycle State Machine"]
     B --> H["src/core/config.py<br/>Config Management"]
     H --> H1["dataclass + PyYAML (External)"]
 
-    D --> D1["src/plugins/base.py<br/>Plugin Base"]
     D --> D2["src/plugins/registry.py<br/>PluginRegistry"]
     D --> D3["src/plugins/discovery.py<br/>Plugin Discovery"]
     D --> D4["src/plugins/collector.py<br/>Decorator Collection"]
@@ -451,7 +459,6 @@ flowchart TD
 
     F --> T1["src/constants/enums.py<br/>TransportType Enum"]
     F --> T2["uvicorn (External)"]
-    F -.->|"Lazy Import"| OT["src/infras/request_id.py<br/>Request ID Injection"]
 
     D4 --> EN["src/constants/<br/>Enums & Constants (Bottom Layer)"]
     T1 --> EN

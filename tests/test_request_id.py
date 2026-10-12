@@ -1,4 +1,4 @@
-"""请求 ID 基础设施单测：ContextVar 默认值、RequestIDMiddleware HTTP 行为。"""
+"""传输层请求 ID 单测：ContextVar 默认值、RequestIDMiddleware HTTP 行为。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
-from src.infras.request_id import (
+from src.transport.transport import (
     RequestIDMiddleware,
     get_request_id,
 )
